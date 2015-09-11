@@ -8,6 +8,10 @@ using System.ComponentModel;
 
 namespace Pqsql
 {
+	// When you inherit from DbConnection, you must override the following members:
+	// Close, BeginDbTransaction, ChangeDatabase, CreateDbCommand, Open, and StateChange. 
+	// You must also provide the following properties:
+	// ConnectionString, Database, DataSource, ServerVersion, and State.
 	public class PqsqlConnection : DbConnection
 	{
 		#region libpq connection
@@ -30,22 +34,29 @@ namespace Pqsql
 		/// <summary>
 		/// an ADO.NET connection string
 		/// </summary>
-		protected string mConnectionString;
+		protected PqsqlConnectionStringBuilder mConnectionStringBuilder;
 
 		#endregion
 
 
 		#region ctors and dtors
 
-		public PqsqlConnection(string connectionString) : this()
+		public PqsqlConnection(string connectionString)
+			: this(new PqsqlConnectionStringBuilder(connectionString))
 		{
-			mConnectionString = connectionString;
 		}
 
-		public PqsqlConnection() : base()
+		public PqsqlConnection()
+			: this(new PqsqlConnectionStringBuilder())
+		{
+		}
+
+		public PqsqlConnection(PqsqlConnectionStringBuilder builder)
+			: base()
 		{
 			mConnection = IntPtr.Zero;
 			mStatus = ConnectionStatus.CONNECTION_BAD;
+			mConnectionStringBuilder = builder;
 		}
 
 		~PqsqlConnection()
@@ -69,7 +80,11 @@ namespace Pqsql
 		[DefaultValue("")]
 		[SettingsBindable(true)]
 		[RecommendedAsConfigurable(true)]
-		public virtual string ConnectionString { get; set; }
+		public override string ConnectionString
+		{
+			get { return mConnectionStringBuilder.ConnectionString; }
+			set { mConnectionStringBuilder.ConnectionString = value; }
+		}
 
 		//
 		// Summary:
@@ -79,7 +94,20 @@ namespace Pqsql
 		// Returns:
 		//     The time (in seconds) to wait for a connection to open. The default value
 		//     is determined by the specific type of connection that you are using.
-		public override int ConnectionTimeout { get; }
+		public override int ConnectionTimeout
+		{
+			get
+			{
+				if (mConnectionStringBuilder.ContainsKey(PqsqlConnectionStringBuilder.connect_timeout))
+				{
+					return (int)mConnectionStringBuilder[PqsqlConnectionStringBuilder.connect_timeout];
+				}
+				else
+				{
+					return 0;
+				}
+			}
+		}
 
 		//
 		// Summary:
@@ -90,7 +118,20 @@ namespace Pqsql
 		// Returns:
 		//     The name of the current database or the name of the database to be used after
 		//     a connection is opened. The default value is an empty string.
-		public virtual string Database { get; }
+		public override string Database
+		{
+			get
+			{
+				if (mConnectionStringBuilder.ContainsKey(PqsqlConnectionStringBuilder.dbname))
+				{
+					return (string)mConnectionStringBuilder[PqsqlConnectionStringBuilder.dbname];
+				}
+				else
+				{
+					return string.Empty;
+				}
+			}
+		}
 
 		//
 		// Summary:
@@ -99,7 +140,21 @@ namespace Pqsql
 		// Returns:
 		//     The name of the database server to which to connect. The default value is
 		//     an empty string.
-		public virtual string DataSource { get; }
+		public override string DataSource
+		{
+			get
+			{
+				if (mConnectionStringBuilder.ContainsKey(PqsqlConnectionStringBuilder.host))
+				{
+					return (string)mConnectionStringBuilder[PqsqlConnectionStringBuilder.host];
+				}
+				else
+				{
+					return string.Empty;
+				}
+
+			}
+		}
 
 		//
 		// Summary:
@@ -110,7 +165,13 @@ namespace Pqsql
 		//     The version of the database. The format of the string returned depends on
 		//     the specific type of connection you are using.
 		[Browsable(false)]
-		public virtual string ServerVersion { get; }
+		public override string ServerVersion
+		{
+			get
+			{
+				return string.Empty; // TODO
+			}
+		}
 
 		//
 		// Summary:
@@ -120,7 +181,34 @@ namespace Pqsql
 		//     The state of the connection. The format of the string returned depends on
 		//     the specific type of connection you are using.
 		[Browsable(false)]
-		public virtual ConnectionState State { get; }
+		public virtual ConnectionState State
+		{
+			get
+			{
+				if (mConnection == IntPtr.Zero)
+					return ConnectionState.Closed;
+
+				// TODO get updated connection status
+
+				switch (mStatus)
+				{
+					case ConnectionStatus.CONNECTION_BAD:
+						return ConnectionState.Broken;
+
+					case ConnectionStatus.CONNECTION_OK:
+						return ConnectionState.Open;
+
+					case ConnectionStatus.CONNECTION_STARTED:
+						return ConnectionState.Connecting;
+
+					case ConnectionStatus.CONNECTION_NEEDED:
+						return ConnectionState.Connecting;
+
+					default:
+						return ConnectionState.Broken;
+				}
+			}
+		}
 
 		// Summary:
 		//     Starts a database transaction.
@@ -131,7 +219,10 @@ namespace Pqsql
 		//
 		// Returns:
 		//     An object representing the new transaction.
-		protected virtual DbTransaction BeginDbTransaction(IsolationLevel isolationLevel);
+		protected override DbTransaction BeginDbTransaction(IsolationLevel isolationLevel)
+		{
+			return new PqsqlTransaction(this, isolationLevel);
+		}
 
 		//
 		// Summary:
@@ -140,7 +231,10 @@ namespace Pqsql
 		// Parameters:
 		//   databaseName:
 		//     Specifies the name of the database for the connection to use.
-		public virtual void ChangeDatabase(string databaseName);
+		public override void ChangeDatabase(string databaseName)
+		{
+			throw new NotImplementedException("ChangeDatabase is not implemented");
+		}
 
 		//
 		// Summary:
@@ -150,7 +244,7 @@ namespace Pqsql
 		// Exceptions:
 		//   System.Data.Common.DbException:
 		//     The connection-level error that occurred while opening the connection.
-		public void Close()
+		public override void Close()
 		{
 			// close connection and release memory in any case
 			if (mConnection != IntPtr.Zero)
@@ -170,9 +264,9 @@ namespace Pqsql
 		//
 		// Returns:
 		//     A System.Data.Common.DbCommand object.
-		protected virtual DbCommand CreateDbCommand()
+		protected override DbCommand CreateDbCommand()
 		{
-			return null;
+			return new PqsqlCommand(this);
 		}
 
 		//
@@ -185,7 +279,29 @@ namespace Pqsql
 				Close();
 			}
 
-			mConnection = PqsqlWrapper.PQconnectdb(mConnectionString);
+			StringBuilder st = new StringBuilder();
+
+			st.AppendFormat("host={0}", this.DataSource);
+			st.AppendFormat(" dbname={0}", this.Database);
+			st.AppendFormat(" connect_timeout={0}", this.ConnectionTimeout);
+
+			if (mConnectionStringBuilder.ContainsKey(PqsqlConnectionStringBuilder.port))
+			{
+				st.AppendFormat(" port={0}", mConnectionStringBuilder[PqsqlConnectionStringBuilder.port]);
+			}
+
+			if (mConnectionStringBuilder.ContainsKey(PqsqlConnectionStringBuilder.user))
+			{
+				st.AppendFormat(" user={0}", mConnectionStringBuilder[PqsqlConnectionStringBuilder.user]);
+			}
+
+			if (mConnectionStringBuilder.ContainsKey(PqsqlConnectionStringBuilder.password))
+			{
+				st.AppendFormat(" password={0}", mConnectionStringBuilder[PqsqlConnectionStringBuilder.password]);
+			}
+
+			// now create connection
+			mConnection = PqsqlWrapper.PQconnectdb(st.ToString());
 
 			if (mConnection != IntPtr.Zero)
 			{
