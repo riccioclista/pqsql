@@ -52,7 +52,9 @@ namespace Pqsql
 	/// <summary>
 	/// wraps C functions from libpq.dll
 	/// </summary>
-	class PqsqlWrapper
+	/// <remarks>https://msdn.microsoft.com/en-us/library/system.security.suppressunmanagedcodesecurityattribute%28v=vs.100%29.aspx</remarks>
+	[SuppressUnmanagedCodeSecurity]
+	internal class PqsqlWrapper
 	{
 		// libpq.dll depends on libeay32.dll, libintl-8.dll, ssleay32.dll
 		// (DllImport would throw a DllNotFoundException if some of them are missing)
@@ -103,7 +105,6 @@ namespace Pqsql
 		// ConnStatusType PQstatus(conn)
 
 		#endregion
-
 
 
 		#region connection error
