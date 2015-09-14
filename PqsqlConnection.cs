@@ -192,20 +192,20 @@ namespace Pqsql
 
 				switch (mStatus)
 				{
-					case ConnectionStatus.CONNECTION_BAD:
-						return ConnectionState.Broken;
-
 					case ConnectionStatus.CONNECTION_OK:
 						return ConnectionState.Open;
 
-					case ConnectionStatus.CONNECTION_STARTED:
-						return ConnectionState.Connecting;
+					case ConnectionStatus.CONNECTION_BAD:
+						return ConnectionState.Broken;
 
-					case ConnectionStatus.CONNECTION_NEEDED:
-						return ConnectionState.Connecting;
+					case ConnectionStatus.CONNECTION_MADE: // TODO
+						return ConnectionState.Executing;
+
+					case ConnectionStatus.CONNECTION_AWAITING_RESPONSE: // TODO
+						return ConnectionState.Fetching;
 
 					default:
-						return ConnectionState.Broken;
+						return ConnectionState.Connecting;
 				}
 			}
 		}
@@ -252,6 +252,7 @@ namespace Pqsql
 				PqsqlWrapper.PQfinish(mConnection);
 				mConnection = IntPtr.Zero;
 				mStatus = ConnectionStatus.CONNECTION_BAD;
+				return;
 			}
 
 			// TODO exception
@@ -279,43 +280,30 @@ namespace Pqsql
 				Close();
 			}
 
-			StringBuilder st = new StringBuilder();
+			// setup null-terminated key-value arrays for the connection
+			string[] keys = new string[mConnectionStringBuilder.Keys.Count + 1];
+			string[] vals = new string[mConnectionStringBuilder.Values.Count + 1];
 
-			st.AppendFormat("host={0}", this.DataSource);
-			st.AppendFormat(" dbname={0}", this.Database);
-			st.AppendFormat(" connect_timeout={0}", this.ConnectionTimeout);
-
-			if (mConnectionStringBuilder.ContainsKey(PqsqlConnectionStringBuilder.port))
-			{
-				st.AppendFormat(" port={0}", mConnectionStringBuilder[PqsqlConnectionStringBuilder.port]);
-			}
-
-			if (mConnectionStringBuilder.ContainsKey(PqsqlConnectionStringBuilder.user))
-			{
-				st.AppendFormat(" user={0}", mConnectionStringBuilder[PqsqlConnectionStringBuilder.user]);
-			}
-
-			if (mConnectionStringBuilder.ContainsKey(PqsqlConnectionStringBuilder.password))
-			{
-				st.AppendFormat(" password={0}", mConnectionStringBuilder[PqsqlConnectionStringBuilder.password]);
-			}
+			// copy over
+			mConnectionStringBuilder.Keys.CopyTo(keys, 0);
+			mConnectionStringBuilder.Values.CopyTo(vals, 0);
 
 			// now create connection
-			mConnection = PqsqlWrapper.PQconnectdb(st.ToString());
+			mConnection = PqsqlWrapper.PQconnectdbParams(keys, vals, 0);
 
 			if (mConnection != IntPtr.Zero)
 			{
 				mStatus = (Pqsql.ConnectionStatus)PqsqlWrapper.PQstatus(mConnection);
 				if (mStatus == ConnectionStatus.CONNECTION_BAD)
 				{
-					Close(); // force release memory of mConnection
+					Close(); // force release of mConnection memory
 
 					// TODO exception
 				}
 			}
 			else
 			{
-				mStatus = Pqsql.ConnectionStatus.CONNECTION_BAD;
+				
 			}
 		}
 

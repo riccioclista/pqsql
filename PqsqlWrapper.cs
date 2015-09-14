@@ -1,12 +1,23 @@
 ﻿using System;
 using System.Runtime.InteropServices;
+using System.Security;
 
 namespace Pqsql
 {
+	// enum PostgresPollingStatusType from libpq-fe.h
+	internal enum PostgresPollingStatus
+	{
+		PGRES_POLLING_FAILED = 0,
+		PGRES_POLLING_READING,      /* These two indicate that one may    */
+		PGRES_POLLING_WRITING,      /* use select before polling again.   */
+		PGRES_POLLING_OK,
+		PGRES_POLLING_ACTIVE        /* unused; keep for awhile for backwards compatibility */
+	};
+
 	// enum ConnectionStatusType from libpq-fe.h
 	internal enum ConnectionStatus
 	{
-		CONNECTION_OK,
+		CONNECTION_OK = 0,
 		CONNECTION_BAD,
 		/* Non-blocking mode only below here */
 
@@ -26,16 +37,16 @@ namespace Pqsql
 	// enum ExecStatusType from libpq-fe.h
 	internal enum ExecStatus
 	{
-		PGRES_EMPTY_QUERY = 0,		/* empty query string was executed */
-		PGRES_COMMAND_OK,			/* a query command that doesn't return anything was executed properly by the backend */
-		PGRES_TUPLES_OK,			/* a query command that returns tuples was executed properly by the backend, PGresult contains the result tuples */
-		PGRES_COPY_OUT,				/* Copy Out data transfer in progress */
-		PGRES_COPY_IN,				/* Copy In data transfer in progress */
-		PGRES_BAD_RESPONSE,			/* an unexpected response was recv'd from the backend */
-		PGRES_NONFATAL_ERROR,		/* notice or warning message */
-		PGRES_FATAL_ERROR,			/* query failed */
-		PGRES_COPY_BOTH,			/* Copy In/Out data transfer in progress */
-		PGRES_SINGLE_TUPLE			/* single tuple from larger resultset */
+		PGRES_EMPTY_QUERY = 0, /* empty query string was executed */
+		PGRES_COMMAND_OK,			 /* a query command that doesn't return anything was executed properly by the backend */
+		PGRES_TUPLES_OK,			 /* a query command that returns tuples was executed properly by the backend, PGresult contains the result tuples */
+		PGRES_COPY_OUT,				 /* Copy Out data transfer in progress */
+		PGRES_COPY_IN,				 /* Copy In data transfer in progress */
+		PGRES_BAD_RESPONSE,		 /* an unexpected response was recv'd from the backend */
+		PGRES_NONFATAL_ERROR,	 /* notice or warning message */
+		PGRES_FATAL_ERROR,		 /* query failed */
+		PGRES_COPY_BOTH,			 /* Copy In/Out data transfer in progress */
+		PGRES_SINGLE_TUPLE		 /* single tuple from larger resultset */
 	};
 
 	// see enum PGTransactionStatus in libpq-fe.h
@@ -59,6 +70,9 @@ namespace Pqsql
 		// libpq.dll depends on libeay32.dll, libintl-8.dll, ssleay32.dll
 		// (DllImport would throw a DllNotFoundException if some of them are missing)
 
+
+		// Note: On Windows, there is a way to improve performance if a single database connection is repeatedly started and shutdown. Internally, libpq calls WSAStartup() and WSACleanup() for connection startup and shutdown, respectively. WSAStartup() increments an internal Windows library reference count which is decremented by WSACleanup(). When the reference count is just one, calling WSACleanup() frees all resources and all DLLs are unloaded. This is an expensive operation. To avoid this, an application can manually call WSAStartup() so resources will not be freed when the last database connection is closed.
+
 		#region libpq setup
 
 		[DllImport("libpq.dll")]
@@ -71,12 +85,38 @@ namespace Pqsql
 
 		#endregion
 
+		//
+		// http://www.postgresql.org/docs/current/static/libpq-connect.html
+		//
 
-		#region connection setup
+		#region blocking connection setup
 
 		[DllImport("libpq.dll")]
 		public static extern IntPtr PQconnectdb(string conninfo);
 		// PGconn *PQconnectdb(const char *conninfo)
+
+		[DllImport("libpq.dll")]
+		public static extern IntPtr PQconnectdbParams(string[] keywords, string[] values, int expand_dbname);
+		// PGconn *PQconnectdbParams(const char * const *keywords, const char * const *values, int expand_dbname);
+
+		#region non-blocking connection setup
+
+		[DllImport("libpq.dll")]
+		public static extern IntPtr PQconnectStartParams(string[] keywords, string[] values, int expand_dbname);
+		// PGconn *PQconnectStartParams(const char * const *keywords, const char * const *values, int expand_dbname);
+
+		[DllImport("libpq.dll")]
+		public static extern IntPtr PQconnectStart(string conninfo);
+		// PGconn *PQconnectStart(const char *conninfo);
+
+		[DllImport("libpq.dll")]
+		public static extern int PQconnectPoll(IntPtr conn);
+    // PostgresPollingStatusType PQconnectPoll(PGconn *conn);
+
+		#endregion
+
+
+		#region connection settings
 
 		[DllImport("libpq.dll")]
 		public static extern int PQsetSingleRowMode(IntPtr conn);
@@ -97,17 +137,15 @@ namespace Pqsql
 
 		#endregion
 
+		//
+		// http://www.postgresql.org/docs/current/static/libpq-status.html
+		//
 
-		#region connection status
+		#region connection status and error message
 
 		[DllImport("libpq.dll")]
 		public static extern int PQstatus(IntPtr conn);
 		// ConnStatusType PQstatus(conn)
-
-		#endregion
-
-
-		#region connection error
 
 		[DllImport("libpq.dll")]
 		public static extern string PQerrorMessage(IntPtr conn);
@@ -115,6 +153,36 @@ namespace Pqsql
 
 		#endregion
 
+		
+		#region transaction status
+
+		[DllImport("libpq.dll")]
+		public static extern int PQtransactionStatus(IntPtr conn);
+		// PGTransactionStatusType PQtransactionStatus(const PGconn *conn);
+
+		#endregion
+
+
+		#region connection settings
+
+		[DllImport("libpq.dll")]
+		public static extern int PQbackendPID(IntPtr conn);
+		// int PQbackendPID(const PGconn *conn);
+
+		[DllImport("libpq.dll")]
+		public static extern int PQserverVersion(IntPtr conn);
+		// int PQserverVersion(const PGconn *conn);
+
+		[DllImport("libpq.dll")]
+		public static extern string PQparameterStatus(IntPtr conn, string paramName);
+		// const char *PQparameterStatus(const PGconn *conn, const char *paramName);
+
+		#endregion
+
+		//
+		// http://www.postgresql.org/docs/current/static/libpq-exec.html
+		// http://www.postgresql.org/docs/current/static/libpq-async.html
+		//
 
 		#region blocking queries
 
@@ -206,12 +274,15 @@ namespace Pqsql
 		#endregion
 
 
-		#region transaction status
 
-		[DllImport("libpq.dll")]
-		public static extern int PQtransactionStatus(IntPtr conn);
-		// PGTransactionStatusType PQtransactionStatus(const PGconn *conn);
+		//
+		// http://www.postgresql.org/docs/current/static/libpq-copy.html
+		//
 
-		#endregion
+
+
+		//
+		// http://www.postgresql.org/docs/current/static/largeobjects.html
+		//
 	}
 }
