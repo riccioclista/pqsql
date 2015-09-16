@@ -29,6 +29,25 @@ namespace Pqsql
 	}
 
 
+	[StructLayout(LayoutKind.Sequential)]
+	public struct numeric_meta
+	{
+		public ushort ndigits; // digits are base 10000
+		public ushort weight;  //
+		public ushort sign;    // + / - / NaN
+		public ushort dscale;  // digits after .
+	}
+
+	//#define NBASE       10000
+ //   #define HALF_NBASE  5000
+  //  #define DEC_DIGITS  4           /* decimal digits per NBASE digit */
+ //   #define MUL_GUARD_DIGITS    2   /* these are measured in NBASE digits */
+ //   #define DIV_GUARD_DIGITS    4
+	//   #define NUMERIC_POS         0x0000
+   //#define NUMERIC_NEG         0x4000
+   //#define NUMERIC_SHORT       0x8000
+   //#define NUMERIC_NAN         0xC000
+
 	//
 	// Routines for formatting and parsing frontend/backend binary messages
 	//
@@ -36,14 +55,14 @@ namespace Pqsql
 	{
 		#region encode datatype to binary message
 
-		// see pq_sendtext(StringInfo buf, const char *str, int slen) from pqformat.c
+		// see pq_sendtext(StringInfo buf, const char *str, int slen) from src/backend/libpq/pqformat.c
 		public static void SendText(ref IntPtr val, string s)
 		{
 			Marshal.StructureToPtr(s, val, true);
 		}
 
 
-		// see pq_sendint(StringInfo buf, int i, int b) from pqformat.c
+		// see pq_sendint(StringInfo buf, int i, int b) from src/backend/libpq/pqformat.c
 		public static void SendInt(ref IntPtr val, int i, int b)
 		{
        switch (b)
@@ -63,7 +82,7 @@ namespace Pqsql
 		}
 
 
-		// see pq_sendint64(StringInfo buf, int64 i) from pqformat.c
+		// see pq_sendint64(StringInfo buf, int64 i) from src/backend/libpq/pqformat.c
 		public static void SendInt64(ref IntPtr val, long i)
 		{
 			uint h32;
@@ -83,7 +102,7 @@ namespace Pqsql
 		}
 
 
-		// see void pq_sendfloat4(StringInfo msg, float4 f) from pqformat.c
+		// see void pq_sendfloat4(StringInfo msg, float4 f) from src/backend/libpq/pqformat.c
 		public static void SendFloat4(ref IntPtr val, float f)
 		{
 			swap_float4_int4_union onion = new swap_float4_int4_union();
@@ -92,12 +111,56 @@ namespace Pqsql
 		}
 
 
-		// see void pq_sendfloat8(StringInfo msg, float8 f) from pqformat.c
+		// see void pq_sendfloat8(StringInfo msg, float8 f) from src/backend/libpq/pqformat.c
 		public static void SendFloat8(ref IntPtr val, double d)
 		{
 			swap_float8_int8_union onion = new swap_float8_int8_union();
 			onion.as_double_precision = d;
 			SendInt64(ref val, (long)onion.as_unsigned);
+		}
+
+
+		// see  numeric_send() from src/backend/utils/adt/numeric.c
+		public static void SendNumeric(ref IntPtr val, decimal d)
+		{
+			// requires 8 + ndigits bytes of memory
+			numeric_meta meta = new numeric_meta();
+			
+			int[] b = decimal.GetBits(d); //
+
+			meta.ndigits = 1;
+			meta.weight = 2;
+
+			meta.sign = 0;  // 0...+
+			if (d < 0.0m)
+			{
+				meta.sign = (ushort)IPAddress.HostToNetworkOrder(0x4000); // 0x4000...-
+			}
+
+			meta.dscale = 3;
+		}
+
+
+		// see  numeric_send() from src/backend/utils/adt/numeric.c
+		public static void SendNumeric(ref IntPtr val, double d)
+		{
+			// requires 8 + ndigits bytes of memory
+			numeric_meta meta = new numeric_meta();
+
+			meta.ndigits = 1;
+			meta.weight = 2;
+
+			meta.sign = 0;  // 0...+
+			if (double.IsNaN(d))
+			{
+				meta.sign = (ushort)IPAddress.HostToNetworkOrder(0xC000); // 0xC000...NaN
+			}
+			else if (d < 0)
+			{
+				meta.sign = (ushort)IPAddress.HostToNetworkOrder(0x4000); // 0x4000...-
+			}
+			
+			meta.dscale = 3;
 		}
 
 		#endregion
@@ -173,6 +236,44 @@ namespace Pqsql
 			onion.as_unsigned = (ulong)IPAddress.NetworkToHostOrder(*((long*)((void*)val)));
 			return onion.as_double_precision;
 		}
+
+
+		// see  numeric_recv() from src/backend/utils/adt/numeric.c
+		public static decimal GetNumeric(IntPtr val)
+		{
+			decimal d = 0;
+			ushort ndigits;
+			ushort weight;
+			ushort sign;
+			ushort dscale;
+			numeric_meta* meta = (numeric_meta*)val;
+			ushort* digits = (ushort*)((void*)(val + sizeof(numeric_meta)));
+			uint digit = 0;
+
+			ndigits = (ushort)IPAddress.NetworkToHostOrder(meta->ndigits);
+			weight = (ushort)IPAddress.NetworkToHostOrder(meta->weight);
+			dscale = (ushort)IPAddress.NetworkToHostOrder(meta->dscale);
+
+			sign = (ushort)IPAddress.NetworkToHostOrder(meta->ndigits);  // 0...+
+			if (sign == 0x4000) // 0x4000...-
+			{
+				// todo do somethign
+			}
+			else if (sign == 0xC000) // 0xC000...NaN
+			{
+				throw new NotFiniteNumberException("NaN is not supported with decimal type");
+			}
+
+			for (int i = 0; i < ndigits; i++)
+			{
+				// todo run through digits buffer
+				digit = (uint)IPAddress.NetworkToHostOrder(*(ushort*)digits);
+				digits += sizeof(ushort);
+			}
+
+			return d;
+		}
+
 
 		#endregion
 	}
