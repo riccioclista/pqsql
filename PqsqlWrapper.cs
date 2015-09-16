@@ -59,6 +59,29 @@ namespace Pqsql
 		PQTRANS_UNKNOWN             /* cannot determine status */
 	};
 
+	/// <summary>
+	/// preprocessor macros from postgres_ext.h used in PQresultErrorField
+	/// </summary>
+	internal class PqsqlDiag
+	{
+		public static const char PG_DIAG_SEVERITY = 'S';
+		public static const char PG_DIAG_SQLSTATE = 'C';
+		public static const char PG_DIAG_MESSAGE_PRIMARY = 'M';
+		public static const char PG_DIAG_MESSAGE_DETAIL = 'D';
+		public static const char PG_DIAG_MESSAGE_HINT = 'H';
+		public static const char PG_DIAG_STATEMENT_POSITION = 'P';
+		public static const char PG_DIAG_INTERNAL_POSITION = 'p';
+		public static const char PG_DIAG_INTERNAL_QUERY = 'q';
+		public static const char PG_DIAG_CONTEXT = 'W';
+		public static const char PG_DIAG_SCHEMA_NAME = 's';
+		public static const char PG_DIAG_TABLE_NAME = 't';
+		public static const char PG_DIAG_COLUMN_NAME = 'c';
+		public static const char PG_DIAG_DATATYPE_NAME = 'd';
+		public static const char PG_DIAG_CONSTRAINT_NAME = 'n';
+		public static const char PG_DIAG_SOURCE_FILE = 'F';
+		public static const char PG_DIAG_SOURCE_LINE = 'L';
+		public static const char PG_DIAG_SOURCE_FUNCTION = 'R';
+	};
 
 	/// <summary>
 	/// wraps C functions from libpq.dll
@@ -69,7 +92,6 @@ namespace Pqsql
 	{
 		// libpq.dll depends on libeay32.dll, libintl-8.dll, ssleay32.dll
 		// (DllImport would throw a DllNotFoundException if some of them are missing)
-
 
 		// Note: On Windows, there is a way to improve performance if a single database connection is repeatedly started and shutdown. Internally, libpq calls WSAStartup() and WSACleanup() for connection startup and shutdown, respectively. WSAStartup() increments an internal Windows library reference count which is decremented by WSACleanup(). When the reference count is just one, calling WSACleanup() frees all resources and all DLLs are unloaded. This is an expensive operation. To avoid this, an application can manually call WSAStartup() so resources will not be freed when the last database connection is closed.
 
@@ -99,6 +121,9 @@ namespace Pqsql
 		public static extern IntPtr PQconnectdbParams(string[] keywords, string[] values, int expand_dbname);
 		// PGconn *PQconnectdbParams(const char * const *keywords, const char * const *values, int expand_dbname);
 
+		#endregion
+
+
 		#region non-blocking connection setup
 
 		[DllImport("libpq.dll")]
@@ -112,6 +137,10 @@ namespace Pqsql
 		[DllImport("libpq.dll")]
 		public static extern int PQconnectPoll(IntPtr conn);
     // PostgresPollingStatusType PQconnectPoll(PGconn *conn);
+
+		[DllImport("libpq.dll")]
+		public static extern int PQsocket(IntPtr conn);
+		// int PQsocket(const PGconn *conn);
 
 		#endregion
 
@@ -274,6 +303,13 @@ namespace Pqsql
 		#endregion
 
 
+		#region result error
+		
+		[DllImport("libpq.dll")]
+		public static extern string PQresultErrorField(IntPtr res, int fieldcode);
+		// char *PQresultErrorField(const PGresult *res, int fieldcode);
+
+		#endregion
 
 		//
 		// http://www.postgresql.org/docs/current/static/libpq-copy.html

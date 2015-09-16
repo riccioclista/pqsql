@@ -21,10 +21,9 @@ namespace Pqsql
 		/// </summary>
 		protected IntPtr mConnection;
 
-		/// <summary>
-		/// 
-		/// </summary>
 		protected Pqsql.ConnectionStatus mStatus;
+
+		protected Pqsql.PostgresPollingStatus mPoll;
 
 		#endregion
 
@@ -35,6 +34,11 @@ namespace Pqsql
 		/// an ADO.NET connection string
 		/// </summary>
 		protected PqsqlConnectionStringBuilder mConnectionStringBuilder;
+
+		/// <summary>
+		/// Server Version
+		/// </summary>
+		protected int mServerVersion;
 
 		#endregion
 
@@ -54,9 +58,20 @@ namespace Pqsql
 		public PqsqlConnection(PqsqlConnectionStringBuilder builder)
 			: base()
 		{
+			Init();
+			mConnectionStringBuilder = builder;
+		}
+
+		/// <summary>
+		/// initializes all member variables, except mConnectionStringBuilder
+		/// who will only be set in the ctors once and for all
+		/// </summary>
+		protected void Init()
+		{
 			mConnection = IntPtr.Zero;
 			mStatus = ConnectionStatus.CONNECTION_BAD;
-			mConnectionStringBuilder = builder;
+			mPoll = PostgresPollingStatus.PGRES_POLLING_FAILED;
+			mServerVersion = -1;
 		}
 
 		~PqsqlConnection()
@@ -98,14 +113,9 @@ namespace Pqsql
 		{
 			get
 			{
-				if (mConnectionStringBuilder.ContainsKey(PqsqlConnectionStringBuilder.connect_timeout))
-				{
-					return (int)mConnectionStringBuilder[PqsqlConnectionStringBuilder.connect_timeout];
-				}
-				else
-				{
-					return 0;
-				}
+				object timeout = 0;
+				mConnectionStringBuilder.TryGetValue(PqsqlConnectionStringBuilder.connect_timeout, out timeout);
+				return (int)timeout;
 			}
 		}
 
@@ -122,14 +132,9 @@ namespace Pqsql
 		{
 			get
 			{
-				if (mConnectionStringBuilder.ContainsKey(PqsqlConnectionStringBuilder.dbname))
-				{
-					return (string)mConnectionStringBuilder[PqsqlConnectionStringBuilder.dbname];
-				}
-				else
-				{
-					return string.Empty;
-				}
+				object dbname = string.Empty;
+				mConnectionStringBuilder.TryGetValue(PqsqlConnectionStringBuilder.dbname, out dbname);
+				return (string)dbname;
 			}
 		}
 
@@ -144,15 +149,9 @@ namespace Pqsql
 		{
 			get
 			{
-				if (mConnectionStringBuilder.ContainsKey(PqsqlConnectionStringBuilder.host))
-				{
-					return (string)mConnectionStringBuilder[PqsqlConnectionStringBuilder.host];
-				}
-				else
-				{
-					return string.Empty;
-				}
-
+				object ds = string.Empty;
+				mConnectionStringBuilder.TryGetValue(PqsqlConnectionStringBuilder.host, out ds);
+				return (string)ds;
 			}
 		}
 
@@ -169,7 +168,11 @@ namespace Pqsql
 		{
 			get
 			{
-				return string.Empty; // TODO
+				if (mServerVersion == -1)
+				{
+					mServerVersion = PqsqlWrapper.PQserverVersion(mConnection);
+				}
+				return mServerVersion.ToString(); 
 			}
 		}
 
@@ -250,8 +253,7 @@ namespace Pqsql
 			if (mConnection != IntPtr.Zero)
 			{
 				PqsqlWrapper.PQfinish(mConnection);
-				mConnection = IntPtr.Zero;
-				mStatus = ConnectionStatus.CONNECTION_BAD;
+				Init();
 				return;
 			}
 
@@ -289,21 +291,87 @@ namespace Pqsql
 			mConnectionStringBuilder.Values.CopyTo(vals, 0);
 
 			// now create connection
-			mConnection = PqsqlWrapper.PQconnectdbParams(keys, vals, 0);
+			mConnection = PqsqlWrapper.PQconnectStartParams(keys, vals, 0);
 
 			if (mConnection != IntPtr.Zero)
 			{
+				// get connection status
 				mStatus = (Pqsql.ConnectionStatus)PqsqlWrapper.PQstatus(mConnection);
 				if (mStatus == ConnectionStatus.CONNECTION_BAD)
 				{
+					string err = PqsqlWrapper.PQerrorMessage(mConnection);
 					Close(); // force release of mConnection memory
-
-					// TODO exception
+					throw new PqsqlException(err);
 				}
+
+				// now advance the connection startup mechanism
+				mPoll = (Pqsql.PostgresPollingStatus)PqsqlWrapper.PQconnectPoll(mConnection);
+				if (mPoll == PostgresPollingStatus.PGRES_POLLING_FAILED)
+				{
+					string err = PqsqlWrapper.PQerrorMessage(mConnection);
+					Close(); // force release of mConnection memory
+					throw new PqsqlException(err);
+				}
+
+				// now we can start polling the connection with select()
 			}
 			else
 			{
-				
+				throw new PqsqlException("libpq was unable to allocate a new PGconn struct");
+			}
+		}
+
+
+		// socket handle of the connection (for use in select calls)
+		public int Socket()
+		{
+			if (mConnection != IntPtr.Zero)
+			{
+				return PqsqlWrapper.PQsocket(mConnection);
+			}
+			else
+			{
+				return -1;
+			}
+		}
+
+
+		// after successfull connection, we can now continue with the poll
+		public void Poll()
+		{
+			if (mConnection != IntPtr.Zero)
+			{
+				int sock = PqsqlWrapper.PQsocket(mConnection);
+				WinSock2.fd_set s1 = WinSock2.fd_set.Create(new IntPtr(sock));
+				WinSock2.fd_set s0 = WinSock2.fd_set.Null;
+				int sel;
+
+				do
+				{
+					mPoll = (Pqsql.PostgresPollingStatus)PqsqlWrapper.PQconnectPoll(mConnection);
+
+					unsafe
+					{
+						switch (mPoll)
+						{
+							case PostgresPollingStatus.PGRES_POLLING_READING:
+								sel = WinSock2.winsock.select(1, ref s1, ref s0, ref s0, null); // 0...timeout, 1...ready to read, -1...error
+								break;
+
+							case PostgresPollingStatus.PGRES_POLLING_WRITING:
+								sel = WinSock2.winsock.select(1, ref s0, ref s1, ref s0, null); // 0...timeout, 1...ready to write, -1...error
+								break;
+
+							case PostgresPollingStatus.PGRES_POLLING_FAILED:
+								string err = PqsqlWrapper.PQerrorMessage(mConnection);
+								throw new PqsqlException(err);
+						}
+					}
+				} while (mPoll != PostgresPollingStatus.PGRES_POLLING_OK);
+			}
+			else
+			{
+				throw new PqsqlException("Cannot Poll() on closed connection");
 			}
 		}
 
