@@ -29,8 +29,62 @@ namespace Pqsql
 	}
 
 
+
+	/* ----------
+ * NumericVar is the format we use for arithmetic.  The digit-array part
+ * is the same as the NumericData storage format, but the header is more
+ * complex.
+ *
+ * The value represented by a NumericVar is determined by the sign, weight,
+ * ndigits, and digits[] array.
+ * Note: the first digit of a NumericVar's value is assumed to be multiplied
+ * by NBASE ** weight.  Another way to say it is that there are weight+1
+ * digits before the decimal point.  It is possible to have weight < 0.
+ *
+ * buf points at the physical start of the palloc'd digit buffer for the
+ * NumericVar.  digits points at the first digit in actual use (the one
+ * with the specified weight).  We normally leave an unused digit or two
+ * (preset to zeroes) between buf and digits, so that there is room to store
+ * a carry out of the top digit without reallocating space.  We just need to
+ * decrement digits (and increment weight) to make room for the carry digit.
+ * (There is no such extra space in a numeric value stored in the database,
+ * only in a NumericVar in memory.)
+ *
+ * If buf is NULL then the digit buffer isn't actually palloc'd and should
+ * not be freed --- see the constants below for an example.
+ *
+ * dscale, or display scale, is the nominal precision expressed as number
+ * of digits after the decimal point (it must always be >= 0 at present).
+ * dscale may be more than the number of physically stored fractional digits,
+ * implying that we have suppressed storage of significant trailing zeroes.
+ * It should never be less than the number of stored digits, since that would
+ * imply hiding digits that are present.  NOTE that dscale is always expressed
+ * in *decimal* digits, and so it may correspond to a fractional number of
+ * base-NBASE digits --- divide by DEC_DIGITS to convert to NBASE digits.
+ *
+ * rscale, or result scale, is the target precision for a computation.
+ * Like dscale it is expressed as number of *decimal* digits after the decimal
+ * point, and is always >= 0 at present.
+ * Note that rscale is not stored in variables --- it's figured on-the-fly
+ * from the dscales of the inputs.
+ *
+ * NB: All the variable-level functions are written in a style that makes it
+ * possible to give one and the same variable as argument and destination.
+ * This is feasible because the digit buffer is separate from the variable.
+ * ----------
+ */
+// typedef struct NumericVar
+ //{
+  //  int         ndigits;        /* # of digits in digits[] - can be 0! */
+   // int         weight;         /* weight of first digit */
+    //int         sign;           /* NUMERIC_POS, NUMERIC_NEG, or NUMERIC_NAN */
+    //int         dscale;         /* display scale */
+   // NumericDigit *buf;          /* start of palloc'd space for digits[] */
+   // NumericDigit *digits;       /* base-NBASE digits */
+ //} NumericVar;
+
 	[StructLayout(LayoutKind.Sequential)]
-	public struct numeric_meta
+	internal struct numeric_header
 	{
 		public ushort ndigits; // digits are base 10000
 		public ushort weight;  //
@@ -47,6 +101,9 @@ namespace Pqsql
    //#define NUMERIC_NEG         0x4000
    //#define NUMERIC_SHORT       0x8000
    //#define NUMERIC_NAN         0xC000
+
+
+
 
 	//
 	// Routines for formatting and parsing frontend/backend binary messages
@@ -124,7 +181,7 @@ namespace Pqsql
 		public static void SendNumeric(ref IntPtr val, decimal d)
 		{
 			// requires 8 + ndigits bytes of memory
-			numeric_meta meta = new numeric_meta();
+			numeric_header meta = new numeric_header();
 			
 			int[] b = decimal.GetBits(d); //
 
@@ -145,22 +202,22 @@ namespace Pqsql
 		public static void SendNumeric(ref IntPtr val, double d)
 		{
 			// requires 8 + ndigits bytes of memory
-			numeric_meta meta = new numeric_meta();
+			numeric_header hdr = new numeric_header();
 
-			meta.ndigits = 1;
-			meta.weight = 2;
+			hdr.ndigits = 1;
+			hdr.weight = 2;
 
-			meta.sign = 0;  // 0...+
+			hdr.sign = 0;  // 0...+
 			if (double.IsNaN(d))
 			{
-				meta.sign = (ushort)IPAddress.HostToNetworkOrder(0xC000); // 0xC000...NaN
+				hdr.sign = (ushort)IPAddress.HostToNetworkOrder(0xC000); // 0xC000...NaN
 			}
 			else if (d < 0)
 			{
-				meta.sign = (ushort)IPAddress.HostToNetworkOrder(0x4000); // 0x4000...-
+				hdr.sign = (ushort)IPAddress.HostToNetworkOrder(0x4000); // 0x4000...-
 			}
 			
-			meta.dscale = 3;
+			hdr.dscale = 3;
 		}
 
 		#endregion
@@ -239,22 +296,22 @@ namespace Pqsql
 
 
 		// see  numeric_recv() from src/backend/utils/adt/numeric.c
-		public static decimal GetNumeric(IntPtr val)
+		public static double GetNumeric(IntPtr val)
 		{
-			decimal d = 0;
+			double d = 0;
 			ushort ndigits;
-			ushort weight;
+			short weight;
 			ushort sign;
 			ushort dscale;
-			numeric_meta* meta = (numeric_meta*)val;
-			ushort* digits = (ushort*)((void*)(val + sizeof(numeric_meta)));
-			uint digit = 0;
+			numeric_header* hdr = (numeric_header*)val;
+			short* digits = (short*)((void*)(val + sizeof(numeric_header)));
+			short digit = 0;
 
-			ndigits = (ushort)IPAddress.NetworkToHostOrder(meta->ndigits);
-			weight = (ushort)IPAddress.NetworkToHostOrder(meta->weight);
-			dscale = (ushort)IPAddress.NetworkToHostOrder(meta->dscale);
+			ndigits = (ushort)IPAddress.NetworkToHostOrder(hdr->ndigits);
+			weight = (short)IPAddress.NetworkToHostOrder(hdr->weight);
+			dscale = (ushort)IPAddress.NetworkToHostOrder(hdr->dscale);
 
-			sign = (ushort)IPAddress.NetworkToHostOrder(meta->ndigits);  // 0...+
+			sign = (ushort)IPAddress.NetworkToHostOrder(hdr->ndigits);  // 0...+
 			if (sign == 0x4000) // 0x4000...-
 			{
 				// todo do somethign
@@ -264,11 +321,19 @@ namespace Pqsql
 				throw new NotFiniteNumberException("NaN is not supported with decimal type");
 			}
 
-			for (int i = 0; i < ndigits; i++)
+			if (ndigits > 0)
+			{
+				digit = (short)IPAddress.NetworkToHostOrder(*(short*)digits);
+				d = digit * Math.Pow(10000, weight);
+				digits += sizeof(short);
+			}
+
+			for (int i = 1; i < ndigits; i++)
 			{
 				// todo run through digits buffer
-				digit = (uint)IPAddress.NetworkToHostOrder(*(ushort*)digits);
-				digits += sizeof(ushort);
+				digit = (short)IPAddress.NetworkToHostOrder(*(short*)digits);
+				d += digit;
+				digits += sizeof(short);
 			}
 
 			return d;
