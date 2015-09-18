@@ -63,6 +63,7 @@
     <Compile Include="PqsqlException.cs" />
     <Compile Include="PqsqlParameter.cs" />
     <Compile Include="PqsqlProviderFactory.cs" />
+    <Compile Include="PqsqlTextFormat.cs" />
     <Compile Include="PqsqlTransaction.cs" />
     <Compile Include="PqsqlWrapper.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

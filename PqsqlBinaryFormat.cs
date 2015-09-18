@@ -339,6 +339,9 @@ namespace Pqsql
 			return d;
 		}
 
+		public static DateTime GetDateTime(IntPtr val)
+		{
+		}
 
 		#endregion
 	}
