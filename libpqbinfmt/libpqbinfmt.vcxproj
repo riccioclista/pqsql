@@ -61,6 +61,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <IncludePath>c:\pgsql\include;$(IncludePath)</IncludePath>
     <LibraryPath>c:\pgsql\lib;$(LibraryPath)</LibraryPath>
+    <OutDir>$(SolutionDir)\XimesDALPGSQL\Pqsql\libpqbinfmt\$(Platform)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <IncludePath>c:\pgsql\include;$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSdkDir)include;$(FrameworkSDKDir)\include;</IncludePath>
@@ -95,9 +96,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="pqbinfmt.c" />
+    <ClCompile Include="pqparam_buffer.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pqbinfmt.h" />
+    <ClInclude Include="pqparam_buffer.h" />
+    <ClInclude Include="pq_types.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
