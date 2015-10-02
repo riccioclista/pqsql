@@ -9,8 +9,8 @@ extern "C" {
 #endif
 
 
-DECLSPEC void * __fastcall
-create_parameter_buffer(void)
+DECLSPEC pqparam_buffer * __fastcall
+pqpb_create(void)
 {
 	pqparam_buffer *b = (pqparam_buffer*) malloc(sizeof(pqparam_buffer));
 
@@ -36,12 +36,10 @@ create_parameter_buffer(void)
 #define XFREE(p) do { if(p) { free(p); p = NULL; } } while(0)
 
 DECLSPEC void __fastcall
-free_parameter_buffer(void *p)
+pqpb_free(pqparam_buffer *b)
 {
-	if (p)
+	if (b)
 	{
-		pqparam_buffer *b = (pqparam_buffer*) p;
-
 		b->num_param = 0;
 		destroyPQExpBuffer(b->payload);
 
@@ -55,12 +53,10 @@ free_parameter_buffer(void *p)
 }
 
 DECLSPEC void __fastcall
-reset_parameter_buffer(void *p)
+pqpb_reset(pqparam_buffer *b)
 {
-	if (p)
+	if (b)
 	{
-		pqparam_buffer *b = (pqparam_buffer*) p;
-
 		b->num_param = 0;
 		resetPQExpBuffer(b->payload);
 
@@ -87,128 +83,112 @@ reset_parameter_buffer(void *p)
 
 
 void __fastcall
-add_parameter_buffer(pqparam_buffer *buf, Oid typ, const char *val, int len)
+pqpb_add(pqparam_buffer *b, Oid typ, const char *val, int len)
 {
 	int ret = 0;
 
-	REMALLOC(Oid, buf->param_typ, buf->num_param, ret);
-	if (buf->param_typ == NULL || ret == -1) return;
-	buf->param_typ[buf->num_param] = typ; // OID of type
+	REMALLOC(Oid, b->param_typ, b->num_param, ret);
+	if (b->param_typ == NULL || ret == -1) return;
+	b->param_typ[b->num_param] = typ; // OID of type
 	
-	REMALLOC(char*, buf->param_val, buf->num_param, ret);
-	if (buf->param_typ == NULL || ret == -1) return;
-	buf->param_val[buf->num_param] = (char*) val; // pointer to beginning of data in payload
+	REMALLOC(char*, b->param_val, b->num_param, ret);
+	if (b->param_typ == NULL || ret == -1) return;
+	b->param_val[b->num_param] = (char*) val; // pointer to beginning of data in payload
 
-	REMALLOC(int, buf->param_len, buf->num_param, ret);
-	if (buf->param_typ == NULL || ret == -1) return;
-	buf->param_len[buf->num_param] = len; // data length
+	REMALLOC(int, b->param_len, b->num_param, ret);
+	if (b->param_typ == NULL || ret == -1) return;
+	b->param_len[b->num_param] = len; // data length
 
-	REMALLOC(int, buf->param_fmt, buf->num_param, ret);
-	if (buf->param_typ == NULL || ret == -1) return;
-	buf->param_fmt[buf->num_param] = 1; // binary format
+	REMALLOC(int, b->param_fmt, b->num_param, ret);
+	if (b->param_typ == NULL || ret == -1) return;
+	b->param_fmt[b->num_param] = 1; // binary format
 
-	buf->num_param++;
+	b->num_param++;
 }
 
 DECLSPEC int __fastcall
-get_num_param(void *p)
+pqpb_get_num(pqparam_buffer *b)
 {
-	pqparam_buffer *buf = (pqparam_buffer*) p;
-
-	if (buf)
+	if (b)
 	{
-		return buf->num_param;
+		return b->num_param;
 	}
 
 	return -1;
 }
 
-DECLSPEC void * __fastcall
-get_param_types(void *p)
+DECLSPEC Oid * __fastcall
+pqpb_get_types(pqparam_buffer *b)
 {
-	pqparam_buffer *buf = (pqparam_buffer*) p;
-
-	if (buf)
+	if (b)
 	{
-		return buf->param_typ;
+		return b->param_typ;
 	}
 
 	return NULL;
 }
 
-DECLSPEC void * __fastcall
-get_param_vals(void *p)
+DECLSPEC char ** __fastcall
+pqpb_get_vals(pqparam_buffer *b)
 {
-	pqparam_buffer *buf = (pqparam_buffer*) p;
-
-	if (buf)
+	if (b)
 	{
-		return buf->param_val;
+		return b->param_val;
 	}
 
 	return NULL;
 }
 
-DECLSPEC void * __fastcall
-get_param_lens(void *p)
+DECLSPEC int * __fastcall
+pqpb_get_lens(pqparam_buffer *b)
 {
-	pqparam_buffer *buf = (pqparam_buffer*) p;
-
-	if (buf)
+	if (b)
 	{
-		return buf->param_len;
+		return b->param_len;
 	}
 
 	return NULL;
 }
 
-DECLSPEC void * __fastcall
-get_param_frms(void *p)
+DECLSPEC int * __fastcall
+pqpb_get_frms(pqparam_buffer *b)
 {
-	pqparam_buffer *buf = (pqparam_buffer*) p;
-
-	if (buf)
+	if (b)
 	{
-		return buf->param_fmt;
+		return b->param_fmt;
 	}
 
 	return NULL;
 }
 
 DECLSPEC uint32_t __fastcall
-get_param_type(void *p, int i)
+pqpb_get_type(pqparam_buffer *b, int i)
 {
-	pqparam_buffer *buf = (pqparam_buffer*) p;
-
-	if (buf && i >= 0 && i < buf->num_param)
+	if (b && i >= 0 && i < b->num_param)
 	{
-		return buf->param_typ[i];
+		return b->param_typ[i];
 	}
 
 	return UINT32_MAX;
 }
 
-DECLSPEC void * __fastcall
-get_param_val(void *p, int i)
+DECLSPEC char * __fastcall
+pqpb_get_val(pqparam_buffer *b, int i)
 {
-	pqparam_buffer *buf = (pqparam_buffer*) p;
-
-	if (buf && i >= 0 && i < buf->num_param)
+	if (b && i >= 0 && i < b->num_param)
 	{
-		return buf->param_val[i];
+		return b->param_val[i];
 	}
 
 	return NULL;
 }
 
 DECLSPEC int __fastcall
-get_param_len(void *p, int i)
+pqpb_get_len(pqparam_buffer *b, int i)
 {
-	pqparam_buffer *buf = (pqparam_buffer*) p;
-
-	if (buf && i >= 0 && i < buf->num_param)
+	if (b && i >= 0 && i < b->num_param)
 	{
-		return buf->param_len[i];
+		return b->param_len[i];
 	}
 
 	return INT32_MIN;
