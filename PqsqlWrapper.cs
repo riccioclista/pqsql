@@ -64,23 +64,23 @@ namespace Pqsql
 	/// </summary>
 	internal class PqsqlDiag
 	{
-		public static const char PG_DIAG_SEVERITY = 'S';
-		public static const char PG_DIAG_SQLSTATE = 'C';
-		public static const char PG_DIAG_MESSAGE_PRIMARY = 'M';
-		public static const char PG_DIAG_MESSAGE_DETAIL = 'D';
-		public static const char PG_DIAG_MESSAGE_HINT = 'H';
-		public static const char PG_DIAG_STATEMENT_POSITION = 'P';
-		public static const char PG_DIAG_INTERNAL_POSITION = 'p';
-		public static const char PG_DIAG_INTERNAL_QUERY = 'q';
-		public static const char PG_DIAG_CONTEXT = 'W';
-		public static const char PG_DIAG_SCHEMA_NAME = 's';
-		public static const char PG_DIAG_TABLE_NAME = 't';
-		public static const char PG_DIAG_COLUMN_NAME = 'c';
-		public static const char PG_DIAG_DATATYPE_NAME = 'd';
-		public static const char PG_DIAG_CONSTRAINT_NAME = 'n';
-		public static const char PG_DIAG_SOURCE_FILE = 'F';
-		public static const char PG_DIAG_SOURCE_LINE = 'L';
-		public static const char PG_DIAG_SOURCE_FUNCTION = 'R';
+		public const char PG_DIAG_SEVERITY = 'S';
+		public const char PG_DIAG_SQLSTATE = 'C';
+		public const char PG_DIAG_MESSAGE_PRIMARY = 'M';
+		public const char PG_DIAG_MESSAGE_DETAIL = 'D';
+		public const char PG_DIAG_MESSAGE_HINT = 'H';
+		public const char PG_DIAG_STATEMENT_POSITION = 'P';
+		public const char PG_DIAG_INTERNAL_POSITION = 'p';
+		public const char PG_DIAG_INTERNAL_QUERY = 'q';
+		public const char PG_DIAG_CONTEXT = 'W';
+		public const char PG_DIAG_SCHEMA_NAME = 's';
+		public const char PG_DIAG_TABLE_NAME = 't';
+		public const char PG_DIAG_COLUMN_NAME = 'c';
+		public const char PG_DIAG_DATATYPE_NAME = 'd';
+		public const char PG_DIAG_CONSTRAINT_NAME = 'n';
+		public const char PG_DIAG_SOURCE_FILE = 'F';
+		public const char PG_DIAG_SOURCE_LINE = 'L';
+		public const char PG_DIAG_SOURCE_FUNCTION = 'R';
 	};
 
 	/// <summary>
@@ -216,11 +216,11 @@ namespace Pqsql
 		#region blocking queries
 
 		[DllImport("libpq.dll")]
-		public static extern IntPtr PQexec(IntPtr conn, string query);
+		public static extern unsafe IntPtr PQexec(IntPtr conn, byte* query);
 		// PGresult *PQexec(PGconn *conn, const char *query);
 
 		[DllImport("libpq.dll")]
-		public static extern IntPtr PQexecParams(IntPtr conn, string command, int nParams, int[] paramTypes, IntPtr[] paramValues, int[] paramLengths, int[] paramFormats, int resultFormat);
+		public static extern unsafe int PQexecParams(IntPtr conn, byte* command, int nParams, IntPtr paramTypes, IntPtr paramValues, IntPtr paramLengths, IntPtr paramFormats, int resultFormat);
 		// PGresult *PQexecParams(PGconn *conn, const char *command, int nParams, const Oid *paramTypes, const char * const *paramValues, const int *paramLengths, const int *paramFormats, int resultFormat);
 
 		#endregion
@@ -229,11 +229,11 @@ namespace Pqsql
 		#region non-blocking queries
 
 		[DllImport("libpq.dll")]
-		public static extern int PQsendQuery(IntPtr conn, string command);
+		public static extern unsafe int PQsendQuery(IntPtr conn, byte* query);
 		// int PQsendQuery(PGconn *conn, const char *command);
 
 		[DllImport("libpq.dll")]
-		public static extern int PQsendQueryParams(IntPtr conn, string command, int nParams, int[] paramTypes, IntPtr[] paramValues, int[] paramLengths, int[] paramFormats, int resultFormat);
+		public static extern unsafe int PQsendQueryParams(IntPtr conn, byte* command, int nParams, IntPtr paramTypes, IntPtr paramValues, IntPtr paramLengths, IntPtr paramFormats, int resultFormat);
 		// int PQsendQueryParams(PGconn *conn, const char *command, int nParams, const Oid *paramTypes, const char * const *paramValues, const int *paramLengths, const int *paramFormats, int resultFormat);
 
 		[DllImport("libpq.dll")]
@@ -308,6 +308,26 @@ namespace Pqsql
 		[DllImport("libpq.dll")]
 		public static extern string PQresultErrorField(IntPtr res, int fieldcode);
 		// char *PQresultErrorField(const PGresult *res, int fieldcode);
+
+		#endregion
+
+		//
+		// http://www.postgresql.org/docs/current/static/libpq-cancel.html
+		//
+
+		#region cancel query
+
+		[DllImport("libpq.dll")]
+		public static extern IntPtr PQgetCancel(IntPtr conn);
+		// PGcancel* PQgetCancel(PGconn* conn);
+
+		[DllImport("libpq.dll")]
+		public static extern void PQfreeCancel(IntPtr cancel);
+		// void PQfreeCancel(PGcancel* cancel);
+
+		[DllImport("libpq.dll")]
+		public static extern unsafe int PQcancel(IntPtr cancel, sbyte *errbuf, int errbufsize);
+		// int PQcancel(PGcancel *cancel, char *errbuf, int errbufsize);
 
 		#endregion
 
