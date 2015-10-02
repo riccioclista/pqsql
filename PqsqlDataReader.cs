@@ -10,7 +10,7 @@ namespace Pqsql
 	{
 		#region Dispose
 
-		public virtual void Dispose()
+		public new void Dispose()
 		{
 		}
 
