@@ -262,6 +262,10 @@ namespace Pqsql
 		public static extern int PQnfields(IntPtr res);
 		// int PQnfields(const PGresult *res);
 
+		[DllImport("libpq.dll")]
+		public static extern string PQcmdTuples(IntPtr res);
+		// char* PQcmdTuples(PGresult* res);
+
 		#endregion
 
 
@@ -283,6 +287,14 @@ namespace Pqsql
 		public static extern int PQfsize(IntPtr res, int column_number);
 		// int PQfsize(const PGresult *res, int column_number);
 
+		[DllImport("libpq.dll")]
+		public static extern int PQfnumber(IntPtr res, string column_name);
+		// int PQfnumber(const PGresult *res, const char *column_name);
+
+		[DllImport("libpq.dll")]
+		public static extern string PQfname(IntPtr res, int column_number);
+		// char *PQfname(const PGresult *res, int column_number);
+
 		#endregion
 
 
@@ -303,8 +315,12 @@ namespace Pqsql
 		#endregion
 
 
-		#region result error
-		
+		#region result status and error message
+
+		[DllImport("libpq.dll")]
+		public static extern int PQresultStatus(IntPtr res);
+		// ExecStatusType PQresultStatus(const PGresult *res);
+
 		[DllImport("libpq.dll")]
 		public static extern string PQresultErrorField(IntPtr res, int fieldcode);
 		// char *PQresultErrorField(const PGresult *res, int fieldcode);

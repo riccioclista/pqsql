@@ -16,53 +16,50 @@ namespace Pqsql
 		// Note that it's important to never change the numeric values of this enum, since user applications
 		// compile them in.
 
+		// http://www.postgresql.org/docs/current/static/datatype-numeric.html
+
 		#region Numeric Types
 
 		/// <summary>
 		/// Corresponds to the PostgreSQL 8-byte "bigint" type.
 		/// </summary>
-		/// <remarks>See http://www.postgresql.org/docs/current/static/datatype-numeric.html</remarks>
-		Bigint = 1,
+		/// <remarks>See </remarks>
+		Int8 = 20,
 
 		/// <summary>
 		/// Corresponds to the PostgreSQL 8-byte floating-point "double" type.
 		/// </summary>
-		/// <remarks>See http://www.postgresql.org/docs/current/static/datatype-numeric.html</remarks>
-		Double = 8,
+		Float8 = 701,
 
 		/// <summary>
 		/// Corresponds to the PostgreSQL 4-byte "integer" type.
 		/// </summary>
-		/// <remarks>See http://www.postgresql.org/docs/current/static/datatype-numeric.html</remarks>
-		Integer = 9,
+		Int4 = 23,
 
 		/// <summary>
 		/// Corresponds to the PostgreSQL arbitrary-precision "numeric" type.
 		/// </summary>
-		/// <remarks>See http://www.postgresql.org/docs/current/static/datatype-numeric.html</remarks>
-		Numeric = 13,
+		Numeric = 1700,
 
 		/// <summary>
 		/// Corresponds to the PostgreSQL floating-point "real" type.
 		/// </summary>
-		/// <remarks>See http://www.postgresql.org/docs/current/static/datatype-numeric.html</remarks>
-		Real = 17,
+		Float4 = 700,
 
 		/// <summary>
 		/// Corresponds to the PostgreSQL 2-byte "smallint" type.
-		/// </summary>
-		/// <remarks>See http://www.postgresql.org/docs/current/static/datatype-numeric.html</remarks>
-		Smallint = 18,
+		Int2 = 21,
 
 		#endregion
+
+		// http://www.postgresql.org/docs/current/static/datatype-boolean.html
 
 		#region Boolean Type
 
 		/// <summary>
 		/// Corresponds to the PostgreSQL "boolean" type.
 		/// </summary>
-		/// <remarks>See http://www.postgresql.org/docs/current/static/datatype-boolean.html</remarks>
-		Boolean = 2,
+		Boolean = 16,
 
 		#endregion
 
@@ -72,134 +69,130 @@ namespace Pqsql
 		/// Corresponds to the PostgreSQL "enum" type.
 		/// </summary>
 		/// <remarks>See http://www.postgresql.org/docs/current/static/datatype-enum.html</remarks>
-		Enum = 47,
+		//Enum = 47,
 
 		#endregion
 
+		// http://www.postgresql.org/docs/current/static/datatype-character.html
 
 		#region Character Types
 
 		/// <summary>
 		/// Corresponds to the PostgreSQL "char(n)"type.
 		/// </summary>
-		/// <remarks>See http://www.postgresql.org/docs/current/static/datatype-character.html</remarks>
-		Char = 6,
+		Char = 18,
 
 		/// <summary>
 		/// Corresponds to the PostgreSQL "text" type.
 		/// </summary>
-		/// <remarks>See http://www.postgresql.org/docs/current/static/datatype-character.html</remarks>
-		Text = 19,
+		Text = 25,
 
 		/// <summary>
 		/// Corresponds to the PostgreSQL "varchar" type.
 		/// </summary>
-		/// <remarks>See http://www.postgresql.org/docs/current/static/datatype-character.html</remarks>
-		Varchar = 22,
+		Varchar = 1043,
 
 		/// <summary>
 		/// Corresponds to the PostgreSQL internal "name" type.
 		/// </summary>
-		/// <remarks>See http://www.postgresql.org/docs/current/static/datatype-character.html</remarks>
-		Name = 32,
+		Name = 19,
 
 		#endregion
+
+		// http://www.postgresql.org/docs/current/static/datatype-binary.html
 
 		#region Binary Data Types
 
 		/// <summary>
 		/// Corresponds to the PostgreSQL "bytea" type, holding a raw byte string.
 		/// </summary>
-		/// <remarks>See http://www.postgresql.org/docs/current/static/datatype-binary.html</remarks>
-		Bytea = 4,
+		Bytea = 17,
 
 		#endregion
+
+		// http://www.postgresql.org/docs/current/static/datatype-datetime.html
 
 		#region Date/Time Types
 
 		/// <summary>
-		/// Corresponds to the PostgreSQL "date" type.
+		/// date
 		/// </summary>
-		/// <remarks>See http://www.postgresql.org/docs/current/static/datatype-datetime.html</remarks>
-		Date = 7,
+		Date = 1082,
 
 		/// <summary>
-		/// Corresponds to the PostgreSQL "time" type.
+		/// time
 		/// </summary>
-		/// <remarks>See http://www.postgresql.org/docs/current/static/datatype-datetime.html</remarks>
-		Time = 20,
+		Time = 1083,
 
 		/// <summary>
-		/// Corresponds to the PostgreSQL "timestamp" type.
+		/// timestamp
 		/// </summary>
-		/// <remarks>See http://www.postgresql.org/docs/current/static/datatype-datetime.html</remarks>
-		Timestamp = 21,
+		Timestamp = 1114,
 
 		/// <summary>
-		/// Corresponds to the PostgreSQL "timestamp with time zone" type.
+		/// timestamp with time zone
 		/// </summary>
-		/// <remarks>See http://www.postgresql.org/docs/current/static/datatype-datetime.html</remarks>
-		TimestampTZ = 26,
+		TimestampTZ = 1184,
 
 		/// <summary>
-		/// Corresponds to the PostgreSQL "interval" type.
+		/// interval
 		/// </summary>
-		/// <remarks>See http://www.postgresql.org/docs/current/static/datatype-datetime.html</remarks>
-		Interval = 30,
+		Interval = 1186,
 
 		/// <summary>
-		/// Corresponds to the PostgreSQL "time with time zone" type.
+		/// time with time zone
 		/// </summary>
-		/// <remarks>See http://www.postgresql.org/docs/current/static/datatype-datetime.html</remarks>
-		TimeTZ = 31,
+		TimeTZ = 1266,
 
 		#endregion
+
+		// http://www.postgresql.org/docs/current/static/datatype-net-types.html
 
 		#region Network Address Types
 
 		/// <summary>
-		/// Corresponds to the PostgreSQL "inet" type.
+		/// inet
 		/// </summary>
-		/// <remarks>See http://www.postgresql.org/docs/current/static/datatype-net-types.html</remarks>
-		Inet = 24,
+		/// <remarks>See </remarks>
+		Inet = 869,
 
 		/// <summary>
-		/// Corresponds to the PostgreSQL "cidr" type, a field storing an IPv4 or IPv6 network.
+		/// cidr
 		/// </summary>
-		/// <remarks>See http://www.postgresql.org/docs/current/static/datatype-net-types.html</remarks>
-		Cidr = 44,
+		Cidr = 650,
 
 		/// <summary>
-		/// Corresponds to the PostgreSQL "macaddr" type, a field storing a 6-byte physical address.
+		/// macaddr
 		/// </summary>
-		/// <remarks>See http://www.postgresql.org/docs/current/static/datatype-net-types.html</remarks>
-		MacAddr = 34,
+		MacAddr = 829,
 
 		#endregion
+
+		// http://www.postgresql.org/docs/current/static/datatype-bit.html
 
 		#region Bit String Types
 
 		/// <summary>
-		/// Corresponds to the PostgreSQL "bit" type.
+		/// bit
 		/// </summary>
-		/// <remarks>See http://www.postgresql.org/docs/current/static/datatype-bit.html</remarks>
-		Bit = 25,
+		/// <remarks>See </remarks>
+		Bit = 1560,
 
 		/// <summary>
-		/// Corresponds to the PostgreSQL "varbit" type, a field storing a variable-length string of bits.
+		/// varbit
 		/// </summary>
-		/// <remarks>See http://www.postgresql.org/docs/current/static/datatype-boolean.html</remarks>
-		Varbit = 39,
+		Varbit = 1562,
 
 		#endregion
+
+		// http://www.postgresql.org/docs/current/static/datatype-uuid.html
 
 		#region UUID Type
 
 		/// <summary>
-		/// Corresponds to the PostgreSQL "uuid" type.
+		/// uuid
 		/// </summary>
-		/// <remarks>See http://www.postgresql.org/docs/current/static/datatype-uuid.html</remarks>
-		Uuid = 27,
+		Uuid = 2950,
 
 		#endregion
 
@@ -211,7 +204,7 @@ namespace Pqsql
 		/// via a bit OR (e.g. NpgsqlDbType.Array | NpgsqlDbType.Integer)
 		/// </summary>
 		/// <remarks>See http://www.postgresql.org/docs/current/static/arrays.html</remarks>
-		Array = int.MinValue,
+		//Array = int.MinValue,
 
 		#endregion
 
@@ -221,7 +214,7 @@ namespace Pqsql
 		/// Corresponds to the PostgreSQL "composite" type.
 		/// </summary>
 		/// <remarks>See http://www.postgresql.org/docs/current/static/rowtypes.html</remarks>
-		Composite = 48,
+		//Composite = 48,
 
 		#endregion
 
@@ -236,7 +229,7 @@ namespace Pqsql
 		/// Supported since PostgreSQL 9.2.
 		/// See http://www.postgresql.org/docs/9.2/static/rangetypes.html
 		/// </remarks>
-		Range = 0x40000000,
+		//Range = 0x40000000,
 
 		#endregion
 
@@ -245,36 +238,36 @@ namespace Pqsql
 		/// <summary>
 		/// Corresponds to the PostgreSQL "refcursor" type.
 		/// </summary>
-		Refcursor = 23,
+		Refcursor = 1790,
 
 		/// <summary>
 		/// Corresponds to the PostgreSQL internal "oidvector" type.
 		/// </summary>
 		/// <remarks>See http://www.postgresql.org/docs/current/static/datatype-oid.html</remarks>
-		Oidvector = 29,
+		//Oidvector = 29,
 
 		/// <summary>
 		/// Corresponds to the PostgreSQL "oid" type.
 		/// </summary>
 		/// <remarks>See http://www.postgresql.org/docs/current/static/datatype-oid.html</remarks>
-		Oid = 41,
+		Oid = 26,
 
 		/// <summary>
 		/// Corresponds to the PostgreSQL "xid" type, an internal transaction identifier.
 		/// </summary>
 		/// <remarks>See http://www.postgresql.org/docs/current/static/datatype-oid.html</remarks>
-		Xid = 42,
+		//Xid = 42,
 
 		/// <summary>
 		/// Corresponds to the PostgreSQL "cid" type, an internal command identifier.
 		/// </summary>
 		/// <remarks>See http://www.postgresql.org/docs/current/static/datatype-oid.html</remarks>
-		Cid = 43,
+		//Cid = 43,
 
 		/// <summary>
 		/// Corresponds to the PostgreSQL "regtype" type, a numeric (OID) ID of a type in the pg_type table.
 		/// </summary>
-		Regtype = 49,
+		//Regtype = 49,
 
 		#endregion
 
@@ -289,9 +282,10 @@ namespace Pqsql
 		/// This value shouldn't ordinarily be used, and makes sense only when sending a data type
 		/// unsupported by Npgsql.
 		/// </remarks>
-		Unknown = 40,
+		Unknown = 705,
 
 		#endregion
 
 	}
+
 }

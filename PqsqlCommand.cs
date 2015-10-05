@@ -254,9 +254,9 @@ namespace Pqsql
 			if (cancel != IntPtr.Zero)
 			{
 				sbyte[] buf = new sbyte[256];
+				string err = string.Empty;
 				int cret;
-				string err;
-
+				
 				unsafe
 				{
 					fixed (sbyte* b = buf)

@@ -86,6 +86,9 @@ namespace Pqsql
 		public static unsafe extern IntPtr pqbf_get_unicode_text(IntPtr p, int* len);
 
 		[DllImport("libpqbinfmt.dll")]
+		public static extern byte pqbf_get_byte(IntPtr p);
+
+		[DllImport("libpqbinfmt.dll")]
 		public static extern int pqbf_get_bool(IntPtr p);
 
 		[DllImport("libpqbinfmt.dll")]
