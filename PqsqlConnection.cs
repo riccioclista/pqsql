@@ -21,12 +21,16 @@ namespace Pqsql
 		/// </summary>
 		protected IntPtr mConnection;
 
+		// good / bad / connecting connection (fetching / executing connection comes from mCmd.State bits)
 		private Pqsql.ConnectionStatus mStatus;
 
 		#endregion
 
 
 		#region member variables
+
+		// used to check PqsqlCommand.State bits
+		protected PqsqlCommand mCmd;
 
 		/// <summary>
 		/// an ADO.NET connection string
@@ -79,7 +83,7 @@ namespace Pqsql
 		#endregion
 
 
-		#region
+		#region PGConn*
 
 		internal IntPtr PGConnection
 		{
@@ -201,24 +205,41 @@ namespace Pqsql
 				if (mConnection == IntPtr.Zero)
 					return ConnectionState.Closed;
 
-				// TODO get updated connection status
-
+				// update connection status
+				mStatus = (Pqsql.ConnectionStatus) PqsqlWrapper.PQstatus(mConnection);
+				
 				switch (mStatus)
 				{
+					// get ConnectionState.Executing / ConnectionState.Fetching bits from PqsqlCommand.State
 					case ConnectionStatus.CONNECTION_OK:
-						return ConnectionState.Open;
+						return ( ConnectionState.Open | (mCmd == null ? 0 : mCmd.State) );
 
 					case ConnectionStatus.CONNECTION_BAD:
 						return ConnectionState.Broken;
 
-					case ConnectionStatus.CONNECTION_MADE: // TODO
-						return ConnectionState.Executing;
-
-					case ConnectionStatus.CONNECTION_AWAITING_RESPONSE: // TODO
-						return ConnectionState.Fetching;
-
 					default:
 						return ConnectionState.Connecting;
+				}
+			}
+		}
+
+		[Browsable(false)]
+		internal PqsqlCommand Command
+		{
+			get
+			{
+				return mCmd;
+			}
+			set
+			{
+				if (value == null)
+				{
+					mCmd = null;
+				}
+				else if (mCmd != value)
+				{
+					mCmd = value;
+					value.Connection = this;
 				}
 			}
 		}
@@ -259,15 +280,12 @@ namespace Pqsql
 		//     The connection-level error that occurred while opening the connection.
 		public override void Close()
 		{
-			// close connection and release memory in any case
-			if (mConnection != IntPtr.Zero)
-			{
-				PqsqlWrapper.PQfinish(mConnection);
-				Init();
+			if (mConnection == IntPtr.Zero)
 				return;
-			}
 
-			// TODO exception
+			// close connection and release memory
+			PqsqlWrapper.PQfinish(mConnection);
+			Init();
 		}
 
 		//
@@ -289,14 +307,14 @@ namespace Pqsql
 		{
 			if (mStatus != ConnectionStatus.CONNECTION_BAD)
 			{
-				Close();
+				Close(); // force release of mConnection memory
 			}
 
 			// setup null-terminated key-value arrays for the connection
 			string[] keys = new string[mConnectionStringBuilder.Keys.Count + 1];
 			string[] vals = new string[mConnectionStringBuilder.Values.Count + 1];
 
-			// copy over
+			// get keys and values from PqsqlConnectionStringBuilder
 			mConnectionStringBuilder.Keys.CopyTo(keys, 0);
 			mConnectionStringBuilder.Values.CopyTo(vals, 0);
 
@@ -307,6 +325,7 @@ namespace Pqsql
 			{
 				// get connection status
 				mStatus = (Pqsql.ConnectionStatus)PqsqlWrapper.PQstatus(mConnection);
+
 				if (mStatus == ConnectionStatus.CONNECTION_BAD)
 				{
 					string err = PqsqlWrapper.PQerrorMessage(mConnection);
@@ -316,7 +335,7 @@ namespace Pqsql
 			}
 			else
 			{
-				throw new PqsqlException("libpq was unable to allocate a new PGconn struct");
+				throw new PqsqlException("libpq: unable to allocate struct PGconn");
 			}
 		}
 
@@ -324,8 +343,6 @@ namespace Pqsql
 
 
 		#region Dispose
-
-
 
 		public new void Dispose()
 		{

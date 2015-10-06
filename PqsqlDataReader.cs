@@ -11,113 +11,52 @@ using System.Runtime.CompilerServices;
 
 namespace Pqsql
 {
-	internal class PqsqlColInformation
+	/// <summary>
+	/// cache column name and type information
+	/// </summary>
+	internal class PqsqlColInfo
 	{
 		public PqsqlDbType Oid { get; set; }
 		public int Format { get; set; }
 		public int Modifier { get; set; }
 		public int Size { get; set; }
 		public string Name { get; set; }
+		public string DataTypeName { get; set; }
+		public Type Type  { get; set; }
 	};
-
-
-
-	internal static class PqsqlTypeNames
-	{
-		class PqsqlTypeName
-		{
-			public string Name {	get; set; }
-			public Type Type { get;	set; }
-			public Func<IntPtr,int,int,object> GetValue	{	get;s et; }
-		}
-
-		/// <summary>
-		/// Static string Dictionary example
-		/// </summary>
-		static Dictionary<PqsqlDbType, PqsqlTypeName> mDict = new Dictionary<PqsqlDbType, PqsqlTypeName>
-    {
-			{ PqsqlDbType.Boolean, new PqsqlTypeName { Name="bool", Type=typeof(bool), GetValue=delegate(IntPtr res,int row,int ord) { return PqsqlDataReader.GetBoolean(res,row,ord); } } },
-			{ PqsqlDbType.Float8, new PqsqlTypeName { Name="float8", Type=typeof(double), GetValue=delegate(IntPtr res,int row,int ord) { return PqsqlDataReader.GetDouble(res,row,ord); } } },
-			{ PqsqlDbType.Int4, new PqsqlTypeName { Name="int4", Type=typeof(int), GetValue=delegate(IntPtr res,int row,int ord) { return PqsqlDataReader.GetInt32(res,row,ord); } } },
-			{ PqsqlDbType.Numeric, new PqsqlTypeName { Name="numeric", Type=typeof(Decimal), GetValue=delegate(IntPtr res,int row,int ord) { return PqsqlDataReader.GetDecimal(res,row,ord); } } },
-			{ PqsqlDbType.Float4, new PqsqlTypeName { Name="float4", Type=typeof(float), GetValue=delegate(IntPtr res,int row,int ord) { return PqsqlDataReader.GetFloat(res,row,ord); } } },
-			{ PqsqlDbType.Int2, new PqsqlTypeName { Name="int2", Type=typeof(short), GetValue=delegate(IntPtr res,int row,int ord) { return PqsqlDataReader.GetInt16(res,row,ord); } } },
-			{ PqsqlDbType.Char, new PqsqlTypeName { Name="char", Type=typeof(char), GetValue=delegate(IntPtr res,int row,int ord) { return PqsqlDataReader.GetByte(res,row,ord); } } },
-			{ PqsqlDbType.Text, new PqsqlTypeName { Name="text", Type=typeof(string), GetValue=delegate(IntPtr res,int row,int ord) { return PqsqlDataReader.GetString(res,row,ord); } } },
-			{ PqsqlDbType.Varchar, new PqsqlTypeName { Name="varchar", Type=typeof(string), GetValue=delegate(IntPtr res,int row,int ord) { return PqsqlDataReader.GetString(res,row,ord); } } },
-			{ PqsqlDbType.Name, new PqsqlTypeName { Name="name", Type=typeof(string), GetValue=delegate(IntPtr res,int row,int ord) { return PqsqlDataReader.GetString(res,row,ord); } } },
-			{ PqsqlDbType.Bytea, new PqsqlTypeName { Name="bytea", Type=typeof(byte[]), GetValue=delegate(IntPtr res,int row,int ord) { return PqsqlDataReader.GetBytes(res,row,ord); } } },
-			{ PqsqlDbType.Date, new PqsqlTypeName { Name="date", Type=typeof(DateTime), GetValue=delegate(IntPtr res,int row,int ord) { return PqsqlDataReader.GetDate(res,row,ord); } } },
-			{ PqsqlDbType.Time, new PqsqlTypeName { Name="time", Type=typeof(DateTime), GetValue=delegate(IntPtr res,int row,int ord) { return PqsqlDataReader.GetTime(res,row,ord); } } },
-			{ PqsqlDbType.Timestamp, new PqsqlTypeName { Name="timestamp", Type=typeof(DateTime), GetValue=delegate(IntPtr res,int row,int ord) { return PqsqlDataReader.GetDateTime(res,row,ord); } } },
-			{ PqsqlDbType.TimestampTZ, new PqsqlTypeName { Name="timestamptz", Type=typeof(DateTime), GetValue=delegate(IntPtr res,int row,int ord) { return PqsqlDataReader.GetDateTime(res,row,ord); } } },
-			{ PqsqlDbType.Interval, new PqsqlTypeName { Name="interval", Type=typeof(TimeSpan), GetValue=delegate(IntPtr res,int row,int ord) { return PqsqlDataReader.GetDateTime(res,row,ord); } } },
-			{ PqsqlDbType.TimeTZ, new PqsqlTypeName { Name="timetz", Type=typeof(DateTime), GetValue=delegate(IntPtr res,int row,int ord) { return PqsqlDataReader.GetDateTime(res,row,ord); } } },
-			//{ PqsqlDbType.Inet, new PqsqlTypeName { Name="inet", Type=typeof() } },
-			//{ PqsqlDbType.Cidr, new PqsqlTypeName { Name="cidr", Type=typeof() } },
-			//{ PqsqlDbType.MacAddr, new PqsqlTypeName { Name="macaddr", Type=typeof() } },
-			//{ PqsqlDbType.Bit, new PqsqlTypeName { Name="bit", Type=typeof() } },
-			//{ PqsqlDbType.Varbit, new PqsqlTypeName { Name="varbit", Type=typeof() } },
-			{ PqsqlDbType.Uuid, new PqsqlTypeName { Name="uuid", Type=typeof(Guid), GetValue=delegate(IntPtr res,int row,int ord) { return PqsqlDataReader.GetGuid(res,row,ord); } } },
-			//{ PqsqlDbType.Refcursor, new PqsqlTypeName { Name="refcursor", Type=typeof() } },
-			{ PqsqlDbType.Oid, new PqsqlTypeName { Name="oid", Type=typeof(uint), GetValue=delegate(IntPtr res,int row,int ord) { return PqsqlDataReader.GetInt32(res,row,ord); } } },
-			{ PqsqlDbType.Unknown, new PqsqlTypeName { Name="unknown", Type=typeof(string), GetValue=delegate(IntPtr res,int row,int ord) { return PqsqlDataReader.GetString(res,row,ord); } } }
-    };
-
-
-		static PqsqlTypeName Get(PqsqlDbType oid)
-		{
-			PqsqlTypeName result;
-			if (mDict.TryGetValue(oid, out result))
-			{
-				return result;
-			}
-			throw new NotSupportedException("Datatype not supported yet");
-		}
-
-		public static string GetName(PqsqlDbType oid)
-		{
-			return Get(oid).Name;
-		}
-
-
-		public static Type GetType(PqsqlDbType oid)
-		{
-			return Get(oid).Type;
-		}
-
-
-		public static Func<IntPtr, int, int, object> GetValue(PqsqlDbType oid)
-		{
-			return Get(oid).GetValue;
-		}
-	}
-
-
 
 
 	public class PqsqlDataReader : DbDataReader
 	{
 		/// <summary>
-		/// PGresult*
+		/// the current PGresult* buffer
 		/// </summary>
 		IntPtr mResult;
 
+		/// <summary>
+		/// stores db connection and query parameters.
+		/// used to set PqsqlCommand.State to ConnectionState.Executing or ConnectionState.Fetching
+		/// </summary>
 		PqsqlCommand mCmd;
 
 		CommandBehavior mBehaviour;
 
 		// row information of current result set
-		PqsqlColInformation[] mRowInformation;
+		PqsqlColInfo[] mRowInfo;
 
-		// -1: nothing read yet, 0: first row, ...
-		int mRownum;
+		// row index (-1: nothing read yet, 0: first row, ...)
+		int mRowNum;
+		int mMaxRows;
 
+		// statement index (-1: nothing executed yet)
 		int mStmtNum;
+		int mMaxStmt;
 		string[] mStatements;
 
 
 		#region DbDataReader
+
+		#region ctors and dtors
 
 		// Summary:
 		//     Initializes a new instance of the PqsqlDataReader class.
@@ -126,13 +65,36 @@ namespace Pqsql
 			mCmd = command;
 			mBehaviour = behavior;
 
-			mRowInformation = null;
-			mRownum = -1;
+			mMaxStmt = statements.Length;
+			mStmtNum = -1;
+			mStatements = new string[mMaxStmt];
+			Array.Copy(statements, mStatements, mMaxStmt);
 
-			int n = statements.Length;
-			mStatements = new string[n];
-			Array.Copy(statements, mStatements, n);
+			Init(ConnectionState.Closed); // set state to 0, neutral value for PqsqlConnection.State
 		}
+
+		protected void Init(ConnectionState state)
+		{
+			// no data available for the current query, set mMaxRows == mRownum.
+			// next call to NextResult() will issue the next query and start to Read() again
+
+			// clear mRowInfo only if CommandBehavior.SchemaOnly is off
+			if ((mBehaviour & CommandBehavior.SchemaOnly) == 0)
+			{
+				mRowInfo = null;
+			}
+
+			mMaxRows = -1;
+			mRowNum = -1;
+			mCmd.State = state;
+		}
+
+		~PqsqlDataReader()
+		{
+			Dispose(false);
+		}
+
+		#endregion
 
 		// Summary:
 		//     Gets a value indicating the depth of nesting for the current row.
@@ -163,7 +125,7 @@ namespace Pqsql
 				if (mResult == IntPtr.Zero)
 					throw new NotSupportedException("No result received yet");
 
-				return mRowInformation.Length;
+				return mRowInfo.Length;
 			}
 		}
 		//
@@ -178,10 +140,7 @@ namespace Pqsql
 		{
 			get
 			{
-				if (mResult == IntPtr.Zero)
-					throw new NotSupportedException("No result read yet");
-
-				return PqsqlWrapper.PQntuples(mResult) > 0;
+				return mMaxRows > 0;
 			}
 		}
 		//
@@ -199,19 +158,11 @@ namespace Pqsql
 			get
 			{
 				ConnectionState s = mCmd.Connection.State;
-				switch (s)
-				{
-					case ConnectionState.Closed:
-						return true;
 
-					case ConnectionState.Open:
-					case ConnectionState.Executing:
-					case ConnectionState.Fetching:
-						return false;
+				if (s == ConnectionState.Closed || (s & ConnectionState.Broken) > 0)
+					return true;
 
-					default:
-						throw new InvalidOperationException("Connect state " + s.ToString());
-				}
+				return false;
 			}
 		}
 		//
@@ -227,7 +178,7 @@ namespace Pqsql
 			get
 			{
 				if (mResult == IntPtr.Zero)
-					throw new InvalidOperationException("No data read yet.");
+					throw new InvalidOperationException("PqsqlDataReader unpopulated");
 
 				ExecStatus s = (ExecStatus) PqsqlWrapper.PQresultStatus(mResult);
 
@@ -307,15 +258,52 @@ namespace Pqsql
 		//     Closes the System.Data.Common.DbDataReader object.
 		public override void Close()
 		{
+			// cancel current command
+			mCmd.Cancel();
 
+			// now consume all remaining input, see http://www.postgresql.org/docs/9.4/static/libpq-async.html
+			Consume();
+
+			if ((mBehaviour & CommandBehavior.CloseConnection) > 0)
+			{
+				mCmd.Connection.Close();
+			}
+
+			// reset state
+			Init(ConnectionState.Closed);
 		}
+		
+		protected void Consume()
+		{
+			if (mResult != IntPtr.Zero)
+			{
+				// always free mResult
+				PqsqlWrapper.PQclear(mResult);
+			}
+
+			while ((mResult = PqsqlWrapper.PQgetResult(mCmd.Connection.PGConnection)) != IntPtr.Zero)
+			{
+				// always free mResult
+				PqsqlWrapper.PQclear(mResult);
+			}
+		}
+
+
+		#region Dispose
 
 		//
 		// Summary:
 		//     Releases all resources used by the current instance of the System.Data.Common.DbDataReader
 		//     class.
 		[EditorBrowsable(EditorBrowsableState.Never)]
-		public void Dispose();
+		public new void Dispose()
+		{
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
+
+		bool mDisposed = false;
+
 		//
 		// Summary:
 		//     Releases the managed resources used by the System.Data.Common.DbDataReader
@@ -325,14 +313,34 @@ namespace Pqsql
 		//   disposing:
 		//     true to release managed and unmanaged resources; false to release only unmanaged
 		//     resources.
-		protected virtual void Dispose(bool disposing);
+		protected override void Dispose(bool disposing)
+		{
+			if (mDisposed)
+			{
+				return;
+			}
 
+			// always release mConnection (must not throw exception)
+			Close();
 
+			if (disposing)
+			{
+				mRowInfo = null;
+				mStatements = null;
+			}
+
+			base.Dispose(disposing);
+			mDisposed = true;
+		}
+
+		#endregion
+
+		#region datatype and bounds checks
 
 		protected void CheckOrdinal(int ordinal)
 		{
 			if (mResult == IntPtr.Zero)
-				throw new IndexOutOfRangeException("No result read yet.");
+				throw new IndexOutOfRangeException("No tuple available");
 
 			if (ordinal < 0 || ordinal >= FieldCount)
 				throw new IndexOutOfRangeException("Column " + ordinal.ToString() + " out of range");
@@ -341,14 +349,16 @@ namespace Pqsql
 		protected void CheckOrdinalType(int ordinal, PqsqlDbType oid)
 		{
 			if (mResult == IntPtr.Zero)
-				throw new IndexOutOfRangeException("No result read yet.");
+				throw new IndexOutOfRangeException("No tuple available");
 
 			if (ordinal < 0 || ordinal >= FieldCount)
 				throw new IndexOutOfRangeException("Column " + ordinal.ToString() + " out of range");
 
-			if (oid != mRowInformation[ordinal].Oid)
+			if (oid != mRowInfo[ordinal].Oid)
 				throw new InvalidCastException("Wrong datatype", (int)oid);
 		}
+
+		#endregion
 
 		//
 		// Summary:
@@ -367,7 +377,7 @@ namespace Pqsql
 		public override bool GetBoolean(int ordinal)
 		{
 			CheckOrdinalType(ordinal, PqsqlDbType.Boolean);
-			return GetBoolean(mResult, mRownum, ordinal);
+			return GetBoolean(mResult, mRowNum, ordinal);
 		}
 
 		internal static bool GetBoolean(IntPtr res, int row, int ordinal)
@@ -389,10 +399,10 @@ namespace Pqsql
 		// Exceptions:
 		//   System.InvalidCastException:
 		//     The specified cast is not valid.
-		public abstract byte GetByte(int ordinal)
+		public override byte GetByte(int ordinal)
 		{
 			CheckOrdinal(ordinal); // oid does not matter
-			return GetByte(mResult, mRownum, ordinal);
+			return GetByte(mResult, mRowNum, ordinal);
 		}
 
 		internal static byte GetByte(IntPtr res, int row, int ordinal)
@@ -427,7 +437,46 @@ namespace Pqsql
 		// Exceptions:
 		//   System.InvalidCastException:
 		//     The specified cast is not valid.
-		public abstract long GetBytes(int ordinal, long dataOffset, byte[] buffer, int bufferOffset, int length);
+		public override long GetBytes(int ordinal, long dataOffset, byte[] buffer, int bufferOffset, int length)
+		{
+			CheckOrdinalType(ordinal, PqsqlDbType.Bytea);
+
+			// check lower bounds
+			if (dataOffset < 0 || bufferOffset < 0 || length <= 0)
+				return 0;
+
+			int blen = PqsqlWrapper.PQgetlength(mResult, mRowNum, ordinal);
+
+			// report length of bytea column when buffer is null 
+			if (buffer == null)
+				return blen;
+
+			int bufferLength = buffer.Length;
+			int maxLength = bufferLength - bufferOffset;
+
+			// check upper bounds
+			if (dataOffset >= blen || bufferOffset >= bufferLength || length > maxLength)
+				return 0;
+
+			IntPtr v = PqsqlWrapper.PQgetvalue(mResult, mRowNum, ordinal);
+			int i;     // offset in bytea column
+			int j = 0; // offset in buffer, counter
+			
+			unsafe
+			{
+				byte* b = PqsqlBinaryFormat.pqbf_get_bytea(v);
+
+				if (b != null)
+				{
+					for (i = (int)dataOffset, j = bufferOffset; i < blen && j < maxLength; i++, j++)
+					{
+						buffer[j] = b[i];
+					}
+				}
+			}
+
+			return j;
+		}
 		//
 		// Summary:
 		//     Gets the value of the specified column as a single character.
@@ -498,7 +547,7 @@ namespace Pqsql
 		public override string GetDataTypeName(int ordinal)
 		{
 			CheckOrdinal(ordinal);
-			return PqsqlTypeNames.GetName(mRowInformation[ordinal].Oid);
+			return mRowInfo[ordinal].DataTypeName;
 		}
 		//
 		// Summary:
@@ -518,7 +567,7 @@ namespace Pqsql
 		{
 			CheckOrdinal(ordinal);
 			// TODO check oid
-			return GetDateTime(mResult, mRownum, ordinal);
+			return GetDateTime(mResult, mRowNum, ordinal);
 		}
 
 		internal static DateTime GetDateTime(IntPtr res, int row, int ordinal)
@@ -555,7 +604,7 @@ namespace Pqsql
 		public override decimal GetDecimal(int ordinal)
 		{
 			CheckOrdinalType(ordinal, PqsqlDbType.Numeric);
-			return GetDecimal(mResult, mRownum, ordinal);
+			return GetDecimal(mResult, mRowNum, ordinal);
 		}
 
 		internal static decimal GetDecimal(IntPtr res, int row, int ordinal)
@@ -581,7 +630,7 @@ namespace Pqsql
 		public override double GetDouble(int ordinal)
 		{
 			CheckOrdinalType(ordinal, PqsqlDbType.Float8);
-			return GetDouble(mResult, mRownum, ordinal);
+			return GetDouble(mResult, mRowNum, ordinal);
 		}
 
 		internal static double GetDouble(IntPtr res, int row, int ordinal)
@@ -613,10 +662,10 @@ namespace Pqsql
 		// Exceptions:
 		//   System.InvalidCastException:
 		//     The specified cast is not valid.
-		public abstract Type GetFieldType(int ordinal)
+		public override Type GetFieldType(int ordinal)
 		{
 			CheckOrdinal(ordinal);
-			return PqsqlTypeNames.GetType(mRowInformation[ordinal].Oid);
+			return mRowInfo[ordinal].Type;
 		}
 		//
 		// Summary:
@@ -636,7 +685,7 @@ namespace Pqsql
 		public override float GetFloat(int ordinal)
 		{
 			CheckOrdinalType(ordinal, PqsqlDbType.Float4);
-			return GetFloat(mResult, mRownum, ordinal);
+			return GetFloat(mResult, mRowNum, ordinal);
 		}
 
 		internal static float GetFloat(IntPtr res, int row, int ordinal)
@@ -661,7 +710,7 @@ namespace Pqsql
 		public override Guid GetGuid(int ordinal)
 		{
 			CheckOrdinalType(ordinal, PqsqlDbType.Uuid);
-			return GetGuid(mResult, mRownum, ordinal);
+			return GetGuid(mResult, mRowNum, ordinal);
 		}
 
 		internal static Guid GetGuid(IntPtr res, int row, int ordinal)
@@ -686,7 +735,7 @@ namespace Pqsql
 		public override short GetInt16(int ordinal)
 		{
 			CheckOrdinalType(ordinal, PqsqlDbType.Int2);
-			return GetInt16(mResult, mRownum, ordinal);
+			return GetInt16(mResult, mRowNum, ordinal);
 		}
 
 		internal static short GetInt16(IntPtr res, int row, int ordinal)
@@ -711,7 +760,7 @@ namespace Pqsql
 		public override int GetInt32(int ordinal)
 		{
 			CheckOrdinalType(ordinal, PqsqlDbType.Int4);
-			return GetInt32(mResult, mRownum, ordinal);
+			return GetInt32(mResult, mRowNum, ordinal);
 		}
 
 		internal static int GetInt32(IntPtr res, int row, int ordinal)
@@ -733,10 +782,10 @@ namespace Pqsql
 		// Exceptions:
 		//   System.InvalidCastException:
 		//     The specified cast is not valid.
-		public abstract long GetInt64(int ordinal)
+		public override long GetInt64(int ordinal)
 		{
 			CheckOrdinalType(ordinal, PqsqlDbType.Int8);
-			return GetInt64(mResult, mRownum, ordinal);
+			return GetInt64(mResult, mRowNum, ordinal);
 		}
 
 		internal static long GetInt64(IntPtr res, int row, int ordinal)
@@ -757,7 +806,7 @@ namespace Pqsql
 		public override string GetName(int ordinal)
 		{
 			CheckOrdinal(ordinal);
-			return mRowInformation[ordinal].Name;
+			return mRowInfo[ordinal].Name;
 		}
 		//
 		// Summary:
@@ -776,7 +825,7 @@ namespace Pqsql
 		public override int GetOrdinal(string name)
 		{
 			if (string.IsNullOrEmpty(name))
-				throw new IndexOutOfRangeException("Invalid column name");
+				throw new ArgumentNullException("name");
 
 			int col = PqsqlWrapper.PQfnumber(mResult, name);
 
@@ -795,8 +844,8 @@ namespace Pqsql
 		//
 		// Returns:
 		//     The System.Type object that describes the data type of the specified column.
-		[EditorBrowsable(EditorBrowsableState.Never)]
-		public virtual Type GetProviderSpecificFieldType(int ordinal);
+		//[EditorBrowsable(EditorBrowsableState.Never)]
+		//public virtual Type GetProviderSpecificFieldType(int ordinal);
 		//
 		// Summary:
 		//     Gets the value of the specified column as an instance of System.Object.
@@ -807,8 +856,8 @@ namespace Pqsql
 		//
 		// Returns:
 		//     The value of the specified column.
-		[EditorBrowsable(EditorBrowsableState.Never)]
-		public virtual object GetProviderSpecificValue(int ordinal);
+		//[EditorBrowsable(EditorBrowsableState.Never)]
+		//public virtual object GetProviderSpecificValue(int ordinal);
 		//
 		// Summary:
 		//     Gets all provider-specific attribute columns in the collection for the current
@@ -820,8 +869,8 @@ namespace Pqsql
 		//
 		// Returns:
 		//     The number of instances of System.Object in the array.
-		[EditorBrowsable(EditorBrowsableState.Never)]
-		public virtual int GetProviderSpecificValues(object[] values);
+		//[EditorBrowsable(EditorBrowsableState.Never)]
+		//public virtual int GetProviderSpecificValues(object[] values);
 		//
 		// Summary:
 		//     Returns a System.Data.DataTable that describes the column metadata of the
@@ -852,23 +901,31 @@ namespace Pqsql
 		{
 			CheckOrdinal(ordinal);
 
-			PqsqlDbType oid = mRowInformation[ordinal].Oid;
+			PqsqlDbType oid = mRowInfo[ordinal].Oid;
 			if (oid != PqsqlDbType.Text && oid != PqsqlDbType.Varchar && oid != PqsqlDbType.Unknown)
 			{
 				throw new InvalidCastException("Wrong datatype", (int) oid);
 			}
 
-			IntPtr v = PqsqlWrapper.PQgetvalue(mResult, mRownum, ordinal);
-			
+			return GetString(mResult, mRowNum, ordinal);	
+		}
+
+		internal static string GetString(IntPtr res, int row, int ordinal)
+		{
+			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
+
 			IntPtr utp;
 			int len;
 			unsafe
 			{
 				utp = PqsqlBinaryFormat.pqbf_get_unicode_text(v, &len);
 			}
+
+			if (utp == IntPtr.Zero)
+				return null;
+
 			string uni = Marshal.PtrToStringUni(utp, len);
 			PqsqlBinaryFormat.pqbf_free_unicode_text(utp);
-
 			return uni;
 		}
 		//
@@ -884,7 +941,16 @@ namespace Pqsql
 		public override object GetValue(int ordinal)
 		{
 			CheckOrdinal(ordinal);
-			return PqsqlTypeNames.GetValue(mRowInformation[ordinal].Oid)(mResult,mRownum,ordinal);
+
+			if (mRowInfo[ordinal].Oid == PqsqlDbType.Bytea)
+			{
+				int n = (int) GetBytes(ordinal, 0, null, 0, 0);
+				byte[] bs = new byte[n];
+				n = (int) GetBytes(ordinal, 0, bs, 0, n);
+				return bs;
+			}
+
+			return PqsqlTypeNames.GetValue(mRowInfo[ordinal].Oid)(mResult, mRowNum, ordinal);
 		}
 		//
 		// Summary:
@@ -922,7 +988,7 @@ namespace Pqsql
 		public override bool IsDBNull(int ordinal)
 		{
 			CheckOrdinal(ordinal);
-			return PqsqlWrapper.PQgetisnull(mResult, mRownum, ordinal) == 1;
+			return PqsqlWrapper.PQgetisnull(mResult, mRowNum, ordinal) == 1;
 		}
 		//
 		// Summary:
@@ -933,20 +999,27 @@ namespace Pqsql
 		//     true if there are more result sets; otherwise false.
 		public override bool NextResult()
 		{
-			if (mStmtNum >= mStatements.Length) // finished
+			if (mStmtNum >= mMaxStmt) // finished with all query statements
 			{
 				return false;
 			}
 
-			// TODO send next query
-			mCmd.CommandText = mStatements[mStmtNum]; 
-			mStmtNum++;
+			mStmtNum++; // set next statement
 
-			// start with the next result set
-			mRowInformation = null;
-			mRownum = -1;
+			if (Execute() == false)
+			{
+				string err = PqsqlWrapper.PQerrorMessage(mCmd.Connection.PGConnection);
+				throw new PqsqlException(err);
+			}
 
-			return Read(); // TODO what if an intermediate result set is empty?
+			if (!Read())
+			{
+				// in case an intermediate result set is empty
+				// we can call NextResult() again
+				return mStmtNum < mMaxStmt - 1;
+			}
+
+			return true;
 		}
 		//
 		// Summary:
@@ -956,31 +1029,102 @@ namespace Pqsql
 		//     true if there are more rows; otherwise false.
 		public override bool Read()
 		{
-			mResult = PqsqlWrapper.PQgetResult(mCmd.Connection.PGConnection);
+			if (mResult == IntPtr.Zero && mStmtNum == -1)
+			{
+				// issue the first query
+				return NextResult();
+			}
+
+			if (mResult != IntPtr.Zero && mRowNum >= mMaxRows)
+			{
+				// mResult from a former PQgetResult() call is exhausted now,
+				// free mResult and continue getting the next mResult
+				PqsqlWrapper.PQclear(mResult);
+			}
+
+			if (mRowNum >= mMaxRows)
+			{
+				// fetch the next tuple(s)
+				mResult = PqsqlWrapper.PQgetResult(mCmd.Connection.PGConnection);
+				mCmd.State = ConnectionState.Fetching;
+			}
 
 			if (mResult != IntPtr.Zero)
 			{
-				mRownum++;
+				mRowNum++; // increase row counter
 
-				if (mRownum == 0) // first row => get new column information
+				if (mRowNum == 0) // first row => get column information
 				{
-					int n = PqsqlWrapper.PQnfields(mResult);
-					mRowInformation = new PqsqlColInformation[n];
+					int n = PqsqlWrapper.PQnfields(mResult); // get number of columns
+					mRowInfo = new PqsqlColInfo[n];
 
 					for (int o = 0; o < n; o++)
 					{
-						mRowInformation[o].Oid = (PqsqlDbType) PqsqlWrapper.PQftype(mResult, o);
-						mRowInformation[o].Name = PqsqlWrapper.PQfname(mResult, o);
-						mRowInformation[o].Size = PqsqlWrapper.PQfsize(mResult, o);
-						mRowInformation[o].Modifier = PqsqlWrapper.PQfmod(mResult, o);
-						mRowInformation[o].Format = PqsqlWrapper.PQfformat(mResult, o);
+						PqsqlDbType oid = (PqsqlDbType) PqsqlWrapper.PQftype(mResult, o); // column type
+						mRowInfo[o].Oid = oid;
+						mRowInfo[o].Name = PqsqlWrapper.PQfname(mResult, o);     // column name
+						mRowInfo[o].Size = PqsqlWrapper.PQfsize(mResult, o);     // column datatype size
+						mRowInfo[o].Modifier = PqsqlWrapper.PQfmod(mResult, o);  // column modifier (e.g., varchar(n))
+						mRowInfo[o].Format = PqsqlWrapper.PQfformat(mResult, o); // data format (1: binary, 0: text)
+						mRowInfo[o].DataTypeName = PqsqlTypeNames.GetName(oid);
+						mRowInfo[o].Type = PqsqlTypeNames.GetType(oid);
 					}
-				}
 
-				return true;
+					if ((mBehaviour & CommandBehavior.SchemaOnly) > 0)
+					{
+						// we keep mRowInfo here since CommandBehavior.SchemaOnly is on
+						Init(ConnectionState.Closed);
+						return true; // we retrieved the schema
+					}
+
+					mMaxRows = PqsqlWrapper.PQntuples(mResult); // get number of tuples
+				}
 			}
+			else
+			{
+				Init(ConnectionState.Closed);
+			}
+
+			return mRowNum < mMaxRows;
+		}
+
+		/// <summary>
+		/// executes the next statement
+		/// </summary>
+		/// <returns></returns>
+		protected bool Execute()
+		{
+			// convert query string to utf8
+			byte[] utf8query = Encoding.UTF8.GetBytes(mStatements[mStmtNum]);
 			
-			return false;
+			if (utf8query.Length == 0)
+				return false;
+
+			unsafe
+			{
+				IntPtr pc = mCmd.Connection.PGConnection;
+				IntPtr pb = mCmd.Parameters.PGParameters;
+
+				int num_param = PqsqlBinaryFormat.pqpb_get_num(pb);
+				IntPtr ptyps = PqsqlBinaryFormat.pqpb_get_types(pb);
+				IntPtr pvals = PqsqlBinaryFormat.pqpb_get_vals(pb);
+				IntPtr plens = PqsqlBinaryFormat.pqpb_get_lens(pb);
+				IntPtr pfrms = PqsqlBinaryFormat.pqpb_get_frms(pb);
+
+				fixed (byte* pq = utf8query)
+				{
+					if (PqsqlWrapper.PQsendQueryParams(pc, pq, num_param, ptyps, pvals, plens, pfrms, 1) == 0)
+						return false;
+				}
+				
+				if (PqsqlWrapper.PQsetSingleRowMode(pc) == 0)
+					return false;
+			}
+
+			// start with a new result set
+			Init(ConnectionState.Executing);
+
+			return true;
 		}
 
 		#endregion

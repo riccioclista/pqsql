@@ -109,6 +109,9 @@ namespace Pqsql
 		[DllImport("libpqbinfmt.dll")]
 		public static extern double pqbf_get_numeric(IntPtr p);
 
+		[DllImport("libpqbinfmt.dll")]
+		public static extern byte* pqbf_get_bytea(IntPtr p);
+
 		#endregion
 	}
 }

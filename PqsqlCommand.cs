@@ -32,6 +32,11 @@ namespace Pqsql
 		{
 		}
 
+		public PqsqlCommand(PqsqlConnection conn)
+			: this("", conn)
+		{
+		}
+
 		public PqsqlCommand(string query, PqsqlConnection conn)
 			: base()
 		{
@@ -95,14 +100,33 @@ namespace Pqsql
 		//
 		// Returns:
 		//     The connection to the data source.
-		[DefaultValue("")]
 		[Browsable(false)]
 		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 		public new PqsqlConnection Connection
 		{
 			get	{	return mConn;	}
-			set	{	mConn = value;	}
+			set
+			{
+				if (value == null)
+				{
+					mConn = null;
+				}
+				else if (mConn != value)
+				{
+					mConn = value;
+					value.Command = this;
+				}
+			}
 		}
+
+		// used by PqsqlConnection to get ConnectionState.Executing, ConnectionState.Fetching
+		public ConnectionState State
+		{
+			get;
+			set;
+		}
+
+
 		//
 		// Summary:
 		//     Gets or sets the System.Data.Common.DbConnection used by this System.Data.Common.DbCommand.
@@ -117,14 +141,15 @@ namespace Pqsql
 			}
 			set
 			{
-				if (mConn == value)
+				if (value == null)
 				{
-					return;
+					mConn = null;
 				}
-
-				// todo check for connection state
-
-				mConn = (PqsqlConnection) value;
+				else if (mConn != value)
+				{
+					mConn = (PqsqlConnection) value;
+					(value as PqsqlConnection).Command = this;
+				}
 			}
 		}
 		//
@@ -244,17 +269,15 @@ namespace Pqsql
 		{
 			ConnectionState s = mConn.State;
 
-			if (s != ConnectionState.Executing || s != ConnectionState.Fetching)
-			{
-				throw new InvalidOperationException(s.ToString() + " connection not cancellable");
-			}
+			if ((s & (ConnectionState.Broken | ConnectionState.Connecting | ConnectionState.Closed)) > 0)
+				return;
 
 			IntPtr cancel = PqsqlWrapper.PQgetCancel(mConn.PGConnection);
 
 			if (cancel != IntPtr.Zero)
 			{
 				sbyte[] buf = new sbyte[256];
-				string err = string.Empty;
+				//string err = string.Empty;
 				int cret;
 				
 				unsafe
@@ -262,19 +285,19 @@ namespace Pqsql
 					fixed (sbyte* b = buf)
 					{
 						cret = PqsqlWrapper.PQcancel(cancel, b, 256);
-						if (cret == 0)
-						{
-							err = new string(b, 0, 256);
-						}
+						//if (cret == 0)
+						//{
+						//	err = new string(b, 0, 256);
+						//}
 					}
 				}
 
 				PqsqlWrapper.PQfreeCancel(cancel);
 
-				if (cret == 0)
-				{
-					throw new PqsqlException("Could not cancel command: " + err);
-				}
+				//if (cret == 0)
+				//{
+				//	throw new PqsqlException("Could not cancel command: " + err);
+				//}
 			}
 		}
 		//
@@ -283,14 +306,20 @@ namespace Pqsql
 		//
 		// Returns:
 		//     A System.Data.Common.DbParameter object.
-		protected abstract DbParameter CreateDbParameter();
+		protected override DbParameter CreateDbParameter()
+		{
+			return new PqsqlParameter();
+		}
 		//
 		// Summary:
 		//     Creates a new instance of a System.Data.Common.DbParameter object.
 		//
 		// Returns:
 		//     A System.Data.Common.DbParameter object.
-		public DbParameter CreateParameter();
+		public override DbParameter CreateParameter()
+		{
+			return CreateDbParameter();
+		}
 		//
 		// Summary:
 		//     Executes the command text against the connection.
@@ -301,14 +330,22 @@ namespace Pqsql
 		//
 		// Returns:
 		//     A System.Data.Common.DbDataReader.
-		protected abstract DbDataReader ExecuteDbDataReader(CommandBehavior behavior);
+		protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior)
+		{
+			return ExecuteReader(behavior);
+		}
 		//
 		// Summary:
 		//     Executes a SQL statement against a connection object.
 		//
 		// Returns:
 		//     The number of rows affected.
-		public abstract int ExecuteNonQuery();
+		public override int ExecuteNonQuery()
+		{
+			PqsqlDataReader r = ExecuteReader(CommandBehavior.Default);
+			r.Read();
+			return r.RecordsAffected;
+		}
 		//
 		// Summary:
 		//     Executes the System.Data.Common.DbCommand.CommandText against the System.Data.Common.DbCommand.Connection,
@@ -316,7 +353,10 @@ namespace Pqsql
 		//
 		// Returns:
 		//     A System.Data.Common.DbDataReader object.
-		public DbDataReader ExecuteReader();
+		public new PqsqlDataReader ExecuteReader()
+		{
+			return ExecuteReader(CommandBehavior.Default);
+		}
 		//
 		// Summary:
 		//     Executes the System.Data.Common.DbCommand.CommandText against the System.Data.Common.DbCommand.Connection,
@@ -329,7 +369,11 @@ namespace Pqsql
 		//
 		// Returns:
 		//     An System.Data.Common.DbDataReader object.
-		public DbDataReader ExecuteReader(CommandBehavior behavior);
+		public new PqsqlDataReader ExecuteReader(CommandBehavior behavior)
+		{
+			string[] statements = ParseStatements();
+			return new PqsqlDataReader(this, behavior, statements);
+		}
 		//
 		// Summary:
 		//     Executes the query and returns the first column of the first row in the result
@@ -337,11 +381,76 @@ namespace Pqsql
 		//
 		// Returns:
 		//     The first column of the first row in the result set.
-		public abstract object ExecuteScalar();
+		public override object ExecuteScalar()
+		{
+			PqsqlDataReader r = ExecuteReader(CommandBehavior.Default);
+			r.Read();
+			return r.GetValue(0);
+		}
+
+		/// <summary>
+		/// split PqsqlCommand.CommandText into an array of sub-statements
+		/// </summary>
+		/// <returns></returns>
+		protected string[] ParseStatements()
+		{
+			StringBuilder sb = new StringBuilder();
+			bool quote = false;
+			string[] statements = new string[0];
+			int i = 0;
+
+			// parse multiple statements separated by ;
+			foreach (char c in CommandText.Trim())
+			{
+				if (quote) // eat input until next quote symbol (ignoring ';')
+				{
+					switch (c)
+					{
+						case '\'':
+						case '"':
+							quote = !quote;
+							break;
+					}
+					sb.Append(c);
+				}
+				else
+				{
+					switch (c) // eat input until ;
+					{
+						case ';':
+							Array.Resize(ref statements, statements.Length + 1);
+							statements[i++] = sb.ToString();
+							sb.Clear();
+							continue;
+
+						case '\'':
+						case '"':
+							quote = !quote;
+							break;
+					}
+					sb.Append(c);
+				}
+			}
+
+			if (sb.Length > 0) // add last statement not terminated by ';'
+			{
+				Array.Resize(ref statements, statements.Length + 1);
+				statements[i] = sb.ToString();
+			}
+
+			sb.Clear();
+			sb = null;
+
+			return statements;
+		}
+
 		//
 		// Summary:
 		//     Creates a prepared (or compiled) version of the command on the data source.
-		public abstract void Prepare();
+		public override void Prepare()
+		{
+			throw new NotImplementedException("Prepare() is not implemented");
+		}
 
 
 
