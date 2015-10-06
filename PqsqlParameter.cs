@@ -13,6 +13,8 @@ namespace Pqsql
 	{
 		protected DbType mDbType;
 
+		protected PqsqlDbType mPqsqlDbType;
+
 		protected string mName;
 
 		protected int mSize;
@@ -99,10 +101,37 @@ namespace Pqsql
 				if (value == null)
 				{
 					mDbType = DbType.Object;
+					mPqsqlDbType = PqsqlDbType.Unknown;
 				}
 				else
 				{
 					mDbType = value;
+					mPqsqlDbType = PqsqlTypeNames.GetDbType(value);
+				}
+			}
+		}
+
+
+		[Browsable(false)]
+		[RefreshProperties(RefreshProperties.All)]
+		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+		public PqsqlDbType PqsqlDbType
+		{
+			get
+			{
+				return mPqsqlDbType;
+			}
+			set
+			{
+				if (value == null)
+				{
+					mDbType = DbType.Object;
+					mPqsqlDbType = PqsqlDbType.Unknown;
+				}
+				else
+				{
+					mPqsqlDbType = value;
+					mDbType = PqsqlTypeNames.GetDbType(value);
 				}
 			}
 		}
@@ -160,7 +189,10 @@ namespace Pqsql
 				}
 				else
 				{
-					mName = value.Trim().ToLowerInvariant();
+					if (value[0] != '"')
+						mName = value.Trim().ToLowerInvariant();
+					else
+						mName = value;
 				}
 			}
 		}
@@ -261,18 +293,5 @@ namespace Pqsql
 			mDbType = DbType.Object;
 			mValue = null;
 		}
-
-
-		#region Dispose
-
-		public virtual void Dispose()
-		{
-		}
-
-		protected void Dispose(bool disposing)
-		{
-		}
-
-		#endregion
 	}
 }

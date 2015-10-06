@@ -15,12 +15,43 @@ namespace Pqsql
 		// Dictionary lookups for GetValue to improve performance
 		private Dictionary<string, int> lookup;
 
+		// TODO release memory
+		private IntPtr mPqPB;
+
 		// Summary:
 		//     Initializes a new instance of the System.Data.Common.DbParameterCollection
 		//     class.
 		public PqsqlParameterCollection()
 		{
+			Init();
 		}
+
+		protected void Init()
+		{
+			mPqPB = IntPtr.Zero;
+		}
+
+		#region pqparam_buffer*
+
+		internal IntPtr PGParameters
+		{
+			get
+			{
+				if (mPqPB == IntPtr.Zero)
+				{
+					// create pqparam_buffer
+					mPqPB = PqsqlBinaryFormat.pqpb_create();
+
+					foreach (PqsqlParameter p in mParamList)
+					{
+						// TODO dispatch oid
+					}
+				}
+				return mPqPB;
+			}
+		}
+
+		#endregion
 
 		// Summary:
 		//     Specifies the number of items in the collection.
