@@ -26,6 +26,64 @@ namespace Pqsql
 	};
 
 
+	internal class PqsqlEnumerator : IEnumerator
+	{
+		protected PqsqlDataReader mReader;
+
+		public PqsqlEnumerator(PqsqlDataReader reader)
+		{
+			mReader = reader;
+		}
+
+		// Summary:
+		//     Gets the current element in the collection.
+		//
+		// Returns:
+		//     The current element in the collection.
+		//
+		// Exceptions:
+		//   System.InvalidOperationException:
+		//     The enumerator is positioned before the first element of the collection or
+		//     after the last element.
+		public object Current
+		{
+			get
+			{
+				object[] vals = new object[mReader.FieldCount];
+				mReader.GetValues(vals);
+				return vals;
+			}
+		}
+
+		// Summary:
+		//     Advances the enumerator to the next element of the collection.
+		//
+		// Returns:
+		//     true if the enumerator was successfully advanced to the next element; false
+		//     if the enumerator has passed the end of the collection.
+		//
+		// Exceptions:
+		//   System.InvalidOperationException:
+		//     The collection was modified after the enumerator was created.
+		public bool MoveNext()
+		{
+			return mReader.Read() ? true : mReader.NextResult();
+		}
+
+		//
+		// Summary:
+		//     Sets the enumerator to its initial position, which is before the first element
+		//     in the collection.
+		//
+		// Exceptions:
+		//   System.InvalidOperationException:
+		//     The collection was modified after the enumerator was created.
+		public void Reset()
+		{
+			throw new InvalidOperationException("Cannot reset PqsqlDataReader");
+		}
+	};
+
 	public class PqsqlDataReader : DbDataReader
 	{
 		/// <summary>
@@ -492,7 +550,10 @@ namespace Pqsql
 		// Exceptions:
 		//   System.InvalidCastException:
 		//     The specified cast is not valid.
-		public abstract char GetChar(int ordinal);
+		public override char GetChar(int ordinal)
+		{
+			throw new NotImplementedException("GetChar");
+		}
 		//
 		// Summary:
 		//     Reads a stream of characters from the specified column, starting at location
@@ -517,7 +578,10 @@ namespace Pqsql
 		//
 		// Returns:
 		//     The actual number of characters read.
-		public abstract long GetChars(int ordinal, long dataOffset, char[] buffer, int bufferOffset, int length);
+		public override long GetChars(int ordinal, long dataOffset, char[] buffer, int bufferOffset, int length)
+		{
+			throw new NotImplementedException("GetChars");
+		}
 		//
 		// Summary:
 		//     Returns a System.Data.Common.DbDataReader object for the requested column
@@ -530,7 +594,10 @@ namespace Pqsql
 		// Returns:
 		//     A System.Data.Common.DbDataReader object.
 		[EditorBrowsable(EditorBrowsableState.Never)]
-		public DbDataReader GetData(int ordinal);
+		public new PqsqlDataReader GetData(int ordinal)
+		{
+			throw new NotImplementedException("GetData");
+		}
 		//
 		// Summary:
 		//     Gets name of the data type of the specified column.
@@ -567,8 +634,27 @@ namespace Pqsql
 		public override DateTime GetDateTime(int ordinal)
 		{
 			CheckOrdinal(ordinal);
-			// TODO check oid
-			return GetDateTime(mResult, mRowNum, ordinal);
+
+			PqsqlDbType oid = mRowInfo[ordinal].Oid;
+			switch (oid)
+			{
+				case PqsqlDbType.Timestamp:
+				case PqsqlDbType.TimestampTZ:
+					return GetDateTime(mResult, mRowNum, ordinal);
+
+				case PqsqlDbType.Time:
+				case PqsqlDbType.TimeTZ:
+					return GetTime(mResult, mRowNum, ordinal);
+
+				case PqsqlDbType.Date:
+					return GetDate(mResult, mRowNum, ordinal);
+
+				case PqsqlDbType.Interval:
+					return GetInterval(mResult, mRowNum, ordinal);
+
+				default:
+					throw new InvalidCastException("Wrong datatype", (int) oid);
+			}
 		}
 
 		internal static DateTime GetDateTime(IntPtr res, int row, int ordinal)
@@ -576,6 +662,25 @@ namespace Pqsql
 			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
 			return DateTime.Now; // TODO PqsqlBinaryFormat.pqbf_get_bool(v) > 0;
 		}
+
+		internal static DateTime GetDate(IntPtr res, int row, int ordinal)
+		{
+			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
+			return DateTime.Now; // TODO PqsqlBinaryFormat.pqbf_get_bool(v) > 0;
+		}
+
+		internal static DateTime GetTime(IntPtr res, int row, int ordinal)
+		{
+			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
+			return DateTime.Now; // TODO PqsqlBinaryFormat.pqbf_get_bool(v) > 0;
+		}
+
+		internal static DateTime GetInterval(IntPtr res, int row, int ordinal)
+		{
+			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
+			return DateTime.Now; // TODO PqsqlBinaryFormat.pqbf_get_bool(v) > 0;
+		}
+
 		//
 		// Summary:
 		//     Returns a System.Data.Common.DbDataReader object for the requested column
@@ -587,7 +692,7 @@ namespace Pqsql
 		//
 		// Returns:
 		//     A System.Data.Common.DbDataReader object.
-		protected virtual DbDataReader GetDbDataReader(int ordinal);
+		//protected virtual DbDataReader GetDbDataReader(int ordinal);
 		//
 		// Summary:
 		//     Gets the value of the specified column as a System.Decimal object.
@@ -648,7 +753,10 @@ namespace Pqsql
 		//     An System.Collections.IEnumerator that can be used to iterate through the
 		//     rows in the data reader.
 		[EditorBrowsable(EditorBrowsableState.Never)]
-		public abstract IEnumerator GetEnumerator();
+		public override IEnumerator GetEnumerator()
+		{
+			return new PqsqlEnumerator(this);
+		}
 		//
 		// Summary:
 		//     Gets the data type of the specified column.
@@ -872,6 +980,7 @@ namespace Pqsql
 		//     The number of instances of System.Object in the array.
 		//[EditorBrowsable(EditorBrowsableState.Never)]
 		//public virtual int GetProviderSpecificValues(object[] values);
+
 		//
 		// Summary:
 		//     Returns a System.Data.DataTable that describes the column metadata of the
@@ -883,7 +992,13 @@ namespace Pqsql
 		// Exceptions:
 		//   System.InvalidOperationException:
 		//     The System.Data.SqlClient.SqlDataReader is closed.
-		public abstract DataTable GetSchemaTable();
+		public override DataTable GetSchemaTable()
+		{
+			if ((mBehaviour & CommandBehavior.KeyInfo) == 0)
+				throw new InvalidOperationException("Cannot call GetSchemaTable without KeyInfo");
+
+			throw new NotImplementedException("GetSchemaTable not implemented");
+		}
 		//
 		// Summary:
 		//     Gets the value of the specified column as an instance of System.String.
