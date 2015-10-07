@@ -52,6 +52,14 @@ namespace Pqsql
 
 		#endregion
 
+		// http://www.postgresql.org/docs/9.4/static/datatype-money.html
+
+		#region Money
+		
+		Money = 790,
+
+		#endregion	
+
 		// http://www.postgresql.org/docs/current/static/datatype-boolean.html
 
 		#region Boolean Type
@@ -193,6 +201,17 @@ namespace Pqsql
 		/// uuid
 		/// </summary>
 		Uuid = 2950,
+
+		#endregion
+
+		// http://www.postgresql.org/docs/current/static/datatype-xml.html
+
+		#region XML Type
+
+		/// <summary>
+		/// xml
+		/// </summary>
+		Xml = 142,
 
 		#endregion
 
