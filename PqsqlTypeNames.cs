@@ -17,7 +17,7 @@ namespace Pqsql
 			public DbType DbType {	get; set; }
 		}
 
-		static Dictionary<PqsqlDbType, PqsqlTypeName> mDict = new Dictionary<PqsqlDbType, PqsqlTypeName>
+		static readonly Dictionary<PqsqlDbType, PqsqlTypeName> mDict = new Dictionary<PqsqlDbType, PqsqlTypeName>
     {
 			{ PqsqlDbType.Boolean,
 				new PqsqlTypeName { 

@@ -37,9 +37,9 @@ namespace Pqsql
 		/// stores db connection and query parameters.
 		/// used to set PqsqlCommand.State to ConnectionState.Executing or ConnectionState.Fetching
 		/// </summary>
-		PqsqlCommand mCmd;
+		readonly PqsqlCommand mCmd;
 
-		CommandBehavior mBehaviour;
+		readonly CommandBehavior mBehaviour;
 
 		// row information of current result set
 		PqsqlColInfo[] mRowInfo;
@@ -50,7 +50,8 @@ namespace Pqsql
 
 		// statement index (-1: nothing executed yet)
 		int mStmtNum;
-		int mMaxStmt;
+
+		readonly int mMaxStmt;
 		string[] mStatements;
 
 
