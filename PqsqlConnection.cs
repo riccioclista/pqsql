@@ -108,7 +108,6 @@ namespace Pqsql
 		[RefreshProperties(RefreshProperties.All)]
 		[DefaultValue("")]
 		[SettingsBindable(true)]
-		[RecommendedAsConfigurable(true)]
 		public override string ConnectionString
 		{
 			get { return mConnectionStringBuilder.ConnectionString; }
@@ -255,7 +254,36 @@ namespace Pqsql
 		//     An object representing the new transaction.
 		protected override DbTransaction BeginDbTransaction(IsolationLevel isolationLevel)
 		{
-			return new PqsqlTransaction(this, isolationLevel);
+			PqsqlTransaction txn = new PqsqlTransaction(this, isolationLevel);
+
+			// convert query string to utf8
+			byte[] txnString = Encoding.UTF8.GetBytes(txn.TransactionStart);
+
+			unsafe
+			{
+				IntPtr res;
+				fixed (byte* t = txnString)
+				{
+					res = PqsqlWrapper.PQexec(mConnection, t);
+				}
+
+				ExecStatus s = ExecStatus.PGRES_EMPTY_QUERY;
+				if (res != IntPtr.Zero)
+				{
+					s = (ExecStatus) PqsqlWrapper.PQresultStatus(res);
+					PqsqlWrapper.PQclear(res);
+				}
+
+				if (s != ExecStatus.PGRES_COMMAND_OK)
+				{
+					string err = PqsqlWrapper.PQerrorMessage(mConnection);
+					throw new PqsqlException("Transaction start failed: " + err);
+				}
+
+
+			}
+
+			return txn;
 		}
 
 		//
@@ -302,6 +330,18 @@ namespace Pqsql
 
 		//
 		// Summary:
+		//     Enlists in the specified transaction.
+		//
+		// Parameters:
+		//   transaction:
+		//     A reference to an existing System.Transactions.Transaction in which to enlist.
+		//public override void EnlistTransaction(PqsqlTransaction transaction)
+		//{
+		//	throw new NotImplementedException();
+		//}
+
+		//
+		// Summary:
 		//     Opens a database connection with the settings specified by the System.Data.Common.DbConnection.ConnectionString.
 		public override void Open()
 		{
@@ -324,7 +364,7 @@ namespace Pqsql
 			if (mConnection != IntPtr.Zero)
 			{
 				// get connection status
-				mStatus = (Pqsql.ConnectionStatus)PqsqlWrapper.PQstatus(mConnection);
+				mStatus = (Pqsql.ConnectionStatus) PqsqlWrapper.PQstatus(mConnection);
 
 				if (mStatus == ConnectionStatus.CONNECTION_BAD)
 				{
