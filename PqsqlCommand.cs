@@ -119,7 +119,8 @@ namespace Pqsql
 			}
 		}
 
-		// used by PqsqlConnection to get ConnectionState.Executing, ConnectionState.Fetching
+		// used by PqsqlConnection to get ConnectionState.Executing, ConnectionState.Fetching and
+		// PqsqlDataReader sets ConnectionState.Executing, ConnectionState.Fetching
 		public ConnectionState State
 		{
 			get;
@@ -137,21 +138,14 @@ namespace Pqsql
 		{
 			get
 			{
-				return mConn;
+				return Connection;
 			}
 			set
 			{
-				if (value == null)
-				{
-					mConn = null;
-				}
-				else if (mConn != value)
-				{
-					mConn = (PqsqlConnection) value;
-					(value as PqsqlConnection).Command = this;
-				}
+				Connection = (PqsqlConnection) value;
 			}
 		}
+
 		//
 		// Summary:
 		//     Gets the collection of System.Data.Common.DbParameter objects.
@@ -162,6 +156,7 @@ namespace Pqsql
 		{
 			get	{	return (DbParameterCollection) Parameters; }
 		}
+
 		//
 		// Summary:
 		//     Gets or sets the System.Data.Common.DbCommand.DbTransaction within which
@@ -175,6 +170,7 @@ namespace Pqsql
 			get	{	return Transaction;	}
 			set	{	Transaction = (PqsqlTransaction) value;	}
 		}
+
 		//
 		// Summary:
 		//     Gets or sets a value indicating whether the command object should be visible
@@ -192,6 +188,7 @@ namespace Pqsql
 			get;
 			set;
 		}
+
 		//
 		// Summary:
 		//     Gets the collection of System.Data.Common.DbParameter objects.
@@ -207,6 +204,7 @@ namespace Pqsql
 				return mParams;
 			}
 		}
+
 		//
 		// Summary:
 		//     Gets or sets the System.Data.Common.DbTransaction within which this System.Data.Common.DbCommand
@@ -233,6 +231,7 @@ namespace Pqsql
 				mTransaction = value;
 			}
 		}
+
 		//
 		// Summary:
 		//     Gets or sets how command results are applied to the System.Data.DataRow when
@@ -300,6 +299,7 @@ namespace Pqsql
 				//}
 			}
 		}
+
 		//
 		// Summary:
 		//     Creates a new instance of a System.Data.Common.DbParameter object.
@@ -310,16 +310,17 @@ namespace Pqsql
 		{
 			return new PqsqlParameter();
 		}
+
 		//
 		// Summary:
 		//     Creates a new instance of a System.Data.Common.DbParameter object.
 		//
 		// Returns:
 		//     A System.Data.Common.DbParameter object.
-		public override DbParameter CreateParameter()
-		{
-			return CreateDbParameter();
-		}
+		//public override DbParameter CreateParameter()
+		//{
+		//	return CreateDbParameter();
+		//}
 		//
 		// Summary:
 		//     Executes the command text against the connection.
@@ -343,9 +344,9 @@ namespace Pqsql
 		public override int ExecuteNonQuery()
 		{
 			PqsqlDataReader r = ExecuteReader(CommandBehavior.Default);
-			r.Read();
 			return r.RecordsAffected;
 		}
+
 		//
 		// Summary:
 		//     Executes the System.Data.Common.DbCommand.CommandText against the System.Data.Common.DbCommand.Connection,
@@ -357,6 +358,7 @@ namespace Pqsql
 		{
 			return ExecuteReader(CommandBehavior.Default);
 		}
+
 		//
 		// Summary:
 		//     Executes the System.Data.Common.DbCommand.CommandText against the System.Data.Common.DbCommand.Connection,
@@ -371,9 +373,46 @@ namespace Pqsql
 		//     An System.Data.Common.DbDataReader object.
 		public new PqsqlDataReader ExecuteReader(CommandBehavior behavior)
 		{
-			string[] statements = ParseStatements();
-			return new PqsqlDataReader(this, behavior, statements);
+			string[] statements = null;
+
+			switch(CommandType)
+			{
+				case CommandType.Text:
+					statements = ParseStatements();
+					break;
+
+				case CommandType.StoredProcedure:
+					StringBuilder sb = new StringBuilder();
+					sb.Append("SELECT ");
+					sb.Append(CommandText);
+					sb.Append(" (");
+
+					// add parameter index $i for each parameter
+					int n = Parameters.Count;
+					for (int i = 1; i <= n; i++)
+ 					{
+						if (i > 1) sb.Append(',');
+						sb.Append('$');
+						sb.Append(i);
+					}
+
+					sb.Append(')');
+
+					statements = new string[1];
+					statements[0] = sb.ToString();
+					break;
+
+				case CommandType.TableDirect:
+					statements = new string[1];
+					statements[0] = "TABLE " + CommandText;
+					break;
+			}
+
+			PqsqlDataReader reader = new PqsqlDataReader(this, behavior, statements);
+			reader.Read(); // always fetch first row
+			return reader;
 		}
+
 		//
 		// Summary:
 		//     Executes the query and returns the first column of the first row in the result
@@ -384,8 +423,28 @@ namespace Pqsql
 		public override object ExecuteScalar()
 		{
 			PqsqlDataReader r = ExecuteReader(CommandBehavior.Default);
-			r.Read();
 			return r.GetValue(0);
+		}
+
+
+		// replace parameter names :ParameterName with parameter index $j
+		protected void ReplaceParameterNames(ref StringBuilder sb)
+		{
+			StringBuilder paramName = new StringBuilder();
+			StringBuilder paramIndex = new StringBuilder();
+
+			paramName.Append(':');
+			paramIndex.Append('$');
+
+			int n = mParams.Count;
+			for (int i = 0; i < n; i++)
+			{
+				paramName.Append(mParams[i].ParameterName);
+				paramIndex.Append(i + 1);
+				sb.Replace(paramName.ToString(), paramIndex.ToString());
+				paramName.Length = 1;
+				paramIndex.Length = 1;
+			}
 		}
 
 		/// <summary>
@@ -397,7 +456,7 @@ namespace Pqsql
 			StringBuilder sb = new StringBuilder();
 			bool quote = false;
 			string[] statements = new string[0];
-			int i = 0;
+			int stmLen = 0; // length of statement
 
 			// parse multiple statements separated by ;
 			foreach (char c in CommandText.Trim())
@@ -418,8 +477,9 @@ namespace Pqsql
 					switch (c) // eat input until ;
 					{
 						case ';':
-							Array.Resize(ref statements, statements.Length + 1);
-							statements[i++] = sb.ToString();
+							Array.Resize(ref statements, stmLen + 1);
+							ReplaceParameterNames(ref sb);
+							statements[stmLen++] = sb.ToString();
 							sb.Clear();
 							continue;
 
@@ -434,12 +494,12 @@ namespace Pqsql
 
 			if (sb.Length > 0) // add last statement not terminated by ';'
 			{
-				Array.Resize(ref statements, statements.Length + 1);
-				statements[i] = sb.ToString();
+				Array.Resize(ref statements, stmLen + 1);
+				ReplaceParameterNames(ref sb);
+				statements[stmLen] = sb.ToString();
+				sb.Clear();
+				sb = null;
 			}
-
-			sb.Clear();
-			sb = null;
 
 			return statements;
 		}
@@ -451,19 +511,5 @@ namespace Pqsql
 		{
 			throw new NotImplementedException("Prepare() is not implemented");
 		}
-
-
-
-		#region Dispose
-
-		public new void Dispose()
-		{
-		}
-
-		protected override void Dispose(bool disposing)
-		{
-		}
-
-		#endregion
 	}
 }
