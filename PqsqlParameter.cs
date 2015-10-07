@@ -98,16 +98,8 @@ namespace Pqsql
 			}
 			set
 			{
-				if (value == null)
-				{
-					mDbType = DbType.Object;
-					mPqsqlDbType = PqsqlDbType.Unknown;
-				}
-				else
-				{
-					mDbType = value;
-					mPqsqlDbType = PqsqlTypeNames.GetDbType(value);
-				}
+				mDbType = value;
+				mPqsqlDbType = PqsqlTypeNames.GetPqsqlDbType(value);
 			}
 		}
 
@@ -123,16 +115,8 @@ namespace Pqsql
 			}
 			set
 			{
-				if (value == null)
-				{
-					mDbType = DbType.Object;
-					mPqsqlDbType = PqsqlDbType.Unknown;
-				}
-				else
-				{
-					mPqsqlDbType = value;
-					mDbType = PqsqlTypeNames.GetDbType(value);
-				}
+				mPqsqlDbType = value;
+				mDbType = PqsqlTypeNames.GetDbType(value);
 			}
 		}
 		//
@@ -183,7 +167,7 @@ namespace Pqsql
 			}
 			set
 			{
-				if (value == null)
+				if (string.IsNullOrEmpty(value))
 				{
 					mName = String.Empty;
 				}
@@ -291,6 +275,7 @@ namespace Pqsql
 		public override void ResetDbType()
 		{
 			mDbType = DbType.Object;
+			mPqsqlDbType = PqsqlDbType.Unknown;
 			mValue = null;
 		}
 	}

@@ -8,7 +8,7 @@ using System.Collections;
 
 namespace Pqsql
 {
-	public class PqsqlParameterCollection : DbParameterCollection
+	public class PqsqlParameterCollection : DbParameterCollection, IDisposable
 	{
 		private readonly List<PqsqlParameter> mParamList = new List<PqsqlParameter>();
 
@@ -28,8 +28,35 @@ namespace Pqsql
 
 		protected void Init()
 		{
-			mPqPB = IntPtr.Zero;
+			mPqPB = PqsqlBinaryFormat.pqpb_create(); // create pqparam_buffer
+			lookup = new Dictionary<string, int>();
 		}
+
+		~PqsqlParameterCollection()
+		{
+			Dispose(false);
+		}
+
+		public void Dispose()
+		{
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
+
+		bool mDisposed = false;
+
+		protected void Dispose(bool disposing)
+		{
+			if (mDisposed)
+			{
+				return;
+			}
+
+			PqsqlBinaryFormat.pqpb_free(mPqPB);
+			mDisposed = true;
+		}
+
+
 
 		#region pqparam_buffer*
 
@@ -37,16 +64,25 @@ namespace Pqsql
 		{
 			get
 			{
-				if (mPqPB == IntPtr.Zero)
+				if (PqsqlBinaryFormat.pqpb_get_num(mPqPB) != mParamList.Count)
 				{
-					// create pqparam_buffer
-					mPqPB = PqsqlBinaryFormat.pqpb_create();
+					PqsqlBinaryFormat.pqpb_reset(mPqPB);
 
 					foreach (PqsqlParameter p in mParamList)
 					{
-						// TODO dispatch oid
+						PqsqlDbType oid = p.PqsqlDbType;
+
+						if (p.IsNullable && p.Value == null)
+						{
+							PqsqlBinaryFormat.pqbf_set_null(mPqPB, (uint) oid);
+						}
+						else
+						{
+							PqsqlTypeNames.SetValue(oid)(mPqPB, p.Value);
+						}
 					}
 				}
+				
 				return mPqPB;
 			}
 		}
@@ -220,16 +256,23 @@ namespace Pqsql
 		public override int Add(object value)
 		{
 			PqsqlParameter p = value as PqsqlParameter;
+			
+			if (p == null)
+				return -1;
+
+			int i;
 			string s = p.ParameterName;
-			if (p != null && !lookup.ContainsKey(s))
+
+			if (!lookup.TryGetValue(s, out i))
 			{
 				mParamList.Add(p);
-				int i = mParamList.Count - 1;
+				i = mParamList.Count - 1;
 				lookup.Add(s, i);
-				return i;
 			}
-			return -1;
+
+			return i;
 		}
+
 		//
 		// Summary:
 		//     Adds an array of items with the specified values to the System.Data.Common.DbParameterCollection.
@@ -241,14 +284,18 @@ namespace Pqsql
 		{
 			Array.ForEach<PqsqlParameter>(values as PqsqlParameter[], val => Add(val));
 		}
+
 		//
 		// Summary:
 		//     Removes all System.Data.Common.DbParameter values from the System.Data.Common.DbParameterCollection.
 		public override void Clear()
 		{
+			if (mPqPB != IntPtr.Zero)
+				PqsqlBinaryFormat.pqpb_reset(mPqPB);
 			mParamList.Clear();
 			lookup.Clear();
 		}
+
 		//
 		// Summary:
 		//     Indicates whether a System.Data.Common.DbParameter with the specified System.Data.Common.DbParameter.Value
