@@ -389,15 +389,7 @@ namespace Pqsql
 		//     The System.Data.Common.DbDataAdapter to be used for the update.
 		protected override void SetRowUpdatingHandler(DbDataAdapter adapter)
 		{
-			PqsqlDataAdapter a = adapter as PqsqlDataAdapter;
-			if (a == null)
-				throw new ArgumentException("adapter needs to be a PqsqlDataAdapter", "adapter");
-
-			// Being called twice for the same adapter means unregister
-			if (adapter == DataAdapter)
-				a.RowUpdating -= RowUpdatingHandler;
-			else
-				a.RowUpdating += RowUpdatingHandler;
+			throw new NotImplementedException("SetRowUpdatingHandler");
 		}
 		//
 		// Summary:

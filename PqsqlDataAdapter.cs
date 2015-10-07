@@ -9,16 +9,24 @@ namespace Pqsql
 	public class PqsqlDataAdapter : DbDataAdapter
 	{
 
-		#region Dispose
-
-		public virtual void Dispose()
+		public PqsqlDataAdapter()
 		{
 		}
 
-		protected override void Dispose(bool disposing)
-		{
+		public PqsqlDataAdapter(PqsqlCommand selectCommand)
+    {
+      SelectCommand = selectCommand;
+    }
+
+		public PqsqlDataAdapter(String selectCommandText, PqsqlConnection selectConnection)
+			: this(new PqsqlCommand(selectCommandText, selectConnection))
+    {
 		}
 
-		#endregion
+		public PqsqlDataAdapter(String selectCommandText, String selectConnectionString)
+			: this(selectCommandText, new PqsqlConnection(selectConnectionString))
+    {
+		}
+
 	}
 }
