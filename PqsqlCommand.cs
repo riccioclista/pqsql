@@ -266,9 +266,13 @@ namespace Pqsql
 		//     Attempts to cancels the execution of a System.Data.Common.DbCommand.
 		public override void Cancel()
 		{
+			if (mConn == null)
+				return;
+
 			ConnectionState s = mConn.State;
 
-			if ((s & (ConnectionState.Broken | ConnectionState.Connecting | ConnectionState.Closed)) > 0)
+			// no cancel possible if connection is closed or connecting / broken
+			if (s == ConnectionState.Closed || (s & (ConnectionState.Broken | ConnectionState.Connecting)) > 0)
 				return;
 
 			IntPtr cancel = PqsqlWrapper.PQgetCancel(mConn.PGConnection);
@@ -430,6 +434,9 @@ namespace Pqsql
 		// replace parameter names :ParameterName with parameter index $j
 		protected void ReplaceParameterNames(ref StringBuilder sb)
 		{
+			if (mParams == null)
+				return;
+
 			StringBuilder paramName = new StringBuilder();
 			StringBuilder paramIndex = new StringBuilder();
 

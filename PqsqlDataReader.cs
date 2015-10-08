@@ -84,33 +84,43 @@ namespace Pqsql
 		}
 	};
 
+
+	/// <summary>
+	/// 
+	/// </summary>
 	public class PqsqlDataReader : DbDataReader
 	{
-		/// <summary>
-		/// the current PGresult* buffer
-		/// </summary>
+		// the current PGresult* buffer
 		IntPtr mResult;
 
 		/// <summary>
-		/// stores db connection and query parameters.
-		/// used to set PqsqlCommand.State to ConnectionState.Executing or ConnectionState.Fetching
+		/// stores query parameters and execution state:
+		/// set PqsqlCommand.State to ConnectionState.Executing / ConnectionState.Fetching / ConnectionState.Closed
 		/// </summary>
 		readonly PqsqlCommand mCmd;
+
+		// fixed connection
+		readonly PqsqlConnection mConn;
+		// once mConn is ConnectionState.Open, we set mPGConn
+		IntPtr mPGConn;
 
 		readonly CommandBehavior mBehaviour;
 
 		// row information of current result set
 		PqsqlColInfo[] mRowInfo;
+		// after we execute a statement, we retrieve column information
+		bool mPopulateRowInfo;
 
 		// row index (-1: nothing read yet, 0: first row, ...)
 		int mRowNum;
+		// max rows in current result buffer mResult
 		int mMaxRows;
 
 		// statement index (-1: nothing executed yet)
 		int mStmtNum;
 
 		readonly int mMaxStmt;
-		string[] mStatements;
+		readonly string[] mStatements;
 
 
 		#region DbDataReader
@@ -122,12 +132,20 @@ namespace Pqsql
 		public PqsqlDataReader(PqsqlCommand command, CommandBehavior behavior, string[] statements)
 		{
 			mCmd = command;
+			mConn = command.Connection;
+			mPGConn = IntPtr.Zero;
+
 			mBehaviour = behavior;
 
-			mMaxStmt = statements.Length;
+			mMaxStmt = 0;
 			mStmtNum = -1;
-			mStatements = new string[mMaxStmt];
-			Array.Copy(statements, mStatements, mMaxStmt);
+
+			if (statements != null)
+			{
+				mMaxStmt = statements.Length;
+				mStatements = new string[mMaxStmt];
+				Array.Copy(statements, mStatements, mMaxStmt);
+			}
 
 			Init(ConnectionState.Closed); // set state to 0, neutral value for PqsqlConnection.State
 		}
@@ -182,9 +200,9 @@ namespace Pqsql
 			get
 			{
 				if (mResult == IntPtr.Zero)
-					throw new NotSupportedException("No result received yet");
+					return -1;
 
-				return mRowInfo.Length;
+				return mRowInfo == null ? -1 : mRowInfo.Length;
 			}
 		}
 		//
@@ -216,7 +234,10 @@ namespace Pqsql
 		{
 			get
 			{
-				ConnectionState s = mCmd.Connection.State;
+				if (mConn == null)
+					return true;
+
+				ConnectionState s = mConn.State;
 
 				if (s == ConnectionState.Closed || (s & ConnectionState.Broken) > 0)
 					return true;
@@ -237,7 +258,7 @@ namespace Pqsql
 			get
 			{
 				if (mResult == IntPtr.Zero)
-					throw new InvalidOperationException("PqsqlDataReader unpopulated");
+					return 0;
 
 				ExecStatus s = (ExecStatus) PqsqlWrapper.PQresultStatus(mResult);
 
@@ -317,15 +338,21 @@ namespace Pqsql
 		//     Closes the System.Data.Common.DbDataReader object.
 		public override void Close()
 		{
-			// cancel current command
-			mCmd.Cancel();
+			if (mConn == null || mConn.State == ConnectionState.Closed)
+				return;
 
-			// now consume all remaining input, see http://www.postgresql.org/docs/9.4/static/libpq-async.html
-			Consume();
+			// if we are not in Executing or Fetching state, we don't need to Cancel
+			if (mCmd != null && mCmd.State != ConnectionState.Closed)
+			{
+				mCmd.Cancel(); // cancel currently running command
+
+				// consume remaining input, see http://www.postgresql.org/docs/9.4/static/libpq-async.html
+				Consume();
+			}
 
 			if ((mBehaviour & CommandBehavior.CloseConnection) > 0)
 			{
-				mCmd.Connection.Close();
+				mConn.Close();
 			}
 
 			// reset state
@@ -340,7 +367,10 @@ namespace Pqsql
 				PqsqlWrapper.PQclear(mResult);
 			}
 
-			while ((mResult = PqsqlWrapper.PQgetResult(mCmd.Connection.PGConnection)) != IntPtr.Zero)
+			if (mPGConn == IntPtr.Zero)
+				return;
+
+			while ((mResult = PqsqlWrapper.PQgetResult(mPGConn)) != IntPtr.Zero)
 			{
 				// always free mResult
 				PqsqlWrapper.PQclear(mResult);
@@ -381,12 +411,6 @@ namespace Pqsql
 
 			// always release mConnection (must not throw exception)
 			Close();
-
-			if (disposing)
-			{
-				mRowInfo = null;
-				mStatements = null;
-			}
 
 			base.Dispose(disposing);
 			mDisposed = true;
@@ -1115,18 +1139,31 @@ namespace Pqsql
 		//     true if there are more result sets; otherwise false.
 		public override bool NextResult()
 		{
-			if (mStmtNum >= mMaxStmt) // finished with all query statements
-			{
+			// finished with all query statements or no queries
+			if (mStmtNum >= mMaxStmt || mMaxStmt == 0)
 				return false;
+
+			// set up mPGConn in the very first query execution
+			if (mPGConn == IntPtr.Zero)
+			{
+				if ((mConn.State & ConnectionState.Open) == 0)
+				{
+					mConn.Open(); // open connection if nobody did so far
+				}
+				mPGConn = mConn.PGConnection;
 			}
 
 			mStmtNum++; // set next statement
+			mPopulateRowInfo = true; // next Read() will get fresh row information
 
 			if (Execute() == false)
 			{
-				string err = PqsqlWrapper.PQerrorMessage(mCmd.Connection.PGConnection);
+				string err = PqsqlWrapper.PQerrorMessage(mPGConn);
 				throw new PqsqlException(err);
 			}
+
+			// start with a new result set
+			Init(ConnectionState.Executing);
 
 			if (!Read())
 			{
@@ -1137,6 +1174,8 @@ namespace Pqsql
 
 			return true;
 		}
+
+
 		//
 		// Summary:
 		//     Advances the reader to the next record in a result set.
@@ -1145,63 +1184,88 @@ namespace Pqsql
 		//     true if there are more rows; otherwise false.
 		public override bool Read()
 		{
-			if (mResult == IntPtr.Zero && mStmtNum == -1)
+			if (mMaxStmt == 0) // no queries
+				return false;
+
+			if (mResult == IntPtr.Zero && mStmtNum == -1) // issue the first query
 			{
-				// issue the first query
 				return NextResult();
 			}
 
-			if (mResult != IntPtr.Zero && mRowNum >= mMaxRows)
+			if (!mPopulateRowInfo) // increase row counter to the next row in mResult
 			{
-				// mResult from a former PQgetResult() call is exhausted now,
-				// free mResult and continue getting the next mResult
-				PqsqlWrapper.PQclear(mResult);
+				mRowNum++;
 			}
 
-			if (mRowNum >= mMaxRows)
+			if (mRowNum >= mMaxRows) // mResult is exhausted or never called before
 			{
-				// fetch the next tuple(s)
-				mResult = PqsqlWrapper.PQgetResult(mCmd.Connection.PGConnection);
-				mCmd.State = ConnectionState.Fetching;
-			}
-
-			if (mResult != IntPtr.Zero)
-			{
-				mRowNum++; // increase row counter
-
-				if (mRowNum == 0) // first row => get column information
+				if (mResult != IntPtr.Zero)
 				{
+					// free mResult from a former PQgetResult() call and continue fetching a new mResult
+					PqsqlWrapper.PQclear(mResult);
+				}
+
+				// fetch the next tuple(s)
+				mResult = PqsqlWrapper.PQgetResult(mPGConn);
+
+				// rewind mResult indexes
+				mRowNum = mRowNum > -1 ? 0 : -1;
+				mMaxRows = -1;
+			}
+
+			if (mResult != IntPtr.Zero) // result buffer not exhausted
+			{
+				if (mMaxRows == -1) // get number of tuples in a fresh result buffer
+				{
+					mMaxRows = PqsqlWrapper.PQntuples(mResult);
+				}
+
+				if (mPopulateRowInfo) // first row of current statement => just get column information
+				{
+					mPopulateRowInfo = false; // done populating row information
+					mCmd.State = ConnectionState.Fetching; // start with fetching information
+
 					int n = PqsqlWrapper.PQnfields(mResult); // get number of columns
 					mRowInfo = new PqsqlColInfo[n];
 
 					for (int o = 0; o < n; o++)
 					{
+						mRowInfo[o] = new PqsqlColInfo();
+
 						PqsqlDbType oid = (PqsqlDbType) PqsqlWrapper.PQftype(mResult, o); // column type
 						mRowInfo[o].Oid = oid;
-						mRowInfo[o].Name = PqsqlWrapper.PQfname(mResult, o);     // column name
+
+						unsafe
+						{
+							sbyte *name = PqsqlWrapper.PQfname(mResult, o); // column name
+							mRowInfo[o].Name = new string(name);
+						}
+						
 						mRowInfo[o].Size = PqsqlWrapper.PQfsize(mResult, o);     // column datatype size
 						mRowInfo[o].Modifier = PqsqlWrapper.PQfmod(mResult, o);  // column modifier (e.g., varchar(n))
 						mRowInfo[o].Format = PqsqlWrapper.PQfformat(mResult, o); // data format (1: binary, 0: text)
-						mRowInfo[o].DataTypeName = PqsqlTypeNames.GetName(oid);
-						mRowInfo[o].Type = PqsqlTypeNames.GetType(oid);
+
+						mRowInfo[o].DataTypeName = PqsqlTypeNames.GetName(oid);  // cache PG datatype name
+						mRowInfo[o].Type = PqsqlTypeNames.GetType(oid);          // cache corresponding Type
 					}
 
 					if ((mBehaviour & CommandBehavior.SchemaOnly) > 0)
 					{
 						// we keep mRowInfo here since CommandBehavior.SchemaOnly is on
 						Init(ConnectionState.Closed);
-						return true; // we retrieved the schema
 					}
 
-					mMaxRows = PqsqlWrapper.PQntuples(mResult); // get number of tuples
+					// we retrieved the schema, next call to Read() will advance mRowNum and we can call GetXXX()
+					return mMaxRows > 0;
 				}
+
+				return mRowNum < mMaxRows;
 			}
-			else
+			else // result buffer exhausted, this was the last result of the current query
 			{
 				Init(ConnectionState.Closed);
+				return false;
 			}
-
-			return mRowNum < mMaxRows;
 		}
 
 		/// <summary>
@@ -1218,27 +1282,34 @@ namespace Pqsql
 
 			unsafe
 			{
-				IntPtr pc = mCmd.Connection.PGConnection;
-				IntPtr pb = mCmd.Parameters.PGParameters;
+				int num_param = 0;
+				IntPtr pb    = IntPtr.Zero; // pqparam_buffer*
+				IntPtr ptyps = IntPtr.Zero; // oid*
+				IntPtr pvals = IntPtr.Zero; // char**
+				IntPtr plens = IntPtr.Zero; // int*
+				IntPtr pfrms = IntPtr.Zero; // int*
 
-				int num_param = PqsqlBinaryFormat.pqpb_get_num(pb);
-				IntPtr ptyps = PqsqlBinaryFormat.pqpb_get_types(pb);
-				IntPtr pvals = PqsqlBinaryFormat.pqpb_get_vals(pb);
-				IntPtr plens = PqsqlBinaryFormat.pqpb_get_lens(pb);
-				IntPtr pfrms = PqsqlBinaryFormat.pqpb_get_frms(pb);
+				PqsqlParameterCollection pc = mCmd.Parameters;
+
+				if (pc != null)
+				{
+					pb = pc.PGParameters;
+					num_param = PqsqlBinaryFormat.pqpb_get_num(pb);
+					ptyps = PqsqlBinaryFormat.pqpb_get_types(pb);
+					pvals = PqsqlBinaryFormat.pqpb_get_vals(pb);
+					plens = PqsqlBinaryFormat.pqpb_get_lens(pb);
+					pfrms = PqsqlBinaryFormat.pqpb_get_frms(pb);
+				}
 
 				fixed (byte* pq = utf8query)
 				{
-					if (PqsqlWrapper.PQsendQueryParams(pc, pq, num_param, ptyps, pvals, plens, pfrms, 1) == 0)
+					if (PqsqlWrapper.PQsendQueryParams(mPGConn, pq, num_param, ptyps, pvals, plens, pfrms, 1) == 0)
 						return false;
 				}
 				
-				if (PqsqlWrapper.PQsetSingleRowMode(pc) == 0)
+				if (PqsqlWrapper.PQsetSingleRowMode(mPGConn) == 0)
 					return false;
 			}
-
-			// start with a new result set
-			Init(ConnectionState.Executing);
 
 			return true;
 		}

@@ -126,9 +126,9 @@ namespace Pqsql
 		{
 			get
 			{
-				object timeout = 0;
+				object timeout = "0";
 				mConnectionStringBuilder.TryGetValue(PqsqlConnectionStringBuilder.connect_timeout, out timeout);
-				return (int)timeout;
+				return Convert.ToInt32((string)timeout);
 			}
 		}
 
@@ -181,7 +181,7 @@ namespace Pqsql
 		{
 			get
 			{
-				if (mServerVersion == -1)
+				if (mServerVersion == -1 && mConnection != IntPtr.Zero)
 				{
 					mServerVersion = PqsqlWrapper.PQserverVersion(mConnection);
 				}
@@ -311,9 +311,8 @@ namespace Pqsql
 			if (mConnection == IntPtr.Zero)
 				return;
 
-			// close connection and release memory
-			PqsqlWrapper.PQfinish(mConnection);
-			Init();
+			PqsqlWrapper.PQfinish(mConnection); // close connection and release memory
+			Init(); // reset state, next Open() call might end up at a different server / db
 		}
 
 		//

@@ -292,7 +292,7 @@ namespace Pqsql
 		// int PQfnumber(const PGresult *res, const char *column_name);
 
 		[DllImport("libpq.dll")]
-		public static extern string PQfname(IntPtr res, int column_number);
+		public static extern unsafe sbyte* PQfname(IntPtr res, int column_number);
 		// char *PQfname(const PGresult *res, int column_number);
 
 		#endregion
