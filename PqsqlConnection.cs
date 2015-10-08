@@ -276,11 +276,9 @@ namespace Pqsql
 
 				if (s != ExecStatus.PGRES_COMMAND_OK)
 				{
-					string err = PqsqlWrapper.PQerrorMessage(mConnection);
+					string err = GetErrorMessage();
 					throw new PqsqlException("Transaction start failed: " + err);
 				}
-
-
 			}
 
 			return txn;
@@ -367,7 +365,7 @@ namespace Pqsql
 
 				if (mStatus == ConnectionStatus.CONNECTION_BAD)
 				{
-					string err = PqsqlWrapper.PQerrorMessage(mConnection);
+					string err = GetErrorMessage();
 					Close(); // force release of mConnection memory
 					throw new PqsqlException(err);
 				}
@@ -376,6 +374,28 @@ namespace Pqsql
 			{
 				throw new PqsqlException("libpq: unable to allocate struct PGconn");
 			}
+		}
+
+
+		// return current error message (TODO: currently no UTF8 conversion performed)
+		internal string GetErrorMessage()
+		{
+			string msg = string.Empty;
+
+			if (mConnection != IntPtr.Zero)
+			{
+				unsafe
+				{
+					sbyte* err = PqsqlWrapper.PQerrorMessage(mConnection);
+
+					if (err != null)
+					{
+						msg = new string(err);
+					}
+				}
+			}
+
+			return msg;
 		}
 
 		#endregion

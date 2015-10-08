@@ -177,7 +177,7 @@ namespace Pqsql
 		// ConnStatusType PQstatus(conn)
 
 		[DllImport("libpq.dll")]
-		public static extern string PQerrorMessage(IntPtr conn);
+		public static extern unsafe sbyte* PQerrorMessage(IntPtr conn);
 		// char *PQerrorMessage(const PGconn *conn);
 
 		#endregion

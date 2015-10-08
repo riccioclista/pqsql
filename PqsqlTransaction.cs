@@ -164,7 +164,7 @@ namespace Pqsql
 		{
 			if (SaveTransaction(true) != ExecStatus.PGRES_COMMAND_OK)
 			{
-				string err = PqsqlWrapper.PQerrorMessage(mConn.PGConnection);
+				string err = mConn.GetErrorMessage();
 				throw new PqsqlException("Transaction commit failed: " + err);
 			}
 		}
@@ -176,7 +176,7 @@ namespace Pqsql
 		{
 			if (SaveTransaction(false) != ExecStatus.PGRES_COMMAND_OK)
 			{
-				string err = PqsqlWrapper.PQerrorMessage(mConn.PGConnection);
+				string err = mConn.GetErrorMessage();
 				throw new PqsqlException("Transaction rollback failed: " + err);
 			}
 		}
