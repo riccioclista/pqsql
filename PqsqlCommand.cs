@@ -13,6 +13,7 @@ namespace Pqsql
 		protected string mCmdText;
 
 		protected int mCmdTimeout;
+		protected bool mCmdTimeoutSet;
 
 		protected CommandType mCmdType;
 
@@ -47,7 +48,8 @@ namespace Pqsql
 		protected void Init(string q)
 		{
 			mCmdText = q;
-			mCmdTimeout = 120;
+			mCmdTimeout = -1;
+			mCmdTimeoutSet = false;
 			mCmdType = CommandType.Text;
 		}
 
@@ -79,7 +81,11 @@ namespace Pqsql
 		public override int CommandTimeout
 		{
 			get	{	return mCmdTimeout; }
-			set { mCmdTimeout = value; }
+			set
+			{
+				mCmdTimeout = value * 1000;
+				mCmdTimeoutSet = false;
+			}
 		}
 		//
 		// Summary:
@@ -280,27 +286,28 @@ namespace Pqsql
 			if (cancel != IntPtr.Zero)
 			{
 				sbyte[] buf = new sbyte[256];
-				//string err = string.Empty;
 				int cret;
-				
+				string err = string.Empty;
+
 				unsafe
 				{
 					fixed (sbyte* b = buf)
 					{
 						cret = PqsqlWrapper.PQcancel(cancel, b, 256);
-						//if (cret == 0)
-						//{
-						//	err = new string(b, 0, 256);
-						//}
+						PqsqlWrapper.PQfreeCancel(cancel);
+
+						if (cret == 0)
+						{
+							err = new string(b, 0, 255);
+						}
+						else
+						{
+							return;
+						}
 					}
 				}
-
-				PqsqlWrapper.PQfreeCancel(cancel);
-
-				//if (cret == 0)
-				//{
-				//	throw new PqsqlException("Could not cancel command: " + err);
-				//}
+				
+				throw new PqsqlException("Could not cancel command: " + err);
 			}
 		}
 
@@ -412,9 +419,61 @@ namespace Pqsql
 					break;
 			}
 
+			CheckOpen();
+
+			SetStatementTimeout();
+
 			PqsqlDataReader reader = new PqsqlDataReader(this, behavior, statements);
-			reader.Read(); // always fetch first row
+			reader.Read(); // always fetch first row to populate row information
 			return reader;
+		}
+
+
+		// open connection if it is closed or broken
+		protected void CheckOpen()
+		{
+			ConnectionState s = mConn.State;
+
+			if (s == ConnectionState.Closed || (s & ConnectionState.Broken) > 0)
+			{
+				mConn.Open();
+			}
+		}
+
+
+		// sets statement_timeout of the current session
+		protected void SetStatementTimeout()
+		{
+			if (mCmdTimeout > 0 && mCmdTimeoutSet == false)
+			{
+				byte[] stmtTimeout = Encoding.UTF8.GetBytes("set statement_timeout to " + CommandTimeout.ToString());
+				IntPtr res;
+				IntPtr pc = mConn.PGConnection;
+
+				unsafe
+				{
+					fixed (byte* st = stmtTimeout)
+					{
+						res = PqsqlWrapper.PQexec(pc, st);
+					}
+				}
+
+				if (res != IntPtr.Zero)
+				{
+					ExecStatus s = (ExecStatus) PqsqlWrapper.PQresultStatus(res);
+
+					PqsqlWrapper.PQclear(res);
+
+					if (s == ExecStatus.PGRES_COMMAND_OK)
+					{
+						mCmdTimeoutSet = true;
+						return;
+					}
+				}
+
+				string err = mConn.GetErrorMessage();
+				throw new PqsqlException(err);
+			}
 		}
 
 		//
