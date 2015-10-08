@@ -133,7 +133,7 @@ namespace Pqsql
 		{
 			mCmd = command;
 			mConn = command.Connection;
-			mPGConn = IntPtr.Zero;
+			mPGConn = mConn.PGConnection;
 
 			mBehaviour = behavior;
 
@@ -345,8 +345,6 @@ namespace Pqsql
 			if (mCmd != null && mCmd.State != ConnectionState.Closed)
 			{
 				mCmd.Cancel(); // cancel currently running command
-
-				// consume remaining input, see http://www.postgresql.org/docs/9.4/static/libpq-async.html
 				Consume();
 			}
 
@@ -358,7 +356,8 @@ namespace Pqsql
 			// reset state
 			Init(ConnectionState.Closed);
 		}
-		
+
+		// consume remaining input, see http://www.postgresql.org/docs/9.4/static/libpq-async.html
 		protected void Consume()
 		{
 			if (mResult != IntPtr.Zero)
@@ -1139,26 +1138,16 @@ namespace Pqsql
 		//     true if there are more result sets; otherwise false.
 		public override bool NextResult()
 		{
-			// finished with all query statements or no queries
-			if (mStmtNum >= mMaxStmt || mMaxStmt == 0)
+			// finished with all query statements
+			if (mStmtNum >= mMaxStmt - 1)
 				return false;
-
-			// set up mPGConn in the very first query execution
-			if (mPGConn == IntPtr.Zero)
-			{
-				if ((mConn.State & ConnectionState.Open) == 0)
-				{
-					mConn.Open(); // open connection if nobody did so far
-				}
-				mPGConn = mConn.PGConnection;
-			}
 
 			mStmtNum++; // set next statement
 			mPopulateRowInfo = true; // next Read() will get fresh row information
 
 			if (Execute() == false)
 			{
-				string err = PqsqlWrapper.PQerrorMessage(mPGConn);
+				string err = mConn.GetErrorMessage();
 				throw new PqsqlException(err);
 			}
 
@@ -1215,6 +1204,15 @@ namespace Pqsql
 
 			if (mResult != IntPtr.Zero) // result buffer not exhausted
 			{
+				ExecStatus s = (ExecStatus) PqsqlWrapper.PQresultStatus(mResult);
+
+				if (s != ExecStatus.PGRES_SINGLE_TUPLE && s != ExecStatus.PGRES_TUPLES_OK)
+				{
+					PqsqlWrapper.PQclear(mResult);
+					string err = mConn.GetErrorMessage();
+					throw new PqsqlException(err);
+				}
+
 				if (mMaxRows == -1) // get number of tuples in a fresh result buffer
 				{
 					mMaxRows = PqsqlWrapper.PQntuples(mResult);
@@ -1259,13 +1257,17 @@ namespace Pqsql
 					return mMaxRows > 0;
 				}
 
-				return mRowNum < mMaxRows;
+				if (mRowNum < mMaxRows)
+					return true;
+
+				// fetch the last result to clean up internal libpq state
+				PqsqlWrapper.PQclear(mResult);
+				mResult = PqsqlWrapper.PQgetResult(mPGConn);
 			}
-			else // result buffer exhausted, this was the last result of the current query
-			{
-				Init(ConnectionState.Closed);
-				return false;
-			}
+
+			// result buffer exhausted, this was the last result of the current query
+			Init(ConnectionState.Closed);
+			return false;
 		}
 
 		/// <summary>
