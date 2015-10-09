@@ -147,10 +147,10 @@ namespace Pqsql
 				Array.Copy(statements, mStatements, mMaxStmt);
 			}
 
-			Init(ConnectionState.Closed); // set state to 0, neutral value for PqsqlConnection.State
+			Reset();
 		}
 
-		protected void Init(ConnectionState state)
+		protected void Reset()
 		{
 			// no data available for the current query, set mMaxRows == mRownum.
 			// next call to NextResult() will issue the next query and start to Read() again
@@ -163,7 +163,6 @@ namespace Pqsql
 
 			mMaxRows = -1;
 			mRowNum = -1;
-			mCmd.State = state;
 		}
 
 		~PqsqlDataReader()
@@ -269,12 +268,16 @@ namespace Pqsql
 						return -1;
 
 					case ExecStatus.PGRES_COMMAND_OK: // UPDATE / DELETE / INSERT
-						string tup = PqsqlWrapper.PQcmdTuples(mResult);
-						if (!string.IsNullOrEmpty(tup))
+						unsafe
 						{
-							return Convert.ToInt32(tup);
+							sbyte *tuples = PqsqlWrapper.PQcmdTuples(mResult);
+
+							if (tuples == null)
+								break;
+						
+							string t = new string(tuples);
+							return Convert.ToInt32(t);
 						}
-						break;
 				}
 				
 				return 0;
@@ -334,15 +337,21 @@ namespace Pqsql
 			}
 		}
 
+		bool mClosing = false;
+
 		// Summary:
 		//     Closes the System.Data.Common.DbDataReader object.
 		public override void Close()
 		{
+			if (mClosing)
+				return;
+
+			mClosing = true;
+
 			if (mConn == null || mConn.State == ConnectionState.Closed)
 				return;
 
-			// if we are not in Executing or Fetching state, we don't need to Cancel
-			if (mCmd != null && mCmd.State != ConnectionState.Closed)
+			if (mCmd != null)
 			{
 				mCmd.Cancel(); // cancel currently running command
 				Consume();
@@ -354,7 +363,7 @@ namespace Pqsql
 			}
 
 			// reset state
-			Init(ConnectionState.Closed);
+			Reset();
 		}
 
 		// consume remaining input, see http://www.postgresql.org/docs/9.4/static/libpq-async.html
@@ -369,6 +378,7 @@ namespace Pqsql
 			if (mPGConn == IntPtr.Zero)
 				return;
 
+			// consume all remaining results until we reach the NULL result
 			while ((mResult = PqsqlWrapper.PQgetResult(mPGConn)) != IntPtr.Zero)
 			{
 				// always free mResult
@@ -430,14 +440,11 @@ namespace Pqsql
 
 		protected void CheckOrdinalType(int ordinal, PqsqlDbType oid)
 		{
-			if (mResult == IntPtr.Zero)
-				throw new IndexOutOfRangeException("No tuple available");
+			CheckOrdinal(ordinal);
 
-			if (ordinal < 0 || ordinal >= FieldCount)
-				throw new IndexOutOfRangeException("Column " + ordinal.ToString() + " out of range");
-
-			if (oid != mRowInfo[ordinal].Oid)
-				throw new InvalidCastException("Wrong datatype", (int)oid);
+			PqsqlDbType coloid = mRowInfo[ordinal].Oid;
+			if (oid != coloid)
+				throw new InvalidCastException("Trying to access datatype " + coloid.ToString() + " as datatype " + oid.ToString());
 		}
 
 		#endregion
@@ -966,6 +973,7 @@ namespace Pqsql
 
 			return col;
 		}
+
 		//
 		// Summary:
 		//     Returns the provider-specific field type of the specified column.
@@ -1022,6 +1030,7 @@ namespace Pqsql
 
 			throw new NotImplementedException("GetSchemaTable not implemented");
 		}
+
 		//
 		// Summary:
 		//     Gets the value of the specified column as an instance of System.String.
@@ -1067,6 +1076,7 @@ namespace Pqsql
 			PqsqlBinaryFormat.pqbf_free_unicode_text(utp);
 			return uni;
 		}
+
 		//
 		// Summary:
 		//     Gets the value of the specified column as an instance of System.Object.
@@ -1091,6 +1101,7 @@ namespace Pqsql
 
 			return PqsqlTypeNames.GetValue(mRowInfo[ordinal].Oid)(mResult, mRowNum, ordinal);
 		}
+
 		//
 		// Summary:
 		//     Populates an array of objects with the column values of the current row.
@@ -1113,6 +1124,7 @@ namespace Pqsql
 			}
 			return count;
 		}
+
 		//
 		// Summary:
 		//     Gets a value that indicates whether the column contains nonexistent or missing
@@ -1129,6 +1141,7 @@ namespace Pqsql
 			CheckOrdinal(ordinal);
 			return PqsqlWrapper.PQgetisnull(mResult, mRowNum, ordinal) == 1;
 		}
+
 		//
 		// Summary:
 		//     Advances the reader to the next result when reading the results of a batch
@@ -1152,7 +1165,7 @@ namespace Pqsql
 			}
 
 			// start with a new result set
-			Init(ConnectionState.Executing);
+			Reset();
 
 			if (!Read())
 			{
@@ -1173,13 +1186,8 @@ namespace Pqsql
 		//     true if there are more rows; otherwise false.
 		public override bool Read()
 		{
-			if (mMaxStmt == 0) // no queries
+			if (mMaxStmt == 0 || mStmtNum == -1) // no queries available or nothing executed yet
 				return false;
-
-			if (mResult == IntPtr.Zero && mStmtNum == -1) // issue the first query
-			{
-				return NextResult();
-			}
 
 			if (!mPopulateRowInfo) // increase row counter to the next row in mResult
 			{
@@ -1221,7 +1229,6 @@ namespace Pqsql
 				if (mPopulateRowInfo) // first row of current statement => just get column information
 				{
 					mPopulateRowInfo = false; // done populating row information
-					mCmd.State = ConnectionState.Fetching; // start with fetching information
 
 					int n = PqsqlWrapper.PQnfields(mResult); // get number of columns
 					mRowInfo = new PqsqlColInfo[n];
@@ -1236,7 +1243,7 @@ namespace Pqsql
 						unsafe
 						{
 							sbyte *name = PqsqlWrapper.PQfname(mResult, o); // column name
-							mRowInfo[o].Name = new string(name);
+							mRowInfo[o].Name = new string(name); // TODO UTF-8 encoding!
 						}
 						
 						mRowInfo[o].Size = PqsqlWrapper.PQfsize(mResult, o);     // column datatype size
@@ -1250,7 +1257,7 @@ namespace Pqsql
 					if ((mBehaviour & CommandBehavior.SchemaOnly) > 0)
 					{
 						// we keep mRowInfo here since CommandBehavior.SchemaOnly is on
-						Init(ConnectionState.Closed);
+						Reset();
 					}
 
 					// we retrieved the schema, next call to Read() will advance mRowNum and we can call GetXXX()
@@ -1266,7 +1273,7 @@ namespace Pqsql
 			}
 
 			// result buffer exhausted, this was the last result of the current query
-			Init(ConnectionState.Closed);
+			Reset();
 			return false;
 		}
 
