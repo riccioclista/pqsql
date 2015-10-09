@@ -10,6 +10,10 @@ namespace Pqsql
 {
 	public class PqsqlCommand : DbCommand
 	{
+		const string mStatementTimeoutString = "set statement_timeout=";
+		const string mStoredProcString = "select ";
+		const string mTableString = "table ";
+
 		protected string mCmdText;
 
 		protected int mCmdTimeout;
@@ -19,7 +23,7 @@ namespace Pqsql
 
 		protected PqsqlConnection mConn;
 
-		protected PqsqlParameterCollection mParams;
+		protected readonly PqsqlParameterCollection mParams;
 
 		protected PqsqlTransaction mTransaction;
 
@@ -29,12 +33,12 @@ namespace Pqsql
 		// Summary:
 		//     Constructs an instance of the System.Data.Common.DbCommand object.
 		public PqsqlCommand()
-			: this("", null)
+			: this(string.Empty, null)
 		{
 		}
 
 		public PqsqlCommand(PqsqlConnection conn)
-			: this("", conn)
+			: this(string.Empty, conn)
 		{
 		}
 
@@ -42,6 +46,7 @@ namespace Pqsql
 			: base()
 		{
 			Init(query);
+			mParams = new PqsqlParameterCollection();
 			mConn = conn;
 		}
 
@@ -120,19 +125,9 @@ namespace Pqsql
 				else if (mConn != value)
 				{
 					mConn = value;
-					value.Command = this;
 				}
 			}
 		}
-
-		// used by PqsqlConnection to get ConnectionState.Executing, ConnectionState.Fetching and
-		// PqsqlDataReader sets ConnectionState.Executing, ConnectionState.Fetching
-		public ConnectionState State
-		{
-			get;
-			set;
-		}
-
 
 		//
 		// Summary:
@@ -277,7 +272,7 @@ namespace Pqsql
 
 			ConnectionState s = mConn.State;
 
-			// no cancel possible if connection is closed or connecting / broken
+			// no cancel possible if connection is closed, connecting / broken,
 			if (s == ConnectionState.Closed || (s & (ConnectionState.Broken | ConnectionState.Connecting)) > 0)
 				return;
 
@@ -296,14 +291,10 @@ namespace Pqsql
 						cret = PqsqlWrapper.PQcancel(cancel, b, 256);
 						PqsqlWrapper.PQfreeCancel(cancel);
 
-						if (cret == 0)
-						{
-							err = new string(b, 0, 255);
-						}
-						else
-						{
+						if (cret == 1)
 							return;
-						}
+
+						err = new string(b, 0, 255);
 					}
 				}
 				
@@ -318,6 +309,17 @@ namespace Pqsql
 		// Returns:
 		//     A System.Data.Common.DbParameter object.
 		protected override DbParameter CreateDbParameter()
+		{
+			return CreateParameter();
+		}
+
+		//
+		// Summary:
+		//     Creates a new instance of a System.Data.Common.DbParameter object.
+		//
+		// Returns:
+		//     A System.Data.Common.DbParameter object.
+		public new PqsqlParameter CreateParameter()
 		{
 			return new PqsqlParameter();
 		}
@@ -394,9 +396,9 @@ namespace Pqsql
 
 				case CommandType.StoredProcedure:
 					StringBuilder sb = new StringBuilder();
-					sb.Append("SELECT ");
+					sb.Append(mStoredProcString);
 					sb.Append(CommandText);
-					sb.Append(" (");
+					sb.Append('(');
 
 					// add parameter index $i for each parameter
 					int n = Parameters.Count;
@@ -415,7 +417,7 @@ namespace Pqsql
 
 				case CommandType.TableDirect:
 					statements = new string[1];
-					statements[0] = "TABLE " + CommandText;
+					statements[0] = mTableString + CommandText;
 					break;
 			}
 
@@ -424,7 +426,7 @@ namespace Pqsql
 			SetStatementTimeout();
 
 			PqsqlDataReader reader = new PqsqlDataReader(this, behavior, statements);
-			reader.Read(); // always fetch first row to populate row information
+			reader.NextResult(); // always execute first command
 			return reader;
 		}
 
@@ -446,7 +448,7 @@ namespace Pqsql
 		{
 			if (mCmdTimeout > 0 && mCmdTimeoutSet == false)
 			{
-				byte[] stmtTimeout = Encoding.UTF8.GetBytes("set statement_timeout to " + CommandTimeout.ToString());
+				byte[] stmtTimeout = Encoding.UTF8.GetBytes(mStatementTimeoutString + CommandTimeout.ToString());
 				IntPtr res;
 				IntPtr pc = mConn.PGConnection;
 
