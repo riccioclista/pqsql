@@ -30,6 +30,7 @@ namespace Pqsql
 			SourceColumn = String.Empty;
 			Direction = ParameterDirection.Input;
 			SourceVersion = DataRowVersion.Current;
+			ResetDbType();
 		}
 
 		public PqsqlParameter(string parameterName, DbType parameterType)
@@ -163,13 +164,13 @@ namespace Pqsql
 		{
 			get
 			{
-				return mName;
+				return string.IsNullOrEmpty(mName) ? string.Empty : mName;
 			}
 			set
 			{
 				if (string.IsNullOrEmpty(value))
 				{
-					mName = String.Empty;
+					mName = string.Empty;
 				}
 				else
 				{
