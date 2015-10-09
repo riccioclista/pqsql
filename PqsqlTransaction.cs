@@ -10,9 +10,16 @@ namespace Pqsql
 {
 	public class PqsqlTransaction : DbTransaction
 	{
-		string mTransactionString;
 		IsolationLevel mIsolationLevel;
 		PqsqlConnection mConn;
+
+		private static readonly byte[] mBeginReadCommitted = Encoding.UTF8.GetBytes("BEGIN ISOLATION LEVEL READ COMMITTED");
+		private static readonly byte[] mBeginRepeatableRead = Encoding.UTF8.GetBytes("BEGIN ISOLATION LEVEL REPEATABLE READ");
+		private static readonly byte[] mBeginSerializable = Encoding.UTF8.GetBytes("BEGIN ISOLATION LEVEL SERIALIZABLE");
+		private static readonly byte[] mBeginReadUncommitted = Encoding.UTF8.GetBytes("BEGIN ISOLATION LEVEL READ UNCOMMITTED");
+
+		private static readonly byte[] mCommit = Encoding.UTF8.GetBytes("COMMIT");
+		private static readonly byte[] mRollback = Encoding.UTF8.GetBytes("ROLLBACK");
 
 		// Summary:
 		//     Initializes a new System.Data.Common.DbTransaction object.
@@ -32,23 +39,22 @@ namespace Pqsql
 				case IsolationLevel.ReadCommitted:
 				case IsolationLevel.Unspecified:
 					isolationLevel = IsolationLevel.ReadCommitted;
-					mTransactionString = "BEGIN ISOLATION LEVEL READ COMMITTED";
+					TransactionStart = mBeginReadCommitted;
 					break;
 				case IsolationLevel.RepeatableRead:
-					mTransactionString = "BEGIN ISOLATION LEVEL REPEATABLE READ";
+					TransactionStart = mBeginRepeatableRead;
 					break;
 				case IsolationLevel.Serializable:
 				case IsolationLevel.Snapshot:
-					mTransactionString = "BEGIN ISOLATION LEVEL SERIALIZABLE";
+					TransactionStart = mBeginSerializable;
 					break;
 				case IsolationLevel.ReadUncommitted:
-					mTransactionString = "BEGIN ISOLATION LEVEL READ UNCOMMITTED";
+					TransactionStart = mBeginReadUncommitted;
 					break;
 			}
 
 			Connection = conn;
 			mIsolationLevel = isolationLevel;
-			InTransaction = false;
     }
 
 		// Summary:
@@ -72,10 +78,6 @@ namespace Pqsql
 				else if (mConn != value)
 				{
 					mConn = value;
-
-					PqsqlCommand cmd = value.Command;
-					if (cmd != null)
-						cmd.Transaction = this;
 				}
 			}
 		}
@@ -109,16 +111,7 @@ namespace Pqsql
 			}
 		}
 
-		internal string TransactionStart
-		{
-			get
-			{
-				InTransaction = true;
-				return mTransactionString;
-			}
-		}
-
-		protected bool InTransaction
+		internal byte[] TransactionStart
 		{
 			get;
 			set;
@@ -127,14 +120,18 @@ namespace Pqsql
 		// send commit or rollback. must not throw, used in Dispose()
 		internal ExecStatus SaveTransaction(bool commit)
 		{
-			if (mConn == null || InTransaction == false)
-				return ExecStatus.PGRES_COMMAND_OK;
+			if (mConn == null)
+				return ExecStatus.PGRES_EMPTY_QUERY;
+
+			IntPtr pgconn = mConn.PGConnection;
+
+			PGTransactionStatus ts = (PGTransactionStatus) PqsqlWrapper.PQtransactionStatus(pgconn);
+
+			if (ts != PGTransactionStatus.PQTRANS_INTRANS)
+				return ExecStatus.PGRES_EMPTY_QUERY;
 
 			// commit or rollback
-			string q = commit ? "COMMIT" : "ROLLBACK";
-
-			// convert query string to utf8
-			byte[] txnString = Encoding.UTF8.GetBytes(q);
+			byte[] txnString = commit ? mCommit : mRollback;
 
 			ExecStatus s = ExecStatus.PGRES_EMPTY_QUERY;
 
@@ -143,7 +140,7 @@ namespace Pqsql
 				IntPtr res;
 				fixed (byte* t = txnString)
 				{
-					res = PqsqlWrapper.PQexec(mConn.PGConnection, t);
+					res = PqsqlWrapper.PQexec(pgconn, t);
 				}
 
 				if (res != IntPtr.Zero)
@@ -153,8 +150,6 @@ namespace Pqsql
 				}
 			}
 
-			InTransaction = false;
-
 			return s;
 		}
 
@@ -162,10 +157,19 @@ namespace Pqsql
 		//     Commits the database transaction.
 		public override void Commit()
 		{
-			if (SaveTransaction(true) != ExecStatus.PGRES_COMMAND_OK)
+			ExecStatus s = SaveTransaction(true);
+
+			switch (s)
 			{
-				string err = mConn.GetErrorMessage();
-				throw new PqsqlException("Transaction commit failed: " + err);
+				case ExecStatus.PGRES_COMMAND_OK:
+					return;
+
+				case ExecStatus.PGRES_EMPTY_QUERY:
+					throw new PqsqlException("Cannot commit: no transaction open");
+
+				default:
+					string err = mConn.GetErrorMessage();
+					throw new PqsqlException(err);
 			}
 		}
 
@@ -174,10 +178,19 @@ namespace Pqsql
 		//     Rolls back a transaction from a pending state.
 		public override void Rollback()
 		{
-			if (SaveTransaction(false) != ExecStatus.PGRES_COMMAND_OK)
+			ExecStatus s = SaveTransaction(true);
+
+			switch (s)
 			{
-				string err = mConn.GetErrorMessage();
-				throw new PqsqlException("Transaction rollback failed: " + err);
+				case ExecStatus.PGRES_COMMAND_OK:
+					return;
+
+				case ExecStatus.PGRES_EMPTY_QUERY:
+					throw new PqsqlException("Cannot rollback: no transaction open");
+
+				default:
+					string err = mConn.GetErrorMessage();
+					throw new PqsqlException(err);
 			}
 		}
 
