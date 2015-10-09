@@ -21,16 +21,18 @@ namespace Pqsql
 		/// </summary>
 		protected IntPtr mConnection;
 
-		// good / bad / connecting connection (fetching / executing connection comes from mCmd.State bits)
-		private Pqsql.ConnectionStatus mStatus;
+		// Open / Broken / Connecting
+		private ConnectionStatus mStatus;
+
+		// Executing / Broken
+		private PGTransactionStatus mTransStatus;
+
+		private bool mNewConnectionString;
 
 		#endregion
 
 
 		#region member variables
-
-		// used to check PqsqlCommand.State bits
-		protected PqsqlCommand mCmd;
 
 		/// <summary>
 		/// an ADO.NET connection string
@@ -70,8 +72,10 @@ namespace Pqsql
 		/// </summary>
 		protected void Init()
 		{
+			mNewConnectionString = true;
 			mConnection = IntPtr.Zero;
 			mStatus = ConnectionStatus.CONNECTION_BAD;
+			mTransStatus = PGTransactionStatus.PQTRANS_IDLE;
 			mServerVersion = -1;
 		}
 
@@ -111,7 +115,15 @@ namespace Pqsql
 		public override string ConnectionString
 		{
 			get { return mConnectionStringBuilder.ConnectionString; }
-			set { mConnectionStringBuilder.ConnectionString = value; }
+			set
+			{
+				string oldValue = mConnectionStringBuilder.ConnectionString;
+				if (oldValue == null || !oldValue.Equals(value))
+				{
+					mConnectionStringBuilder.ConnectionString = value;
+					mNewConnectionString = true;
+				}
+			}
 		}
 
 		//
@@ -205,44 +217,49 @@ namespace Pqsql
 					return ConnectionState.Closed;
 
 				// update connection status
-				mStatus = (Pqsql.ConnectionStatus) PqsqlWrapper.PQstatus(mConnection);
-				
+				mStatus = (ConnectionStatus) PqsqlWrapper.PQstatus(mConnection);
+
+				// update transaction status
+				mTransStatus = (PGTransactionStatus) PqsqlWrapper.PQtransactionStatus(mConnection);
+
+				ConnectionState s = ConnectionState.Closed;
+
 				switch (mStatus)
 				{
-					// get ConnectionState.Executing / ConnectionState.Fetching bits from PqsqlCommand.State
 					case ConnectionStatus.CONNECTION_OK:
-						return ( ConnectionState.Open | (mCmd == null ? 0 : mCmd.State) );
+						s |= ConnectionState.Open;
+						break;
 
 					case ConnectionStatus.CONNECTION_BAD:
-						return ConnectionState.Broken;
+						s = ConnectionState.Broken;
+						break;
 
 					default:
-						return ConnectionState.Connecting;
+						s |= ConnectionState.Connecting;
+						break;
 				}
+
+				switch (mTransStatus)
+				{
+					case PGTransactionStatus.PQTRANS_ACTIVE: /* command in progress */
+						s |= ConnectionState.Executing;
+						break;
+
+					case PGTransactionStatus.PQTRANS_INERROR: /* idle, within failed transaction */
+					case PGTransactionStatus.PQTRANS_UNKNOWN: /* cannot determine status */
+						s = ConnectionState.Broken; // set to Broken
+						break;
+
+					/* the other two states do not contribute to the overall state:
+					 * PGTransactionStatus.PQTRANS_IDLE               // connection idle
+					 * PGTransactionStatus.PQTRANS_INTRANS            // idle, within transaction block
+					 */
+				}
+
+				return s;
 			}
 		}
-
-		[Browsable(false)]
-		internal PqsqlCommand Command
-		{
-			get
-			{
-				return mCmd;
-			}
-			set
-			{
-				if (value == null)
-				{
-					mCmd = null;
-				}
-				else if (mCmd != value)
-				{
-					mCmd = value;
-					value.Connection = this;
-				}
-			}
-		}
-
+		
 		// Summary:
 		//     Starts a database transaction.
 		//
@@ -254,10 +271,41 @@ namespace Pqsql
 		//     An object representing the new transaction.
 		protected override DbTransaction BeginDbTransaction(IsolationLevel isolationLevel)
 		{
+			return BeginTransaction(isolationLevel);
+		}
+
+		//
+		// Summary:
+		//     Starts a database transaction.
+		//
+		// Returns:
+		//     An object representing the new transaction.
+		public new PqsqlTransaction BeginTransaction()
+		{
+			return BeginTransaction(IsolationLevel.Unspecified);
+		}
+
+		//
+		// Summary:
+		//     Starts a database transaction with the specified isolation level.
+		//
+		// Parameters:
+		//   isolationLevel:
+		//     Specifies the isolation level for the transaction.
+		//
+		// Returns:
+		//     An object representing the new transaction.
+		public new PqsqlTransaction BeginTransaction(IsolationLevel isolationLevel)
+		{
+			if (mConnection == IntPtr.Zero)
+			{
+				Open();
+			}
+
 			PqsqlTransaction txn = new PqsqlTransaction(this, isolationLevel);
 
-			// convert query string to utf8
-			byte[] txnString = Encoding.UTF8.GetBytes(txn.TransactionStart);
+			// get transaction start command
+			byte[] txnString = txn.TransactionStart;
 
 			unsafe
 			{
@@ -293,7 +341,13 @@ namespace Pqsql
 		//     Specifies the name of the database for the connection to use.
 		public override void ChangeDatabase(string databaseName)
 		{
-			throw new NotImplementedException("ChangeDatabase is not implemented");
+			if (mConnectionStringBuilder.ContainsKey(PqsqlConnectionStringBuilder.dbname))
+			{
+				mConnectionStringBuilder.Remove(PqsqlConnectionStringBuilder.dbname);
+			}
+			mConnectionStringBuilder.Add(PqsqlConnectionStringBuilder.dbname, databaseName);
+			Close();
+			Open();
 		}
 
 		//
@@ -322,6 +376,18 @@ namespace Pqsql
 		//     A System.Data.Common.DbCommand object.
 		protected override DbCommand CreateDbCommand()
 		{
+			return CreateCommand();
+		}
+
+		//
+		// Summary:
+		//     Creates and returns a System.Data.Common.DbCommand object associated with
+		//     the current connection.
+		//
+		// Returns:
+		//     A System.Data.Common.DbCommand object.
+		public new PqsqlCommand CreateCommand()
+		{
 			return new PqsqlCommand(this);
 		}
 
@@ -342,6 +408,25 @@ namespace Pqsql
 		//     Opens a database connection with the settings specified by the System.Data.Common.DbConnection.ConnectionString.
 		public override void Open()
 		{
+			if (mConnection != IntPtr.Zero && !mNewConnectionString)
+			{
+				// close and open with current connection setting
+				PqsqlWrapper.PQreset(mConnection);
+
+				// get connection status
+				mStatus = (Pqsql.ConnectionStatus) PqsqlWrapper.PQstatus(mConnection);
+
+				if (mStatus == ConnectionStatus.CONNECTION_BAD)
+				{
+					string err = GetErrorMessage();
+					Close(); // force release of mConnection memory
+					throw new PqsqlException(err);
+				}
+
+				// successfully reestablished connection
+				return;
+			}
+
 			if (mStatus != ConnectionStatus.CONNECTION_BAD)
 			{
 				Close(); // force release of mConnection memory
@@ -369,6 +454,8 @@ namespace Pqsql
 					Close(); // force release of mConnection memory
 					throw new PqsqlException(err);
 				}
+
+				mNewConnectionString = false;
 			}
 			else
 			{

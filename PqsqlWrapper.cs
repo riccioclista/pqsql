@@ -121,6 +121,10 @@ namespace Pqsql
 		public static extern IntPtr PQconnectdbParams(string[] keywords, string[] values, int expand_dbname);
 		// PGconn *PQconnectdbParams(const char * const *keywords, const char * const *values, int expand_dbname);
 
+		[DllImport("libpq.dll")]
+		public static extern void PQreset(IntPtr conn);
+		// void PQreset(PGconn *conn);
+
 		#endregion
 
 
@@ -263,7 +267,7 @@ namespace Pqsql
 		// int PQnfields(const PGresult *res);
 
 		[DllImport("libpq.dll")]
-		public static extern string PQcmdTuples(IntPtr res);
+		public static extern unsafe sbyte* PQcmdTuples(IntPtr res);
 		// char* PQcmdTuples(PGresult* res);
 
 		#endregion
