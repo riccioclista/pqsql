@@ -19,6 +19,9 @@ extern DECLSPEC void __fastcall pqbf_set_null(pqparam_buffer *p, uint32_t oid);
 extern DECLSPEC int __fastcall pqbf_get_bool(const char *ptr);
 extern DECLSPEC void __fastcall pqbf_set_bool(pqparam_buffer *p, int b);
 
+extern DECLSPEC void __fastcall pqbf_get_bytea(const char *p, char* buf, size_t len);
+extern DECLSPEC void __fastcall pqbf_set_bytea(pqparam_buffer *pb, const char* buf, size_t buflen);
+
 extern DECLSPEC int64_t __fastcall pqbf_get_int8(const char *ptr);
 extern DECLSPEC void __fastcall pqbf_set_int8(pqparam_buffer *p, int64_t i);
 

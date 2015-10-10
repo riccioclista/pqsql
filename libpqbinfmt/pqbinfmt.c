@@ -87,6 +87,37 @@ pqbf_set_bool(pqparam_buffer *pb, int b)
 }
 
 /*
+ * oid 17:   bytea
+ */
+DECLSPEC void __fastcall
+pqbf_get_bytea(const char *p, char* buf, size_t len)
+{
+	BAILIFNULL(p);
+	BAILIFNULL(buf);
+
+	/* copy len bytes from p to buf */
+	memcpy(buf, p, len);
+}
+
+DECLSPEC void __fastcall
+pqbf_set_bytea(pqparam_buffer *pb, const char* buf, size_t buflen)
+{
+	PQExpBuffer s;
+	char *top;
+
+	BAILIFNULL(pb);
+
+	s = pb->payload;
+	top = s->data + s->len; /* save top of payload */
+	
+	/* copy bytea as is */
+	appendBinaryPQExpBuffer(s, buf, buflen);
+
+	pqpb_add(pb, BYTEAOID, top, buflen);
+}
+
+
+/*
  * oid 20: int8
  *
  * see
@@ -189,7 +220,6 @@ pqbf_set_int4(pqparam_buffer *pb, int32_t i)
 }
 
 /*
- * oid 17:   bytea
  * oid 25:   text
  * oid 705:  unknown
  * oid 1043: varchar
@@ -420,7 +450,7 @@ pqbf_set_float4(pqparam_buffer *pb, float f)
 
 	BAILIFNULL(pb);
 
-	s =pb->payload;
+	s = pb->payload;
 	top = s->data + s->len; /* save top of payload */
 
 	/* encode float4 */
@@ -538,9 +568,18 @@ pqbf_get_timestamptz(const char *ptr, time_t *sec, time_t *usec)
  */
 
 DECLSPEC void __fastcall
-pqbf_get_interval(const char *ptr, time_t *sec, time_t *usec)
+pqbf_get_interval(const char *p, time_t *sec, time_t *usec)
 {
 	// TODO
+	int64_t offset;
+	int32_t day;
+	int32_t month;
+	BAILIFNULL(p);
+
+	/* decode interval */
+	offset =  _byteswap_uint64(*((uint64_t*)p));
+	day = _byteswap_ulong(*((uint32_t*)p + sizeof(offset)));
+	month = _byteswap_ulong(*((uint32_t*)p + sizeof(offset) + sizeof(day)));
 }
 
 
