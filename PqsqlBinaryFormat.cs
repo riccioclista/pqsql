@@ -57,6 +57,9 @@ namespace Pqsql
 		public static extern void pqbf_set_bool(IntPtr pb, int b);
 
 		[DllImport("libpqbinfmt.dll")]
+		public static extern void pqbf_set_bytea(IntPtr pb, sbyte* buf, ulong len);
+
+		[DllImport("libpqbinfmt.dll")]
 		public static extern void pqbf_set_int8(IntPtr pb, long i);
 
 		[DllImport("libpqbinfmt.dll")]
@@ -113,7 +116,7 @@ namespace Pqsql
 		public static extern double pqbf_get_numeric(IntPtr p);
 
 		[DllImport("libpqbinfmt.dll")]
-		public static extern byte* pqbf_get_bytea(IntPtr p);
+		public static extern unsafe void pqbf_get_bytea(IntPtr p, sbyte* buf, ulong len);
 
 		#endregion
 	}

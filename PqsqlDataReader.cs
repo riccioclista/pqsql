@@ -530,41 +530,36 @@ namespace Pqsql
 		{
 			CheckOrdinalType(ordinal, PqsqlDbType.Bytea);
 
-			// check lower bounds
-			if (dataOffset < 0 || bufferOffset < 0 || length <= 0)
-				return 0;
-
 			int blen = PqsqlWrapper.PQgetlength(mResult, mRowNum, ordinal);
 
 			// report length of bytea column when buffer is null 
 			if (buffer == null)
 				return blen;
+			
+			// check lower bounds
+			if (dataOffset < 0 || bufferOffset < 0 || length <= 0)
+				return 0;
 
 			int bufferLength = buffer.Length;
-			int maxLength = bufferLength - bufferOffset;
+			uint maxLength = (uint) (bufferLength - bufferOffset);
 
 			// check upper bounds
 			if (dataOffset >= blen || bufferOffset >= bufferLength || length > maxLength)
 				return 0;
 
 			IntPtr v = PqsqlWrapper.PQgetvalue(mResult, mRowNum, ordinal);
-			int i;     // offset in bytea column
-			int j = 0; // offset in buffer, counter
-			
+			ulong n = (ulong) Math.Min(length, blen);
+
 			unsafe
 			{
-				byte* b = PqsqlBinaryFormat.pqbf_get_bytea(v);
-
-				if (b != null)
+				fixed (byte* b = buffer)
 				{
-					for (i = (int)dataOffset, j = bufferOffset; i < blen && j < maxLength; i++, j++)
-					{
-						buffer[j] = b[i];
-					}
+					sbyte* sb = (sbyte*) b + bufferOffset;
+					PqsqlBinaryFormat.pqbf_get_bytea(v + (int) dataOffset, sb, n);
 				}
 			}
 
-			return j;
+			return (long) n;
 		}
 		//
 		// Summary:
