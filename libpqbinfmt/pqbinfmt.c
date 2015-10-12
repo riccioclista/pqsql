@@ -11,16 +11,6 @@
 #include <time.h>
 
 /*
- * pgtypes
- * http://www.postgresql.org/docs/current/static/ecpg-pgtypes.html
- */
-#include <pgtypes_date.h>
-#include <pgtypes_error.h>
-#include <pgtypes_interval.h>
-#include <pgtypes_numeric.h>
-#include <pgtypes_timestamp.h>
-
-/*
  * oid values
  */
 #include "pq_types.h"
@@ -36,8 +26,6 @@
 extern "C" {
 #endif
 
-#define BAILIFNULL(p) do { if (p == NULL) return; } while(0)
-#define BAILWITHVALUEIFNULL(p,val) do { if (p == NULL) return val; } while(0)
 
 /*
  * add NULL value parameter of specified type
@@ -436,7 +424,6 @@ pqbf_get_float4(const char *p)
 	return swap.f;
 }
 
-// see 
 DECLSPEC void __fastcall
 pqbf_set_float4(pqparam_buffer *pb, float f)
 {
@@ -625,197 +612,6 @@ pqbf_set_bit(pqparam_buffer *pb, int b)
 
 // TODO
 
-/*
- * oid 1700: numeric
- *
- * see
- * - numeric_recv()
- * from
- * - src/backend/utils/adt/numeric.c
- * - src/interfaces/ecpg/pgtypeslib/numeric.c
- * http://www.postgresql.org/docs/current/static/ecpg-pgtypes.html
- */
-
-/* src/interfaces/ecpg/pgtypeslib/common.c */
-/* Return value is zero-filled. */
-static char *
-pgtypes_alloc(long size)
-{
-	char *n = (char *) calloc(1L, size);
-	if (!n)	errno = ENOMEM;
-	return (n);
-}
-
-/* src/interfaces/ecpg/pgtypeslib/numeric.c */
-#define digitbuf_alloc(size) ((NumericDigit *) pgtypes_alloc(size))
-#define digitbuf_free(buf)      \
-        do { \
-                  if ((buf) != NULL) \
-                           free(buf); \
-           } while (0)
-
-/* ----------
- *  alloc_var() -
- *
- *   Allocate a digit buffer of ndigits digits (plus a spare digit for rounding)
- * ----------
- */
-static int
-alloc_var(numeric *var, int ndigits)
-{
-	digitbuf_free(var->buf);
-	var->buf = digitbuf_alloc(ndigits + 1);
-	if (var->buf == NULL)
-		return -1;
-	var->buf[0] = 0;
-	var->digits = var->buf + 1;
-	var->ndigits = ndigits;
-	return 0;
-}
-
-
-numeric *
-my_PGTYPESnumeric_new(void)
-{
-	numeric    *var;
-
-	if ((var = (numeric *) pgtypes_alloc(sizeof(numeric))) == NULL)
-		return NULL;
-
-	if (alloc_var(var, 0) < 0)
-	{
-		free(var);
-		return NULL;
-	}
-	return var;
-}
-
-void
-my_PGTYPESnumeric_free(numeric *var)
-{
-	digitbuf_free(var->buf);
-	free(var);
-}
-
-
-DECLSPEC double __fastcall
-pqbf_get_numeric(const char *ptr)
-{
-	double d;
-	int i;
-	char *p;
-	int16_t ndigits;
-	numeric *n;
-	
-	BAILWITHVALUEIFNULL(ptr, DBL_MIN);
-
-	p = (char*) ptr;
-
-	/* ndigits */
-	ndigits = pqbf_get_int2(p);
-	p += sizeof(int16_t);
-
-	printf("p=%p ndigits=%d\n", p, ndigits); 
-
-	n = my_PGTYPESnumeric_new();
-	if (!n)
-	{
-		//printf("n=%p ndigits=%d\n", n, ndigits); 
-		return 0;
-	}
-
-	i = alloc_var(n, ndigits);
-
-	//printf("i=%d n=%p ndigits=%d\n", i, n, ndigits); 
-
-	/* weight */
-	n->weight = pqbf_get_int2(p);
-	p += sizeof(int16_t);
-	
-	printf("p=%p n=%p weight=%d\n", p, n, n->weight); 
-
-	/* sign */
-	n->sign = pqbf_get_int2(p);
-	p += sizeof(int16_t);
-  
-	printf("p=%p n=%p sign=%d\n", p, n, n->sign); 
-
-	/* dscale */
-  n->dscale = pqbf_get_int2(p);
-	p += sizeof(int16_t);
-  
-	printf("p=%p n=%p dscale=%d\n", p, n, n->dscale); 
-
-  for (i = 0; i < ndigits; i++, p += sizeof(int16_t))
-  {
-    NumericDigit dig = (unsigned char) pqbf_get_int2(p);
-    n->digits[i] = dig;
-		printf("p=%p n=%p digit=%d\n", p, n, dig);
-  }
-   
-  /*
-   * If the given dscale would hide any digits, truncate those digits away.
-   * We could alternatively throw an error, but that would take a bunch of
-   * extra code (about as much as trunc_var involves), and it might cause
-   * client compatibility issues.
-   */
-  //trunc_var(&value, value.dscale);
-  //apply_typmod(&value, typmod);
-   
-	// decode numeric to double
-	PGTYPESnumeric_to_double(n, &d);
-
-	printf("n=%p d=%e\n", n, d); 
-
-	my_PGTYPESnumeric_free(n);
-
-	return d;
-}
-
-// see  numeric_send() from src/backend/utils/adt/numeric.c
-DECLSPEC void __fastcall
-pqbf_set_numeric(pqparam_buffer *pb, double d)
-{
-	PQExpBuffer s;
-	char *top;
-
-	int i;
-	int16_t i16;
-	numeric *n;
-	
-	BAILIFNULL(pb);
-
-	s = pb->payload;
-	top = s->data + s->len; /* save top of payload */
-
-	/* encode double as numeric */
-	n = PGTYPESnumeric_new();
-	PGTYPESnumeric_from_double(d, n);
-
-	/* encode numeric into binary format */
-
-	i16 = _byteswap_ulong(n->ndigits);
-	appendBinaryPQExpBuffer(s, (const char*) &i16, sizeof(i16));
-
-	i16 = _byteswap_ulong(n->weight);
-	appendBinaryPQExpBuffer(s, (const char*) &i16, sizeof(i16));
-
-	i16 = _byteswap_ulong(n->sign);
-	appendBinaryPQExpBuffer(s, (const char*) &i16, sizeof(i16));
-
-	i16 = _byteswap_ulong(n->dscale);
-	appendBinaryPQExpBuffer(s, (const char*) &i16, sizeof(i16));
-
-	for (i = 0; i < n->ndigits; i++)
-	{
-		appendBinaryPQExpBuffer(s, (const char*) &n->digits[i], sizeof(NumericDigit));
-	}
-
-	/* free temp numeric */
-	PGTYPESnumeric_free(n);
-
-	pqpb_add(pb, NUMERICOID, top, s->data + s->len - top);
-}
 
 /*
  * oid 2950: uuid

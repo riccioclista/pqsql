@@ -14,6 +14,10 @@
 extern "C" {
 #endif
 
+#define BAILIFNULL(p) do { if (p == NULL) return; } while(0)
+#define BAILWITHVALUEIFNULL(p,val) do { if (p == NULL) return val; } while(0)
+
+
 extern DECLSPEC void __fastcall pqbf_set_null(pqparam_buffer *p, uint32_t oid);
 
 extern DECLSPEC int __fastcall pqbf_get_bool(const char *ptr);
@@ -47,7 +51,7 @@ extern DECLSPEC void __fastcall pqbf_set_float4(pqparam_buffer *p, float f);
 extern DECLSPEC double __fastcall pqbf_get_float8(const char *ptr);
 extern DECLSPEC void __fastcall pqbf_set_float8(pqparam_buffer *p, double f);
 
-extern DECLSPEC double __fastcall pqbf_get_numeric(const char *ptr);
+extern DECLSPEC double __fastcall pqbf_get_numeric(const char *ptr, int32_t typmod);
 extern DECLSPEC void __fastcall pqbf_set_numeric(pqparam_buffer *p, double d);
 
 #ifdef  __cplusplus

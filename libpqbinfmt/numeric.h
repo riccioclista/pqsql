@@ -14,7 +14,11 @@
 #ifndef _PG_NUMERIC_H_
 #define _PG_NUMERIC_H_
 
-#include "fmgr.h"
+#if defined DLL_EXPORT
+#define DECLSPEC __declspec(dllexport)
+#else
+#define DECLSPEC __declspec(dllimport)
+#endif
 
 /*
  * Hardcoded precision limit - arbitrary, but must be small enough that
@@ -40,24 +44,5 @@
 /* The actual contents of Numeric are private to numeric.c */
 struct NumericData;
 typedef struct NumericData *Numeric;
-
-/*
- * fmgr interface macros
- */
-
-#define DatumGetNumeric(X)		  ((Numeric) PG_DETOAST_DATUM(X))
-#define DatumGetNumericCopy(X)	  ((Numeric) PG_DETOAST_DATUM_COPY(X))
-#define NumericGetDatum(X)		  PointerGetDatum(X)
-#define PG_GETARG_NUMERIC(n)	  DatumGetNumeric(PG_GETARG_DATUM(n))
-#define PG_GETARG_NUMERIC_COPY(n) DatumGetNumericCopy(PG_GETARG_DATUM(n))
-#define PG_RETURN_NUMERIC(x)	  return NumericGetDatum(x)
-
-/*
- * Utility functions in numeric.c
- */
-extern bool numeric_is_nan(Numeric num);
-int32		numeric_maximum_size(int32 typmod);
-extern char *numeric_out_sci(Numeric num, int scale);
-extern char *numeric_normalize(Numeric num);
 
 #endif   /* _PG_NUMERIC_H_ */
