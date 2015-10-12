@@ -674,11 +674,8 @@ namespace Pqsql
 				case PqsqlDbType.Date:
 					return GetDate(mResult, mRowNum, ordinal);
 
-				case PqsqlDbType.Interval:
-					return GetInterval(mResult, mRowNum, ordinal);
-
 				default:
-					throw new InvalidCastException("Wrong datatype", (int) oid);
+					throw new InvalidCastException("Trying to access datatype " + oid.ToString() + " as datatype DateTime");
 			}
 		}
 
@@ -700,10 +697,48 @@ namespace Pqsql
 			return DateTime.Now; // TODO PqsqlBinaryFormat.pqbf_get_bool(v) > 0;
 		}
 
-		internal static DateTime GetInterval(IntPtr res, int row, int ordinal)
+
+		public TimeSpan GetTimeSpan(int ordinal)
+		{
+			CheckOrdinalType(ordinal, PqsqlDbType.Interval);
+			return GetInterval(mResult, mRowNum, ordinal);
+		}
+
+		internal static TimeSpan GetInterval(IntPtr res, int row, int ordinal)
 		{
 			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
-			return DateTime.Now; // TODO PqsqlBinaryFormat.pqbf_get_bool(v) > 0;
+
+			long offset;
+			int day;
+			int month;
+
+			unsafe
+			{
+				PqsqlBinaryFormat.pqbf_get_interval(v, &offset, &day, &month);
+			}
+
+			// TimeSpan is a time period expressed in 100-nanosecond units,
+			// whereas interval is in 1-microsecond resolution
+			TimeSpan ts = new TimeSpan(offset * 10);
+
+			// from timestamp.h:
+			// #define DAYS_PER_YEAR   365.25  /* assumes leap year every four years */
+			// #define MONTHS_PER_YEAR 12
+
+			double days = day;
+
+			if (month > 0)
+			{
+				days += (month / 12) * 365.25;
+			}
+
+			if (days > 0)
+			{
+				TimeSpan d = TimeSpan.FromDays(days);
+				ts += d;
+			}
+
+			return ts;
 		}
 
 		//
@@ -1061,7 +1096,7 @@ namespace Pqsql
 			PqsqlDbType oid = mRowInfo[ordinal].Oid;
 			if (oid != PqsqlDbType.Text && oid != PqsqlDbType.Varchar && oid != PqsqlDbType.Unknown)
 			{
-				throw new InvalidCastException("Wrong datatype", (int) oid);
+				throw new InvalidCastException("Trying to access datatype " + oid.ToString() + " as datatype Text");
 			}
 
 			return GetString(mResult, mRowNum, ordinal);	
