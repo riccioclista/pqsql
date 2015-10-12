@@ -735,14 +735,15 @@ namespace Pqsql
 		public override decimal GetDecimal(int ordinal)
 		{
 			CheckOrdinalType(ordinal, PqsqlDbType.Numeric);
-			return GetDecimal(mResult, mRowNum, ordinal);
+			return (decimal) GetNumeric(mResult, mRowNum, ordinal, mRowInfo[ordinal].Modifier);
 		}
 
-		internal static decimal GetDecimal(IntPtr res, int row, int ordinal)
+		internal static double GetNumeric(IntPtr res, int row, int ordinal, int typmod)
 		{
 			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
-			return (decimal) PqsqlBinaryFormat.pqbf_get_numeric(v);
+			return PqsqlBinaryFormat.pqbf_get_numeric(v, typmod);
 		}
+
 		//
 		// Summary:
 		//     Gets the value of the specified column as a double-precision floating point
@@ -760,8 +761,21 @@ namespace Pqsql
 		//     The specified cast is not valid.
 		public override double GetDouble(int ordinal)
 		{
-			CheckOrdinalType(ordinal, PqsqlDbType.Float8);
-			return GetDouble(mResult, mRowNum, ordinal);
+			CheckOrdinal(ordinal);
+
+			PqsqlColInfo ci = mRowInfo[ordinal];
+
+			switch (ci.Oid)
+			{
+				case PqsqlDbType.Float8:
+					return GetDouble(mResult, mRowNum, ordinal);
+				case PqsqlDbType.Float4:
+					return GetFloat(mResult, mRowNum, ordinal);
+				case PqsqlDbType.Numeric:
+					return GetNumeric(mResult, mRowNum, ordinal, ci.Modifier);
+			}
+
+			throw new InvalidCastException("Trying to access datatype " + ci.Oid.ToString() + " as datatype Float8");
 		}
 
 		internal static double GetDouble(IntPtr res, int row, int ordinal)
@@ -1086,7 +1100,9 @@ namespace Pqsql
 		{
 			CheckOrdinal(ordinal);
 
-			if (mRowInfo[ordinal].Oid == PqsqlDbType.Bytea)
+			PqsqlColInfo ci = mRowInfo[ordinal];
+
+			if (ci.Oid == PqsqlDbType.Bytea)
 			{
 				int n = (int) GetBytes(ordinal, 0, null, 0, 0);
 				byte[] bs = new byte[n];
@@ -1094,7 +1110,7 @@ namespace Pqsql
 				return bs;
 			}
 
-			return PqsqlTypeNames.GetValue(mRowInfo[ordinal].Oid)(mResult, mRowNum, ordinal);
+			return PqsqlTypeNames.GetValue(ci.Oid)(mResult, mRowNum, ordinal, ci.Modifier);
 		}
 
 		//
@@ -1211,7 +1227,9 @@ namespace Pqsql
 
 				if (s != ExecStatus.PGRES_SINGLE_TUPLE && s != ExecStatus.PGRES_TUPLES_OK)
 				{
-					PqsqlWrapper.PQclear(mResult);
+					// consume remaining results
+					Consume();
+
 					string err = mConn.GetErrorMessage();
 					throw new PqsqlException(err);
 				}

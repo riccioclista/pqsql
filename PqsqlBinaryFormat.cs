@@ -113,7 +113,7 @@ namespace Pqsql
 		public static extern double pqbf_get_float8(IntPtr p);
 
 		[DllImport("libpqbinfmt.dll")]
-		public static extern double pqbf_get_numeric(IntPtr p);
+		public static extern double pqbf_get_numeric(IntPtr p, int typmod);
 
 		[DllImport("libpqbinfmt.dll")]
 		public static extern unsafe void pqbf_get_bytea(IntPtr p, sbyte* buf, ulong len);
