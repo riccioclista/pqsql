@@ -555,20 +555,50 @@ pqbf_get_timestamptz(const char *ptr, time_t *sec, time_t *usec)
  */
 
 DECLSPEC void __fastcall
-pqbf_get_interval(const char *p, time_t *sec, time_t *usec)
+pqbf_get_interval(const char *ptr, int64_t *offset, int32_t *day, int32_t *month)
 {
-	// TODO
-	int64_t offset;
-	int32_t day;
-	int32_t month;
+	char *p;
+
 	BAILIFNULL(p);
+	BAILIFNULL(offset);
+	BAILIFNULL(day);
+	BAILIFNULL(month);
+
+	p = (char *)ptr;
 
 	/* decode interval */
-	offset =  _byteswap_uint64(*((uint64_t*)p));
-	day = _byteswap_ulong(*((uint32_t*)p + sizeof(offset)));
-	month = _byteswap_ulong(*((uint32_t*)p + sizeof(offset) + sizeof(day)));
+	*offset =  _byteswap_uint64(*((uint64_t*)p));
+	p += sizeof(*offset);
+
+	*day = _byteswap_ulong(*((uint32_t*)p));
+	p += sizeof(*day);
+
+	*month = _byteswap_ulong(*((uint32_t*)p));
 }
 
+DECLSPEC void __fastcall
+pqbf_set_interval(pqparam_buffer *pb, int64_t offset, int32_t day, int32_t month)
+{
+	PQExpBuffer s;
+	char *top;
+
+	BAILIFNULL(pb);
+
+	s = pb->payload;
+	top = s->data + s->len; /* save top of payload */
+
+	/* encode interval */
+	offset = _byteswap_uint64(offset);
+	appendBinaryPQExpBuffer(s, (const char*) &offset, sizeof(offset));
+
+	day = _byteswap_ulong(day);
+	appendBinaryPQExpBuffer(s, (const char*) &day, sizeof(day));
+
+	month = _byteswap_ulong(month);
+	appendBinaryPQExpBuffer(s, (const char*) &month, sizeof(month));
+
+	pqpb_add(pb, INTERVALOID, top, s->data + s->len - top);
+}
 
 /*
  * oid 1266: timetz
