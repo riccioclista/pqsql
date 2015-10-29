@@ -522,17 +522,43 @@ pqbf_get_time(const char *ptr, time_t *sec, time_t *usec)
 /*
  * oid 1114: timestamp
  */
+
 /* January 1, 2000, 00:00:00 UTC (in Unix epoch seconds) */
 #define POSTGRES_EPOCH_DATE 946684800
+#define POSTGRES_MEGA 1000000
+
 
 DECLSPEC void __fastcall
 pqbf_get_timestamp(const char *ptr, time_t *sec, time_t *usec)
 {
 	uint64_t i = _byteswap_uint64( *( (uint64_t *)ptr ) );
 		
-	*sec = POSTGRES_EPOCH_DATE + i / 1000000;
-	*usec = i % 1000000;
+	*sec = POSTGRES_EPOCH_DATE + (int64_t) (i / POSTGRES_MEGA);
+	*usec = i % POSTGRES_MEGA;
 }
+
+#if 0
+DECLSPEC void __fastcall
+pqbf_set_timestamp(pqparam_buffer *pb, time_t sec, time_t usec)
+{
+	PQExpBuffer s;
+	char *top;
+	uint64_t i;
+
+	BAILIFNULL(pb);
+
+	s = pb->payload;
+	top = s->data + s->len; /* save top of payload */
+
+
+	 (((((hour * MINS_PER_HOUR) + min) * SECS_PER_MINUTE) + sec) * USECS_PER_SEC) + fsec;
+	sec = i * POSTGRES_MEGA
+	i = _byteswap_uint64(sec);
+	appendBinaryPQExpBuffer(s, (const char*) &i, sizeof(i));
+
+	pqpb_add(pb, OIDOID, top, sizeof(i));
+}
+#endif
 
 
 /*

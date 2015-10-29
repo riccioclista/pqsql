@@ -83,6 +83,9 @@ namespace Pqsql
 		[DllImport("libpqbinfmt.dll")]
 		public static extern void pqbf_set_interval(IntPtr pbb, long offset, int day, int month);
 
+		[DllImport("libpqbinfmt.dll")]
+		public static extern void pqbf_set_timestamp(IntPtr pbb, long sec, long usec);
+
 		#endregion
 
 
@@ -123,6 +126,9 @@ namespace Pqsql
 
 		[DllImport("libpqbinfmt.dll")]
 		public static extern unsafe void pqbf_get_interval(IntPtr p, long* offset, int* day, int* month);
+
+		[DllImport("libpqbinfmt.dll")]
+		public static extern unsafe void pqbf_get_timestamp(IntPtr pbb, long* sec, long* usec);
 
 		#endregion
 	}

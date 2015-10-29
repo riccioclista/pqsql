@@ -90,6 +90,9 @@ namespace Pqsql
 	/// </summary>
 	public class PqsqlDataReader : DbDataReader
 	{
+		// long epoch = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc).Ticks;
+		private static readonly long UnixEpochTicks = 621355968000000000;
+
 		// the current PGresult* buffer
 		IntPtr mResult;
 
@@ -682,7 +685,20 @@ namespace Pqsql
 		internal static DateTime GetDateTime(IntPtr res, int row, int ordinal)
 		{
 			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
-			return DateTime.Now; // TODO PqsqlBinaryFormat.pqbf_get_bool(v) > 0;
+
+			long sec;
+			long usec;
+
+			unsafe
+			{
+				PqsqlBinaryFormat.pqbf_get_timestamp(v, &sec, &usec);
+			}
+
+			long ticks = UnixEpochTicks + sec * TimeSpan.TicksPerSecond + usec * 10;
+
+			DateTime dt = new DateTime(ticks);
+
+			return dt;
 		}
 
 		internal static DateTime GetDate(IntPtr res, int row, int ordinal)
@@ -696,7 +712,6 @@ namespace Pqsql
 			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
 			return DateTime.Now; // TODO PqsqlBinaryFormat.pqbf_get_bool(v) > 0;
 		}
-
 
 		public TimeSpan GetTimeSpan(int ordinal)
 		{
@@ -725,6 +740,13 @@ namespace Pqsql
 			// #define DAYS_PER_YEAR   365.25  /* assumes leap year every four years */
 			// #define MONTHS_PER_YEAR 12
 
+			//typedef struct
+			//{
+			//  int64      time;                   /* all time units other than days, months and years */
+      //  int32           day;                    /* days, after time for alignment */
+      //  int32           month;                  /* months and years, after time for alignment */
+			//} Interval;
+
 			double days = day;
 
 			if (month > 0)
@@ -734,8 +756,7 @@ namespace Pqsql
 
 			if (days > 0)
 			{
-				TimeSpan d = TimeSpan.FromDays(days);
-				ts += d;
+				ts += TimeSpan.FromDays(days);
 			}
 
 			return ts;

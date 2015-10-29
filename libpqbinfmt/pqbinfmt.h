@@ -54,8 +54,8 @@ extern DECLSPEC void __fastcall pqbf_set_float8(pqparam_buffer *p, double f);
 extern DECLSPEC double __fastcall pqbf_get_numeric(const char *ptr, int32_t typmod);
 extern DECLSPEC void __fastcall pqbf_set_numeric(pqparam_buffer *p, double d);
 
-extern DECLSPEC void __fastcall pqbf_get_interval(const char *ptr, int64_t *offset, int32_t *day, int32_t *month)
-extern DECLSPEC void __fastcall pqbf_set_interval(pqparam_buffer *pb, int64_t offset, int32_t day, int32_t month)
+extern DECLSPEC void __fastcall pqbf_get_interval(const char *ptr, int64_t *offset, int32_t *day, int32_t *month);
+extern DECLSPEC void __fastcall pqbf_set_interval(pqparam_buffer *pb, int64_t offset, int32_t day, int32_t month);
 
 #ifdef  __cplusplus
 }
