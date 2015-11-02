@@ -1,14 +1,9 @@
 #include <windows.h>
-#include <intrin.h>
 
-#include <errno.h>
-#include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <float.h>
-#include <math.h>
-#include <time.h>
 
 /*
  * oid values
@@ -400,6 +395,7 @@ pqbf_set_oid(pqparam_buffer *pb, uint32_t i)
 	pqpb_add(pb, OIDOID, top, sizeof(i));
 }
 
+
 /*
  * oid 700: float4
  *
@@ -408,14 +404,17 @@ pqbf_set_oid(pqparam_buffer *pb, uint32_t i)
  * - void pq_sendfloat4(StringInfo msg, float4 f)
  * from src/backend/libpq/pqformat.c
  */
+
+union float_swap
+{
+	float f;
+	uint32_t i;
+};
+
 DECLSPEC float __fastcall
 pqbf_get_float4(const char *p)
 {
-	union
-	{
-		float f;
-		uint32_t i;
-	} swap;
+	union float_swap swap;
 
 	BAILWITHVALUEIFNULL(p, FLT_MIN);
 
@@ -429,11 +428,7 @@ pqbf_set_float4(pqparam_buffer *pb, float f)
 {
 	PQExpBuffer s;
 	char *top;
-	union
-	{
-		float f;
-		uint32_t i;
-	} swap;
+	union float_swap swap;
 
 	BAILIFNULL(pb);
 
@@ -457,14 +452,17 @@ pqbf_set_float4(pqparam_buffer *pb, float f)
  * - void pq_sendfloat8(StringInfo msg, float8 f)
  * from src/backend/libpq/pqformat.c
  */
+
+union double_swap
+{
+	double f;
+	uint64_t i;
+};
+
 DECLSPEC double __fastcall
 pqbf_get_float8(const char *p)
 {
-	union
-	{
-		double f;
-		uint64_t i;
-	} swap;
+	union double_swap swap;
 
 	BAILWITHVALUEIFNULL(p, DBL_MIN);
 
@@ -478,12 +476,7 @@ pqbf_set_float8(pqparam_buffer *pb, double f)
 {
 	PQExpBuffer s;
 	char *top;
-
-	union
-	{
-		double f;
-		uint64_t i;
-	} swap;
+	union double_swap swap;
 
 	BAILIFNULL(pb);
 
@@ -502,42 +495,102 @@ pqbf_set_float8(pqparam_buffer *pb, double f)
 /*
  * oid 1082: date
  */
-DECLSPEC void __fastcall
-pqbf_get_date(const char *ptr, time_t *sec, time_t *usec)
+DECLSPEC int32_t __fastcall
+pqbf_get_date(const char *p)
 {
-	// TODO
+	BAILWITHVALUEIFNULL(p, 0);
+	return _byteswap_ulong(*((uint32_t *) p));
 }
+
+DECLSPEC void __fastcall
+pqbf_set_date(pqparam_buffer *pb, int32_t t)
+{
+	uint32_t i;
+	PQExpBuffer s;
+	char *top;
+
+	BAILIFNULL(pb);
+
+	s = pb->payload;
+	top = s->data + s->len; /* save top of payload */
+
+	i = _byteswap_ulong(t);
+
+	appendBinaryPQExpBuffer(s, (const char*) &i, sizeof(i));
+
+	pqpb_add(pb, DATEOID, top, sizeof(i));
+}
+
 
 
 /*
  * oid 1083: time
  */
-DECLSPEC void __fastcall
-pqbf_get_time(const char *ptr, time_t *sec, time_t *usec)
+
+/* January 1, 2000, 00:00:00 UTC (in Unix epoch seconds) */
+#define POSTGRES_EPOCH_DATE 946684800
+#define POSTGRES_MEGA 1000000
+#define POSTGRES_TICKS_PER_MILLISECOND 10000
+
+DECLSPEC time_t __fastcall
+pqbf_get_time(const char *p)
 {
-	// TODO
+	uint64_t i;
+
+	BAILWITHVALUEIFNULL(p, 0);
+
+	/* decode 64bit time into unix time */
+	i = _byteswap_uint64( *( (uint64_t *)p ) );
+		
+	return POSTGRES_EPOCH_DATE + (int64_t) (i * POSTGRES_TICKS_PER_MILLISECOND);
+}
+
+DECLSPEC void __fastcall
+pqbf_set_time(pqparam_buffer *pb, time_t t)
+{
+	PQExpBuffer s;
+	char *top;
+	uint64_t i;
+
+	BAILIFNULL(pb);
+
+	s = pb->payload;
+	top = s->data + s->len; /* save top of payload */
+
+	t -= POSTGRES_EPOCH_DATE;
+	t *= POSTGRES_MEGA;
+
+	/* encode 64bit time */
+	i = _byteswap_uint64(t);
+
+	appendBinaryPQExpBuffer(s, (const char*) &i, sizeof(i));
+
+	pqpb_add(pb, TIMEOID, top, sizeof(i));
 }
 
 
 /*
  * oid 1114: timestamp
  */
-
-/* January 1, 2000, 00:00:00 UTC (in Unix epoch seconds) */
-#define POSTGRES_EPOCH_DATE 946684800
-#define POSTGRES_MEGA 1000000
-
-
 DECLSPEC void __fastcall
-pqbf_get_timestamp(const char *ptr, time_t *sec, time_t *usec)
+pqbf_get_timestamp(const char *p, time_t *sec, time_t *usec)
 {
-	uint64_t i = _byteswap_uint64( *( (uint64_t *)ptr ) );
+	uint64_t i;
+
+	if (p == NULL)
+	{
+		*sec = 0;
+		*usec = 0;
+		return;
+	}
+
+	/* decode 64bit timestamp into sec and usec part */
+	i = _byteswap_uint64( *( (uint64_t *)p ) );
 		
 	*sec = POSTGRES_EPOCH_DATE + (int64_t) (i / POSTGRES_MEGA);
 	*usec = i % POSTGRES_MEGA;
 }
 
-#if 0
 DECLSPEC void __fastcall
 pqbf_set_timestamp(pqparam_buffer *pb, time_t sec, time_t usec)
 {
@@ -550,29 +603,70 @@ pqbf_set_timestamp(pqparam_buffer *pb, time_t sec, time_t usec)
 	s = pb->payload;
 	top = s->data + s->len; /* save top of payload */
 
+	sec -= POSTGRES_EPOCH_DATE;
+	sec *= POSTGRES_MEGA;
 
-	 (((((hour * MINS_PER_HOUR) + min) * SECS_PER_MINUTE) + sec) * USECS_PER_SEC) + fsec;
-	sec = i * POSTGRES_MEGA
-	i = _byteswap_uint64(sec);
+	usec *= POSTGRES_MEGA;
+
+	/* encode 64bit timestamp from sec and usec part */
+	i = sec + usec;
+	i = _byteswap_uint64(i);
+
 	appendBinaryPQExpBuffer(s, (const char*) &i, sizeof(i));
 
-	pqpb_add(pb, OIDOID, top, sizeof(i));
+	pqpb_add(pb, TIMESTAMPOID, top, sizeof(i));
 }
-#endif
 
 
 /*
  * oid 1184: timestamptz
+ *
+ * TODO: adapt to local timezone
  */
 DECLSPEC void __fastcall
-pqbf_get_timestamptz(const char *ptr, time_t *sec, time_t *usec)
+pqbf_get_timestamptz(const char *p, time_t *sec, time_t *usec)
 {
-	uint64_t i = _byteswap_uint64( *( (uint64_t *)ptr ) );
+	uint64_t i;
+
+	if (p == NULL)
+	{
+		*sec = 0;
+		*usec = 0;
+		return;
+	}
+
+	/* decode 64bit timestamp into sec and usec part */
+	i = _byteswap_uint64( *( (uint64_t *)p ) );
 		
-	*sec = POSTGRES_EPOCH_DATE + i / 1000000;
-	*usec = i % 1000000;
+	*sec = POSTGRES_EPOCH_DATE + (int64_t) (i / POSTGRES_MEGA);
+	*usec = i % POSTGRES_MEGA;
 }
 
+DECLSPEC void __fastcall
+pqbf_set_timestamptz(pqparam_buffer *pb, time_t sec, time_t usec)
+{
+	PQExpBuffer s;
+	char *top;
+	uint64_t i;
+
+	BAILIFNULL(pb);
+
+	s = pb->payload;
+	top = s->data + s->len; /* save top of payload */
+
+	sec -= POSTGRES_EPOCH_DATE;
+	sec *= POSTGRES_MEGA;
+
+	usec *= POSTGRES_MEGA;
+
+	/* encode 64bit timestamp from sec and usec part */
+	i = sec + usec;
+	i = _byteswap_uint64(i);
+
+	appendBinaryPQExpBuffer(s, (const char*) &i, sizeof(i));
+
+	pqpb_add(pb, TIMESTAMPTZOID, top, sizeof(i));
+}
 
 /*
  * oid 1186: interval
@@ -585,7 +679,7 @@ pqbf_get_interval(const char *ptr, int64_t *offset, int32_t *day, int32_t *month
 {
 	char *p;
 
-	BAILIFNULL(p);
+	BAILIFNULL(ptr);
 	BAILIFNULL(offset);
 	BAILIFNULL(day);
 	BAILIFNULL(month);
@@ -630,10 +724,13 @@ pqbf_set_interval(pqparam_buffer *pb, int64_t offset, int32_t day, int32_t month
  * oid 1266: timetz
  */
 
-DECLSPEC void __fastcall
-pqbf_get_timetz(const char *ptr, time_t *sec, time_t *usec)
+DECLSPEC time_t __fastcall
+pqbf_get_timetz(const char *p)
 {
 	// TODO
+	BAILWITHVALUEIFNULL(p, 0);
+
+	return 0;
 }
 
 /*

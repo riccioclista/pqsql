@@ -46,8 +46,8 @@ extern void appendBinaryPQExpBuffer(PQExpBuffer str, const char *data, size_t da
  */
 typedef struct pqparam_buffer
 {
+	size_t num_param;
 	PQExpBuffer payload;
-	int num_param;
 	Oid   *param_typ;
 	char **param_val;
 	int   *param_len;
