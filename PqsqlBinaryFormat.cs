@@ -8,6 +8,14 @@ namespace Pqsql
 	//
 	public unsafe class PqsqlBinaryFormat
 	{
+		#region unix timestamp 0 in ticks
+		
+		// DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc).Ticks;
+		public const long UnixEpochTicks = 621355968000000000;
+		
+		#endregion
+
+
 		#region interface to pqparam_buffer
 
 		[DllImport("libpqbinfmt.dll")]
@@ -80,7 +88,7 @@ namespace Pqsql
 		public static extern void pqbf_set_interval(IntPtr pbb, long offset, int day, int month);
 
 		[DllImport("libpqbinfmt.dll")]
-		public static extern void pqbf_set_timestamp(IntPtr pbb, long sec, long usec);
+		public static extern void pqbf_set_timestamp(IntPtr pbb, long sec, int usec);
 
 		#endregion
 
@@ -124,7 +132,7 @@ namespace Pqsql
 		public static extern void pqbf_get_interval(IntPtr p, long* offset, int* day, int* month);
 
 		[DllImport("libpqbinfmt.dll")]
-		public static extern void pqbf_get_timestamp(IntPtr p, long* sec, long* usec);
+		public static extern void pqbf_get_timestamp(IntPtr p, long* sec, int* usec);
 
 		[DllImport("libpqbinfmt.dll")]
 		public static extern int pqbf_get_date(IntPtr p);

@@ -87,9 +87,6 @@ namespace Pqsql
 	/// </summary>
 	public class PqsqlDataReader : DbDataReader
 	{
-		// DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc).Ticks;
-		private const long UnixEpochTicks = 621355968000000000;
-
 		// the current PGresult* buffer
 		IntPtr mResult;
 
@@ -684,14 +681,14 @@ namespace Pqsql
 			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
 
 			long sec;
-			long usec;
+			int usec;
 
 			unsafe
 			{
 				PqsqlBinaryFormat.pqbf_get_timestamp(v, &sec, &usec);
 			}
 
-			long ticks = UnixEpochTicks + sec * TimeSpan.TicksPerSecond + usec * 10;
+			long ticks = PqsqlBinaryFormat.UnixEpochTicks + sec * TimeSpan.TicksPerSecond + usec * 10;
 
 			DateTime dt = new DateTime(ticks);
 
@@ -705,7 +702,7 @@ namespace Pqsql
 
 			d = PqsqlBinaryFormat.pqbf_get_date(v);
 
-			long ticks = UnixEpochTicks + d * TimeSpan.TicksPerSecond;
+			long ticks = PqsqlBinaryFormat.UnixEpochTicks + d * TimeSpan.TicksPerSecond;
 
 			DateTime dt = new DateTime(ticks);
 
@@ -719,7 +716,7 @@ namespace Pqsql
 
 			t = PqsqlBinaryFormat.pqbf_get_time(v);
 
-			long ticks = UnixEpochTicks + t * TimeSpan.TicksPerSecond;
+			long ticks = PqsqlBinaryFormat.UnixEpochTicks + t * TimeSpan.TicksPerSecond;
 
 			DateTime dt = new DateTime(ticks);
 

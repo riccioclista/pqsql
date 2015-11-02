@@ -48,6 +48,15 @@ namespace Pqsql
 					SetValue=(IntPtr pb,object val) => PqsqlBinaryFormat.pqbf_set_int4(pb, (int) val)
 				}
 			},
+			{ PqsqlDbType.Int8,
+				new PqsqlTypeName {
+					Name="int8",
+					Type=typeof(long),
+					DbType=DbType.Int64,
+					GetValue=(IntPtr res,int row,int ord,int typmod) => { return PqsqlDataReader.GetInt64(res,row,ord); },
+					SetValue=(IntPtr pb,object val) => PqsqlBinaryFormat.pqbf_set_int8(pb, (long) val)
+				}
+			},
 			{ PqsqlDbType.Numeric,
 				new PqsqlTypeName {
 					Name="numeric",
@@ -149,10 +158,10 @@ namespace Pqsql
 					GetValue=(IntPtr res,int row,int ord,int typmod) => { return PqsqlDataReader.GetDateTime(res,row,ord); },
 					SetValue=(IntPtr pb,object val) => {
 						DateTime dt = (DateTime) val;
-						long ticks = dt.Ticks;
+						long ticks = dt.Ticks - PqsqlBinaryFormat.UnixEpochTicks;
 						long sec = ticks / TimeSpan.TicksPerSecond;
-						long usec = ticks / TimeSpan.TicksPerMillisecond;
-						PqsqlBinaryFormat.pqbf_set_timestamp(pb, sec, usec / 10);
+						int usec = (int) ((ticks % TimeSpan.TicksPerSecond) / 10);
+						PqsqlBinaryFormat.pqbf_set_timestamp(pb, sec, usec);
 					}
 				}
 			},
