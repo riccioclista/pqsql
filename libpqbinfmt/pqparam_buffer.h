@@ -1,8 +1,6 @@
 #ifndef __PQPARAM_BUFFER_H
 #define __PQPARAM_BUFFER_H
 
-#include <stdint.h>
-
 /*
  * Oid datatype
  */
@@ -58,7 +56,7 @@ extern DECLSPEC pqparam_buffer * __fastcall pqpb_create(void);
 extern DECLSPEC void __fastcall pqpb_free(pqparam_buffer *p);
 extern DECLSPEC void __fastcall pqpb_reset(pqparam_buffer *p);
 
-extern void __fastcall pqpb_add(pqparam_buffer *buf, Oid typ, const char *val, int len);
+extern void __fastcall pqpb_add(pqparam_buffer *buf, Oid typ, const char *val, size_t len);
 
 extern DECLSPEC int __fastcall pqpb_get_num(pqparam_buffer *p);
 extern DECLSPEC Oid * __fastcall pqpb_get_types(pqparam_buffer *p);

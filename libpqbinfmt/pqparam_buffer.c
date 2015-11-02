@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 #define DLL_EXPORT
 #include "pqparam_buffer.h"
@@ -71,7 +72,7 @@ pqpb_reset(pqparam_buffer *b)
 #define REMALLOC(type, ptr, n, ret) \
 	do { \
 		if (ptr) { \
-			type *newptr = (type*) realloc(ptr, n * sizeof(type)); \
+			type *newptr = (type*) realloc(ptr, (n + 1) * sizeof(type)); \
 			if (newptr != NULL) { \
 				ptr = newptr ; \
 			} else { \
@@ -83,7 +84,7 @@ pqpb_reset(pqparam_buffer *b)
 
 
 void __fastcall
-pqpb_add(pqparam_buffer *b, Oid typ, const char *val, int len)
+pqpb_add(pqparam_buffer *b, Oid typ, const char *val, size_t len)
 {
 	int ret = 0;
 
@@ -92,15 +93,15 @@ pqpb_add(pqparam_buffer *b, Oid typ, const char *val, int len)
 	b->param_typ[b->num_param] = typ; // OID of type
 	
 	REMALLOC(char*, b->param_val, b->num_param, ret);
-	if (b->param_typ == NULL || ret == -1) return;
+	if (b->param_val == NULL || ret == -1) return;
 	b->param_val[b->num_param] = (char*) val; // pointer to beginning of data in payload
 
 	REMALLOC(int, b->param_len, b->num_param, ret);
-	if (b->param_typ == NULL || ret == -1) return;
+	if (b->param_len == NULL || ret == -1) return;
 	b->param_len[b->num_param] = len; // data length
 
 	REMALLOC(int, b->param_fmt, b->num_param, ret);
-	if (b->param_typ == NULL || ret == -1) return;
+	if (b->param_fmt == NULL || ret == -1) return;
 	b->param_fmt[b->num_param] = 1; // binary format
 
 	b->num_param++;
