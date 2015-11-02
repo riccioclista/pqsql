@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Data.Common;
-using System.ComponentModel;
-using System.Collections;
+﻿using System.Data.Common;
 
 namespace Pqsql
 {
@@ -128,16 +122,14 @@ namespace Pqsql
 		public const string application_name = "application_name";
 
 		public PqsqlConnectionStringBuilder()
-			: base()
 		{
 		}
 
 		// E.g.
 		// host=localhost; port=5432; user=postgres; password=P4$$word; dbname=postgres; connect_timeout=10
 		public PqsqlConnectionStringBuilder(string s)
-			: base()
 		{
-			base.ConnectionString = s;
+			ConnectionString = s;
 		}
 	}
 }

@@ -147,7 +147,13 @@ namespace Pqsql
 					Type=typeof(DateTime),
 					DbType=DbType.DateTime,
 					GetValue=(IntPtr res,int row,int ord,int typmod) => { return PqsqlDataReader.GetDateTime(res,row,ord); },
-					SetValue=null // TODO (IntPtr pb,object val) => { PqsqlBinaryFormat.pqbf_set_timestamp(pb, (DateTime) val); }
+					SetValue=(IntPtr pb,object val) => {
+						DateTime dt = (DateTime) val;
+						long ticks = dt.Ticks;
+						long sec = ticks / TimeSpan.TicksPerSecond;
+						long usec = ticks / TimeSpan.TicksPerMillisecond;
+						PqsqlBinaryFormat.pqbf_set_timestamp(pb, sec, usec / 10);
+					}
 				}
 			},
 			{ PqsqlDbType.TimestampTZ,

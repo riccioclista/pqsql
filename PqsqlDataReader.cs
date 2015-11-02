@@ -1,13 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Data.Common;
 using System.Data;
 using System.ComponentModel;
 using System.Collections;
 using System.Runtime.InteropServices;
-using System.Runtime.CompilerServices;
 
 namespace Pqsql
 {
@@ -67,7 +64,7 @@ namespace Pqsql
 		//     The collection was modified after the enumerator was created.
 		public bool MoveNext()
 		{
-			return mReader.Read() ? true : mReader.NextResult();
+			return mReader != null && (mReader.Read() || mReader.NextResult());
 		}
 
 		//
@@ -90,8 +87,8 @@ namespace Pqsql
 	/// </summary>
 	public class PqsqlDataReader : DbDataReader
 	{
-		// long epoch = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc).Ticks;
-		private static readonly long UnixEpochTicks = 621355968000000000;
+		// DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc).Ticks;
+		private const long UnixEpochTicks = 621355968000000000;
 
 		// the current PGresult* buffer
 		IntPtr mResult;
@@ -340,7 +337,7 @@ namespace Pqsql
 			}
 		}
 
-		bool mClosing = false;
+		bool mClosing;
 
 		// Summary:
 		//     Closes the System.Data.Common.DbDataReader object.
@@ -403,7 +400,7 @@ namespace Pqsql
 			GC.SuppressFinalize(this);
 		}
 
-		bool mDisposed = false;
+		bool mDisposed;
 
 		//
 		// Summary:
@@ -438,7 +435,7 @@ namespace Pqsql
 				throw new IndexOutOfRangeException("No tuple available");
 
 			if (ordinal < 0 || ordinal >= FieldCount)
-				throw new IndexOutOfRangeException("Column " + ordinal.ToString() + " out of range");
+				throw new IndexOutOfRangeException("Column " + ordinal + " out of range");
 		}
 
 		protected void CheckOrdinalType(int ordinal, PqsqlDbType oid)
@@ -447,7 +444,7 @@ namespace Pqsql
 
 			PqsqlDbType coloid = mRowInfo[ordinal].Oid;
 			if (oid != coloid)
-				throw new InvalidCastException("Trying to access datatype " + coloid.ToString() + " as datatype " + oid.ToString());
+				throw new InvalidCastException(string.Format("Trying to access datatype {0} as datatype {1}", coloid, oid));
 		}
 
 		#endregion
@@ -678,7 +675,7 @@ namespace Pqsql
 					return GetDate(mResult, mRowNum, ordinal);
 
 				default:
-					throw new InvalidCastException("Trying to access datatype " + oid.ToString() + " as datatype DateTime");
+					throw new InvalidCastException("Trying to access datatype " + oid + " as datatype DateTime");
 			}
 		}
 
@@ -704,13 +701,29 @@ namespace Pqsql
 		internal static DateTime GetDate(IntPtr res, int row, int ordinal)
 		{
 			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
-			return DateTime.Now; // TODO PqsqlBinaryFormat.pqbf_get_bool(v) > 0;
+			int d;
+
+			d = PqsqlBinaryFormat.pqbf_get_date(v);
+
+			long ticks = UnixEpochTicks + d * TimeSpan.TicksPerSecond;
+
+			DateTime dt = new DateTime(ticks);
+
+			return dt;
 		}
 
 		internal static DateTime GetTime(IntPtr res, int row, int ordinal)
 		{
 			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
-			return DateTime.Now; // TODO PqsqlBinaryFormat.pqbf_get_bool(v) > 0;
+			long t;
+
+			t = PqsqlBinaryFormat.pqbf_get_time(v);
+
+			long ticks = UnixEpochTicks + t * TimeSpan.TicksPerSecond;
+
+			DateTime dt = new DateTime(ticks);
+
+			return dt;
 		}
 
 		public TimeSpan GetTimeSpan(int ordinal)
@@ -727,6 +740,13 @@ namespace Pqsql
 			int day;
 			int month;
 
+			// from timestamp.h:
+			//typedef struct
+			//{
+			//  int64      time;                   /* all time units other than days, months and years */
+			//  int32           day;                    /* days, after time for alignment */
+			//  int32           month;                  /* months and years, after time for alignment */
+			//} Interval;
 			unsafe
 			{
 				PqsqlBinaryFormat.pqbf_get_interval(v, &offset, &day, &month);
@@ -734,30 +754,30 @@ namespace Pqsql
 
 			// TimeSpan is a time period expressed in 100-nanosecond units,
 			// whereas interval is in 1-microsecond resolution
-			TimeSpan ts = new TimeSpan(offset * 10);
+			TimeSpan ts = new TimeSpan(offset * 10 + day * TimeSpan.TicksPerDay);
 
 			// from timestamp.h:
 			// #define DAYS_PER_YEAR   365.25  /* assumes leap year every four years */
 			// #define MONTHS_PER_YEAR 12
+			if (month != 0)
+			{
+				long month_to_days = (long) (month / 12.0 * 365.25);
+				ts += TimeSpan.FromTicks(month_to_days * TimeSpan.TicksPerDay);
+			}
 
-			//typedef struct
-			//{
-			//  int64      time;                   /* all time units other than days, months and years */
-      //  int32           day;                    /* days, after time for alignment */
-      //  int32           month;                  /* months and years, after time for alignment */
-			//} Interval;
-
+#if false
 			double days = day;
 
-			if (month > 0)
+			if (month > 0 || month < 0)
 			{
 				days += (month / 12) * 365.25;
 			}
 
-			if (days > 0)
+			if (days > 0 || days < 0)
 			{
 				ts += TimeSpan.FromDays(days);
 			}
+#endif
 
 			return ts;
 		}
@@ -831,7 +851,7 @@ namespace Pqsql
 					return GetNumeric(mResult, mRowNum, ordinal, ci.Modifier);
 			}
 
-			throw new InvalidCastException("Trying to access datatype " + ci.Oid.ToString() + " as datatype Float8");
+			throw new InvalidCastException("Trying to access datatype " + ci.Oid + " as datatype Float8");
 		}
 
 		internal static double GetDouble(IntPtr res, int row, int ordinal)
@@ -919,7 +939,7 @@ namespace Pqsql
 
 		internal static Guid GetGuid(IntPtr res, int row, int ordinal)
 		{
-			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
+			// TODO IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
 			return new Guid(); // TODO PqsqlBinaryFormat.pqbf_get_uuid(v);
 		}
 		//
@@ -1117,7 +1137,7 @@ namespace Pqsql
 			PqsqlDbType oid = mRowInfo[ordinal].Oid;
 			if (oid != PqsqlDbType.Text && oid != PqsqlDbType.Varchar && oid != PqsqlDbType.Unknown)
 			{
-				throw new InvalidCastException("Trying to access datatype " + oid.ToString() + " as datatype Text");
+				throw new InvalidCastException("Trying to access datatype " + oid + " as datatype Text");
 			}
 
 			return GetString(mResult, mRowNum, ordinal);	
@@ -1163,6 +1183,12 @@ namespace Pqsql
 				int n = (int) GetBytes(ordinal, 0, null, 0, 0);
 				byte[] bs = new byte[n];
 				n = (int) GetBytes(ordinal, 0, bs, 0, n);
+
+				if (n != bs.Length)
+				{
+					throw new IndexOutOfRangeException("Received wrong number of bytes for byte array");
+				}
+
 				return bs;
 			}
 
@@ -1312,7 +1338,7 @@ namespace Pqsql
 						unsafe
 						{
 							sbyte *name = PqsqlWrapper.PQfname(mResult, o); // column name
-							mRowInfo[o].Name = new string(name); // TODO UTF-8 encoding!
+							mRowInfo[o].Name = new string(name); // TODO UTF-8 encoding ignored here!
 						}
 						
 						mRowInfo[o].Size = PqsqlWrapper.PQfsize(mResult, o);     // column datatype size
@@ -1361,7 +1387,6 @@ namespace Pqsql
 			unsafe
 			{
 				int num_param = 0;
-				IntPtr pb    = IntPtr.Zero; // pqparam_buffer*
 				IntPtr ptyps = IntPtr.Zero; // oid*
 				IntPtr pvals = IntPtr.Zero; // char**
 				IntPtr plens = IntPtr.Zero; // int*
@@ -1371,7 +1396,7 @@ namespace Pqsql
 
 				if (pc != null)
 				{
-					pb = pc.PGParameters;
+					IntPtr pb = pc.PGParameters; // pqparam_buffer*
 					num_param = PqsqlBinaryFormat.pqpb_get_num(pb);
 					ptyps = PqsqlBinaryFormat.pqpb_get_types(pb);
 					pvals = PqsqlBinaryFormat.pqpb_get_vals(pb);

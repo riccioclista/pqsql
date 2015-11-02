@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Net;
 using System.Runtime.InteropServices;
 
 namespace Pqsql
@@ -45,10 +41,10 @@ namespace Pqsql
 		#region encode datatype to binary message
 
 		[DllImport("libpqbinfmt.dll")]
-		public static unsafe extern void pqbf_set_null(IntPtr pb, uint oid);
+		public static extern void pqbf_set_null(IntPtr pb, uint oid);
 
 		[DllImport("libpqbinfmt.dll")]
-		public static unsafe extern int pqbf_set_unicode_text(IntPtr pb, char* t);
+		public static extern int pqbf_set_unicode_text(IntPtr pb, char* t);
 
 		[DllImport("libpqbinfmt.dll")]
 		public static extern void pqbf_free_unicode_text(IntPtr ptr);
@@ -92,10 +88,10 @@ namespace Pqsql
 		#region decode datatype from binary message
 
 		[DllImport("libpqbinfmt.dll")]
-		public static unsafe extern IntPtr pqbf_get_text(IntPtr p, int* len);
+		public static extern IntPtr pqbf_get_text(IntPtr p, int* len);
 
 		[DllImport("libpqbinfmt.dll")]
-		public static unsafe extern IntPtr pqbf_get_unicode_text(IntPtr p, int* len);
+		public static extern IntPtr pqbf_get_unicode_text(IntPtr p, int* len);
 
 		[DllImport("libpqbinfmt.dll")]
 		public static extern byte pqbf_get_byte(IntPtr p);
@@ -122,13 +118,19 @@ namespace Pqsql
 		public static extern double pqbf_get_numeric(IntPtr p, int typmod);
 
 		[DllImport("libpqbinfmt.dll")]
-		public static extern unsafe void pqbf_get_bytea(IntPtr p, sbyte* buf, ulong len);
+		public static extern void pqbf_get_bytea(IntPtr p, sbyte* buf, ulong len);
 
 		[DllImport("libpqbinfmt.dll")]
-		public static extern unsafe void pqbf_get_interval(IntPtr p, long* offset, int* day, int* month);
+		public static extern void pqbf_get_interval(IntPtr p, long* offset, int* day, int* month);
 
 		[DllImport("libpqbinfmt.dll")]
-		public static extern unsafe void pqbf_get_timestamp(IntPtr pbb, long* sec, long* usec);
+		public static extern void pqbf_get_timestamp(IntPtr p, long* sec, long* usec);
+
+		[DllImport("libpqbinfmt.dll")]
+		public static extern int pqbf_get_date(IntPtr p);
+
+		[DllImport("libpqbinfmt.dll")]
+		public static extern long pqbf_get_time(IntPtr p);
 
 		#endregion
 	}

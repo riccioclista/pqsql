@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Data.Common;
 using System.Data;
 using System.ComponentModel;
@@ -60,7 +57,6 @@ namespace Pqsql
 		}
 
 		public PqsqlConnection(PqsqlConnectionStringBuilder builder)
-			: base()
 		{
 			Init();
 			mConnectionStringBuilder = builder;
@@ -138,9 +134,14 @@ namespace Pqsql
 		{
 			get
 			{
-				object timeout = "0";
-				mConnectionStringBuilder.TryGetValue(PqsqlConnectionStringBuilder.connect_timeout, out timeout);
-				return Convert.ToInt32((string)timeout);
+				object timeout;
+
+				if (mConnectionStringBuilder.TryGetValue(PqsqlConnectionStringBuilder.connect_timeout, out timeout))
+				{
+					return Convert.ToInt32((string) timeout);
+				}
+
+				return 0;
 			}
 		}
 
@@ -157,9 +158,14 @@ namespace Pqsql
 		{
 			get
 			{
-				object dbname = string.Empty;
-				mConnectionStringBuilder.TryGetValue(PqsqlConnectionStringBuilder.dbname, out dbname);
-				return (string)dbname;
+				object dbname;
+
+				if (mConnectionStringBuilder.TryGetValue(PqsqlConnectionStringBuilder.dbname, out dbname))
+				{
+					return (string) dbname;
+				}
+
+				return string.Empty;
 			}
 		}
 
@@ -174,9 +180,14 @@ namespace Pqsql
 		{
 			get
 			{
-				object ds = string.Empty;
-				mConnectionStringBuilder.TryGetValue(PqsqlConnectionStringBuilder.host, out ds);
-				return (string)ds;
+				object ds;
+
+				if (mConnectionStringBuilder.TryGetValue(PqsqlConnectionStringBuilder.host, out ds))
+				{
+					return (string) ds;
+				}
+
+				return string.Empty;
 			}
 		}
 
@@ -414,7 +425,7 @@ namespace Pqsql
 				PqsqlWrapper.PQreset(mConnection);
 
 				// get connection status
-				mStatus = (Pqsql.ConnectionStatus) PqsqlWrapper.PQstatus(mConnection);
+				mStatus = (ConnectionStatus) PqsqlWrapper.PQstatus(mConnection);
 
 				if (mStatus == ConnectionStatus.CONNECTION_BAD)
 				{
@@ -446,7 +457,7 @@ namespace Pqsql
 			if (mConnection != IntPtr.Zero)
 			{
 				// get connection status
-				mStatus = (Pqsql.ConnectionStatus) PqsqlWrapper.PQstatus(mConnection);
+				mStatus = (ConnectionStatus) PqsqlWrapper.PQstatus(mConnection);
 
 				if (mStatus == ConnectionStatus.CONNECTION_BAD)
 				{
@@ -496,7 +507,7 @@ namespace Pqsql
 			GC.SuppressFinalize(this);
 		}
 
-		bool mDisposed = false;
+		bool mDisposed;
 
 		protected override void Dispose(bool disposing)
 		{

@@ -1,9 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Data.Common;
-using System.ComponentModel;
 using System.Data;
 using System.Globalization;
 
@@ -21,7 +17,6 @@ namespace Pqsql
 		}
 
 		public PqsqlCommandBuilder(PqsqlDataAdapter adapter)
-			: base()
 		{
 			DataAdapter = adapter;
 			QuotePrefix = "\"";
@@ -92,7 +87,7 @@ namespace Pqsql
 		//   System.InvalidOperationException:
 		//     This property cannot be changed after an insert, update, or delete command
 		//     has been generated.
-		public override string QuotePrefix
+		public override sealed string QuotePrefix
 		{
 			get
 			{
@@ -111,6 +106,7 @@ namespace Pqsql
 				}
 			}
 		}
+
 		//
 		// Summary:
 		//     Gets or sets the ending character or characters to use when specifying database
@@ -119,7 +115,7 @@ namespace Pqsql
 		//
 		// Returns:
 		//     The ending character or characters to use. The default is an empty string.
-		public override string QuoteSuffix
+		public override sealed string QuoteSuffix
 		{
 			get
 			{
@@ -172,9 +168,10 @@ namespace Pqsql
 		//   whereClause:
 		//     true if the parameter is part of the update or delete WHERE clause, false
 		//     if it is part of the insert or update values.
-		protected override void ApplyParameterInfo(DbParameter p, DataRow row, System.Data.StatementType statementType, bool whereClause)
+		protected override void ApplyParameterInfo(DbParameter p, DataRow row, StatementType statementType, bool whereClause)
 		{
 			// TODO: We may need to set DbType, as well as other properties, on p
+			throw new NotImplementedException("ApplyParameterInfo");
 		}
 		//
 		// Summary:
@@ -414,12 +411,12 @@ namespace Pqsql
 			int beg = 0;
 			int len = uqid.Length;
 
-			if (uqid.StartsWith(this.QuotePrefix))
+			if (uqid.StartsWith(QuotePrefix))
 			{
 				beg++;
 			}
 
-			if (uqid.EndsWith(this.QuoteSuffix))
+			if (uqid.EndsWith(QuoteSuffix))
 			{
 				len = uqid.Length - beg - 1;
 			}

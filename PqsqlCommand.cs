@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Data.Common;
 using System.ComponentModel;
@@ -43,7 +41,6 @@ namespace Pqsql
 		}
 
 		public PqsqlCommand(string query, PqsqlConnection conn)
-			: base()
 		{
 			Init(query);
 			mParams = new PqsqlParameterCollection();
@@ -155,7 +152,7 @@ namespace Pqsql
 		//     The parameters of the SQL statement or stored procedure.
 		protected override DbParameterCollection DbParameterCollection
 		{
-			get	{	return (DbParameterCollection) Parameters; }
+			get	{	return Parameters; }
 		}
 
 		//
@@ -281,14 +278,13 @@ namespace Pqsql
 			if (cancel != IntPtr.Zero)
 			{
 				sbyte[] buf = new sbyte[256];
-				int cret;
-				string err = string.Empty;
 
+				string err;
 				unsafe
 				{
 					fixed (sbyte* b = buf)
 					{
-						cret = PqsqlWrapper.PQcancel(cancel, b, 256);
+						int cret = PqsqlWrapper.PQcancel(cancel, b, 256);
 						PqsqlWrapper.PQfreeCancel(cancel);
 
 						if (cret == 1)
@@ -448,7 +444,7 @@ namespace Pqsql
 		{
 			if (mCmdTimeout > 0 && mCmdTimeoutSet == false)
 			{
-				byte[] stmtTimeout = Encoding.UTF8.GetBytes(mStatementTimeoutString + CommandTimeout.ToString());
+				byte[] stmtTimeout = Encoding.UTF8.GetBytes(mStatementTimeoutString + CommandTimeout);
 				IntPtr res;
 				IntPtr pc = mConn.PGConnection;
 
@@ -535,7 +531,7 @@ namespace Pqsql
 					{
 						case '\'':
 						case '"':
-							quote = !quote;
+							quote = false;
 							break;
 					}
 					sb.Append(c);
@@ -553,7 +549,7 @@ namespace Pqsql
 
 						case '\'':
 						case '"':
-							quote = !quote;
+							quote = true;
 							break;
 					}
 					sb.Append(c);
@@ -566,7 +562,6 @@ namespace Pqsql
 				ReplaceParameterNames(ref sb);
 				statements[stmLen] = sb.ToString();
 				sb.Clear();
-				sb = null;
 			}
 
 			return statements;
