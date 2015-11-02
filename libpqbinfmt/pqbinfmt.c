@@ -485,7 +485,7 @@ pqbf_set_float8(pqparam_buffer *pb, double f)
 
 	/* encode float8 */
 	swap.f = f;
-	swap.i = _byteswap_ulong(swap.i);
+	swap.i = _byteswap_uint64(swap.i);
 	appendBinaryPQExpBuffer(s, (const char*) &swap.i, sizeof(swap.i));
 
 	pqpb_add(pb, FLOAT8OID, top, sizeof(swap.i));
@@ -573,7 +573,7 @@ pqbf_set_time(pqparam_buffer *pb, time_t t)
  * oid 1114: timestamp
  */
 DECLSPEC void __fastcall
-pqbf_get_timestamp(const char *p, time_t *sec, time_t *usec)
+pqbf_get_timestamp(const char *p, time_t *sec, int *usec)
 {
 	uint64_t i;
 
@@ -592,7 +592,7 @@ pqbf_get_timestamp(const char *p, time_t *sec, time_t *usec)
 }
 
 DECLSPEC void __fastcall
-pqbf_set_timestamp(pqparam_buffer *pb, time_t sec, time_t usec)
+pqbf_set_timestamp(pqparam_buffer *pb, time_t sec, int usec)
 {
 	PQExpBuffer s;
 	char *top;
@@ -606,11 +606,8 @@ pqbf_set_timestamp(pqparam_buffer *pb, time_t sec, time_t usec)
 	sec -= POSTGRES_EPOCH_DATE;
 	sec *= POSTGRES_MEGA;
 
-	usec *= POSTGRES_MEGA;
-
 	/* encode 64bit timestamp from sec and usec part */
-	i = sec + usec;
-	i = _byteswap_uint64(i);
+	i = _byteswap_uint64((uint64_t) (sec + usec));
 
 	appendBinaryPQExpBuffer(s, (const char*) &i, sizeof(i));
 

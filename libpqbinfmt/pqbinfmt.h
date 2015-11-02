@@ -54,8 +54,8 @@ extern DECLSPEC void __fastcall pqbf_set_float8(pqparam_buffer *p, double f);
 extern DECLSPEC double __fastcall pqbf_get_numeric(const char *ptr, int32_t typmod);
 extern DECLSPEC void __fastcall pqbf_set_numeric(pqparam_buffer *pb, double d);
 
-extern DECLSPEC void __fastcall pqbf_get_timestamp(const char *p, time_t *sec, time_t *usec);
-extern DECLSPEC void __fastcall pqbf_set_timestamp(pqparam_buffer *pb, time_t sec, time_t usec);
+extern DECLSPEC void __fastcall pqbf_get_timestamp(const char *p, time_t *sec, int *usec);
+extern DECLSPEC void __fastcall pqbf_set_timestamp(pqparam_buffer *pb, time_t sec, int usec);
 
 extern DECLSPEC void __fastcall pqbf_get_timestamptz(const char *p, time_t *sec, time_t *usec);
 extern DECLSPEC void __fastcall pqbf_set_timestamptz(pqparam_buffer *pb, time_t sec, time_t usec);
