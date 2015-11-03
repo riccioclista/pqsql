@@ -17,23 +17,35 @@ extern "C" {
 #define BAILIFNULL(p) do { if (p == NULL) return; } while(0)
 #define BAILWITHVALUEIFNULL(p,val) do { if (p == NULL) return val; } while(0)
 
+/* BYTESWAP for network byte order */
+#define BYTESWAP2(x) _byteswap_ushort(x)
+#define BYTESWAP4(x) _byteswap_ulong(x)
+#define BYTESWAP8(x) _byteswap_uint64(x)
 
-extern DECLSPEC void __fastcall pqbf_set_null(pqparam_buffer *pb, uint32_t oid);
+extern DECLSPEC size_t __fastcall pqbf_get_buflen(PQExpBuffer s);
+extern DECLSPEC char * __fastcall pqbf_get_bufval(PQExpBuffer s);
+
+extern DECLSPEC void __fastcall pqbf_add_null(pqparam_buffer *pb, uint32_t oid);
 
 extern DECLSPEC int __fastcall pqbf_get_bool(const char *ptr);
-extern DECLSPEC void __fastcall pqbf_set_bool(pqparam_buffer *pb, int b);
+extern DECLSPEC void __fastcall pqbf_set_bool(PQExpBuffer s, int b);
+extern DECLSPEC void __fastcall pqbf_add_bool(pqparam_buffer *pb, int b);
 
 extern DECLSPEC void __fastcall pqbf_get_bytea(const char *p, char* buf, size_t len);
-extern DECLSPEC void __fastcall pqbf_set_bytea(pqparam_buffer *pb, const char* buf, size_t buflen);
+extern DECLSPEC void __fastcall pqbf_set_bytea(PQExpBuffer s, const char* buf, size_t buflen);
+extern DECLSPEC void __fastcall pqbf_add_bytea(pqparam_buffer *pb, const char* buf, size_t buflen);
 
 extern DECLSPEC int64_t __fastcall pqbf_get_int8(const char *ptr);
-extern DECLSPEC void __fastcall pqbf_set_int8(pqparam_buffer *pb, int64_t i);
+extern DECLSPEC void __fastcall pqbf_set_int8(PQExpBuffer s, int64_t i);
+extern DECLSPEC void __fastcall pqbf_add_int8(pqparam_buffer *pb, int64_t i);
 
 extern DECLSPEC int32_t __fastcall pqbf_get_int4(const char *ptr);
-extern DECLSPEC void __fastcall pqbf_set_int4(pqparam_buffer *pb, int32_t i);
+extern DECLSPEC void __fastcall pqbf_set_int4(PQExpBuffer s, int32_t i);
+extern DECLSPEC void __fastcall pqbf_add_int4(pqparam_buffer *pb, int32_t i);
 
 extern DECLSPEC int16_t __fastcall pqbf_get_int2(const char *ptr);
-extern DECLSPEC void __fastcall pqbf_set_int2(pqparam_buffer *pb, int16_t i);
+extern DECLSPEC void __fastcall pqbf_set_int2(PQExpBuffer s, int16_t i);
+extern DECLSPEC void __fastcall pqbf_add_int2(pqparam_buffer *pb, int16_t i);
 
 extern DECLSPEC const char* __fastcall pqbf_get_text(const char *ptr, size_t *len);
 extern DECLSPEC void __fastcall pqbf_set_text(pqparam_buffer *pb, const char *t);
