@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Data.Common;
 using System.Data;
@@ -73,7 +75,6 @@ namespace Pqsql
 				{
 					mConn = null;
 				}
-				// ReSharper disable once RedundantCheckBeforeAssignment
 				else if (mConn != value)
 				{
 					mConn = value;
@@ -119,33 +120,33 @@ namespace Pqsql
 		// send commit or rollback. must not throw, used in Dispose()
 		internal ExecStatus SaveTransaction(bool commit)
 		{
+			if (mConn == null)
+				return ExecStatus.PGRES_EMPTY_QUERY;
+
+			IntPtr pgconn = mConn.PGConnection;
+
+			PGTransactionStatus ts = (PGTransactionStatus) PqsqlWrapper.PQtransactionStatus(pgconn);
+
+			if (ts != PGTransactionStatus.PQTRANS_INTRANS)
+				return ExecStatus.PGRES_EMPTY_QUERY;
+
+			// commit or rollback
+			byte[] txnString = commit ? mCommit : mRollback;
+
 			ExecStatus s = ExecStatus.PGRES_EMPTY_QUERY;
 
-			if (mConn != null)
+			unsafe
 			{
-				IntPtr pgconn = mConn.PGConnection;
-
-				PGTransactionStatus ts = (PGTransactionStatus) PqsqlWrapper.PQtransactionStatus(pgconn);
-
-				if (ts != PGTransactionStatus.PQTRANS_INTRANS)
-					return ExecStatus.PGRES_EMPTY_QUERY;
-
-				// commit or rollback
-				byte[] txnString = commit ? mCommit : mRollback;
-
-				unsafe
+				IntPtr res;
+				fixed (byte* t = txnString)
 				{
-					IntPtr res;
-					fixed (byte* t = txnString)
-					{
-						res = PqsqlWrapper.PQexec(pgconn, t);
-					}
+					res = PqsqlWrapper.PQexec(pgconn, t);
+				}
 
-					if (res != IntPtr.Zero)
-					{
-						s = (ExecStatus) PqsqlWrapper.PQresultStatus(res);
-						PqsqlWrapper.PQclear(res);
-					}
+				if (res != IntPtr.Zero)
+				{
+					s = (ExecStatus) PqsqlWrapper.PQresultStatus(res);
+					PqsqlWrapper.PQclear(res);
 				}
 			}
 
