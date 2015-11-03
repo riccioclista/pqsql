@@ -141,5 +141,22 @@ namespace Pqsql
 		public static extern long pqbf_get_time(IntPtr p);
 
 		#endregion
+
+		#region interface to pqcopy_buffer
+
+		[DllImport("libpqbinfmt.dll")]
+		public static extern IntPtr pqcb_create(IntPtr conn, int num_cols);
+		[DllImport("libpqbinfmt.dll")]
+		public static extern void pqcb_free(IntPtr pc);
+		[DllImport("libpqbinfmt.dll")]
+		public static extern void pqcb_reset(IntPtr pc, int num_cols);
+		
+		[DllImport("libpqbinfmt.dll")]
+		public static extern int pqcb_put_col(IntPtr pc, IntPtr val, uint len);
+
+		[DllImport("libpqbinfmt.dll")]
+		public static extern int pqcb_put_end(IntPtr pc);
+
+		#endregion
 	}
 }
