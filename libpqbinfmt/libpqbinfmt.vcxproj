@@ -95,11 +95,17 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="float.c" />
+    <ClCompile Include="numeric.c" />
     <ClCompile Include="pqbinfmt.c" />
+    <ClCompile Include="pqbincopy.c" />
     <ClCompile Include="pqparam_buffer.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="numeric.h" />
     <ClInclude Include="pqbinfmt.h" />
+    <ClInclude Include="pqbincopy.h" />
+    <ClInclude Include="pqexpbuffer.h" />
     <ClInclude Include="pqparam_buffer.h" />
     <ClInclude Include="pq_types.h" />
   </ItemGroup>
