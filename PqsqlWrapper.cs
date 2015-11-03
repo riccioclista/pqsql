@@ -83,6 +83,17 @@ namespace Pqsql
 		public const char PG_DIAG_SOURCE_FUNCTION = 'R';
 	};
 
+
+	/// <summary>
+	/// mode bitmask for lo_open
+	/// </summary>
+	internal enum LoOpen
+	{
+		INV_WRITE = 0x00020000,
+		INV_READ = 0x00040000
+	};
+
+
 	/// <summary>
 	/// wraps C functions from libpq.dll
 	/// </summary>
@@ -95,6 +106,10 @@ namespace Pqsql
 
 		// Note: On Windows, there is a way to improve performance if a single database connection is repeatedly started and shutdown. Internally, libpq calls WSAStartup() and WSACleanup() for connection startup and shutdown, respectively. WSAStartup() increments an internal Windows library reference count which is decremented by WSACleanup(). When the reference count is just one, calling WSACleanup() frees all resources and all DLLs are unloaded. This is an expensive operation. To avoid this, an application can manually call WSAStartup() so resources will not be freed when the last database connection is closed.
 
+		//
+		// http://www.postgresql.org/docs/current/static/libpq-misc.html
+		//
+
 		#region libpq setup
 
 		[DllImport("libpq.dll")]
@@ -104,6 +119,15 @@ namespace Pqsql
 		[DllImport("libpq.dll")]
 		public static extern int PQisthreadsafe();
 		//int PQisthreadsafe(void)
+
+		#endregion
+
+
+		#region Miscellaneous
+
+		[DllImport("libpq.dll")]
+		public static extern void PQfreemem(IntPtr ptr);
+		// void PQfreemem(void *ptr); 
 
 		#endregion
 
@@ -140,7 +164,7 @@ namespace Pqsql
 
 		[DllImport("libpq.dll")]
 		public static extern int PQconnectPoll(IntPtr conn);
-    // PostgresPollingStatusType PQconnectPoll(PGconn *conn);
+		// PostgresPollingStatusType PQconnectPoll(PGconn *conn);
 
 		[DllImport("libpq.dll")]
 		public static extern int PQsocket(IntPtr conn);
@@ -186,7 +210,7 @@ namespace Pqsql
 
 		#endregion
 
-		
+
 		#region transaction status
 
 		[DllImport("libpq.dll")]
@@ -346,7 +370,7 @@ namespace Pqsql
 		// void PQfreeCancel(PGcancel* cancel);
 
 		[DllImport("libpq.dll")]
-		public static extern unsafe int PQcancel(IntPtr cancel, sbyte *errbuf, int errbufsize);
+		public static extern unsafe int PQcancel(IntPtr cancel, sbyte* errbuf, int errbufsize);
 		// int PQcancel(PGcancel *cancel, char *errbuf, int errbufsize);
 
 		#endregion
@@ -355,10 +379,100 @@ namespace Pqsql
 		// http://www.postgresql.org/docs/current/static/libpq-copy.html
 		//
 
+		// TODO add COPY support
 
+		#region COPY FROM STDIN
+
+		[DllImport("libpq.dll")]
+		public static extern unsafe int PQputCopyData(IntPtr conn, IntPtr buffer, int nbytes);
+		// int PQputCopyData(PGconn *conn, const char *buffer, int nbytes);
+
+		[DllImport("libpq.dll")]
+		public static extern unsafe int PQputCopyEnd(IntPtr conn, sbyte* errormsg);
+		// int PQputCopyEnd(PGconn *conn, const char *errormsg);
+
+		#endregion
+
+		#region COPY TO STDOUT
+
+		[DllImport("libpq.dll")]
+		public static extern unsafe int PQgetCopyData(IntPtr conn, IntPtr buffer, int async);
+		// int PQgetCopyData(PGconn* conn, char** buffer, int async);
+
+		#endregion
 
 		//
 		// http://www.postgresql.org/docs/current/static/largeobjects.html
 		//
+
+		// TODO add LO support
+
+		#region LO creat / unlink
+
+		[DllImport("libpq.dll")]
+		public static extern uint lo_creat(IntPtr conn, int mode);
+		// Oid lo_creat(PGconn* conn, int mode);
+
+		[DllImport("libpq.dll")]
+		public static extern uint lo_create(IntPtr conn, uint lobjId);
+		// Oid lo_create(PGconn *conn, Oid lobjId);
+
+		[DllImport("libpq.dll")]
+		public static extern int lo_unlink(IntPtr conn, uint lobjId);
+		// int lo_unlink(PGconn *conn, Oid lobjId);
+
+		#endregion
+
+		#region LO open / close
+
+		[DllImport("libpq.dll")]
+		public static extern int lo_open(IntPtr conn, uint lobjId, int mode);
+		// int lo_open(PGconn *conn, Oid lobjId, int mode);
+
+		[DllImport("libpq.dll")]
+		public static extern int lo_close(IntPtr conn, int fd);
+		// int lo_close(PGconn *conn, int fd);
+
+		#endregion
+
+		#region LO lseek / tell
+
+		[DllImport("libpq.dll")]
+		public static extern int lo_lseek(IntPtr conn, int fd, int offset, int whence);
+		// int lo_lseek(PGconn* conn, int fd, int offset, int whence);
+
+		[DllImport("libpq.dll")]
+		public static extern long lo_lseek64(IntPtr conn, int fd, long offset, int whence);
+		// pg_int64 lo_lseek64(PGconn *conn, int fd, pg_int64 offset, int whence);
+
+		[DllImport("libpq.dll")]
+		public static extern int lo_tell(IntPtr conn, int fd);
+		// int lo_tell(PGconn *conn, int fd);
+
+		[DllImport("libpq.dll")]
+		public static extern long lo_tell64(IntPtr conn, int fd);
+		// pg_int64 lo_tell64(PGconn *conn, int fd);
+
+		#endregion
+
+		#region LO write / read / truncate
+
+		[DllImport("libpq.dll")]
+		public static extern unsafe int lo_write(IntPtr conn, int fd, sbyte* buf, ulong len);
+		// int lo_write(PGconn *conn, int fd, const char *buf, size_t len);
+
+		[DllImport("libpq.dll")]
+		public static extern unsafe int lo_read(IntPtr conn, int fd, sbyte* buf, ulong len);
+		// int lo_read(PGconn *conn, int fd, char *buf, size_t len);
+
+		[DllImport("libpq.dll")]
+		public static extern int lo_truncate(IntPtr conn, int fd, long len);
+		// int lo_truncate(PGcon *conn, int fd, size_t len);
+
+		[DllImport("libpq.dll")]
+		public static extern int lo_truncate64(IntPtr conn, int fd, long len);
+		// int lo_truncate64(PGcon *conn, int fd, pg_int64 len);
+
+		#endregion
 	}
 }
