@@ -637,29 +637,27 @@ pqbf_set_numeric(PQExpBuffer s, double d)
 DECLSPEC void __fastcall
 pqbf_add_numeric(pqparam_buffer *pb, double d)
 {
-	PQExpBuffer s;
-	char *top;
+	size_t len;
 
 	Numeric n;
 	NumericVar	x;
 	
 	BAILIFNULL(pb);
 
-	s = pb->payload;
-	top = s->data + s->len; /* save top of payload */
+	len = pb->payload->len; /* save current length of payload */
 
 	/* encode double as numeric */
 	n = float8_numeric(d);
 	init_var_from_num(n, &x);
 
 	/* encode numeric to binary format */
-	pqbf_encode_numeric(s, x);
+	pqbf_encode_numeric(pb->payload, x);
 
 	/* free temp numeric */
 	free_var(&x);
 	free(n);
 
-	pqpb_add(pb, NUMERICOID, top, s->data + s->len - top);
+	pqpb_add(pb, NUMERICOID, pb->payload->len - len);
 }
 
 

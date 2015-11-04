@@ -29,16 +29,17 @@ typedef struct pqparam_buffer
 	size_t num_param;
 	PQExpBuffer payload;
 	Oid   *param_typ;
-	char **param_val;
+	ptrdiff_t *param_dif;
 	int   *param_len;
 	int   *param_fmt;
+	char **param_vals;
 } pqparam_buffer;
 
 extern DECLSPEC pqparam_buffer * __fastcall pqpb_create(void);
 extern DECLSPEC void __fastcall pqpb_free(pqparam_buffer *p);
 extern DECLSPEC void __fastcall pqpb_reset(pqparam_buffer *p);
 
-extern void __fastcall pqpb_add(pqparam_buffer *buf, Oid typ, const char *val, size_t len);
+extern void __fastcall pqpb_add(pqparam_buffer *buf, Oid typ, size_t len);
 
 extern DECLSPEC int __fastcall pqpb_get_num(pqparam_buffer *p);
 extern DECLSPEC Oid * __fastcall pqpb_get_types(pqparam_buffer *p);
