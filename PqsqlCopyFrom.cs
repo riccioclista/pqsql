@@ -193,22 +193,29 @@ namespace Pqsql
 		}
 
 
-		private unsafe sbyte* Top(bool reset)
+		private void CheckReset()
 		{
-			sbyte* data = PqsqlBinaryFormat.pqbf_get_bufval(mExpBuf);
 			long len = PqsqlBinaryFormat.pqbf_get_buflen(mExpBuf);
 
-			if (reset && len > 4096)
+			if (len > 4096)
 			{
 				// if we exceed 4k write-boundary, we reset the buffer and
 				// start to write from the beginning again
 				PqsqlWrapper.resetPQExpBuffer(mExpBuf);
-				return data; // start from beginning of PQExpBuffer
 			}
-
-			return data + len; // get top of PQExpBuffer
 		}
 
+		private unsafe sbyte* Top()
+		{
+			sbyte* data = PqsqlBinaryFormat.pqbf_get_bufval(mExpBuf);
+			long len = PqsqlBinaryFormat.pqbf_get_buflen(mExpBuf);
+			return data + len; // get top of PQExpBuffer
+		}
+		
+		private long Length()
+		{
+			return PqsqlBinaryFormat.pqbf_get_buflen(mExpBuf);
+		}
 
 		private unsafe int PutColumn(sbyte* value, uint type_length)
 		{
@@ -216,69 +223,91 @@ namespace Pqsql
 			return ret == 1 ? (int) type_length : ret;
 		}
 
+		public unsafe int WriteNull()
+		{
+			CheckReset();
+			return PutColumn(null, 4);
+		}
+
 		public unsafe int WriteInt2(short i)
 		{
-			sbyte* val = Top(true);
+			CheckReset();
+			long len = Length();
 			PqsqlBinaryFormat.pqbf_set_int2(mExpBuf, i);
+			sbyte* val = Top() - len;
 			return PutColumn(val, 2);
 		}
 
 		public unsafe int WriteInt4(int i)
 		{
-			sbyte* val = Top(true);
+			CheckReset();
+			long len = Length();
 			PqsqlBinaryFormat.pqbf_set_int4(mExpBuf, i);
+			sbyte* val = Top() - len;
 			return PutColumn(val, 4);
 		}
 
 		public unsafe int WriteInt8(long i)
 		{
-			sbyte* val = Top(true);
+			CheckReset();
+			long len = Length();
 			PqsqlBinaryFormat.pqbf_set_int8(mExpBuf, i);
+			sbyte* val = Top() - len;
 			return PutColumn(val, 8);
 		}
 
 		public unsafe int WriteFloat4(float f)
 		{
-			sbyte* val = Top(true);
+			CheckReset();
+			long len = Length();
 			PqsqlBinaryFormat.pqbf_set_float4(mExpBuf, f);
+			sbyte* val = Top() - len;
 			return PutColumn(val, 4);
 		}
 
 		public unsafe int WriteFloat8(double d)
 		{
-			sbyte* val = Top(true);
+			CheckReset();
+			long len = Length();
 			PqsqlBinaryFormat.pqbf_set_float8(mExpBuf, d);
+			sbyte* val = Top() - len;
 			return PutColumn(val, 8);
 		}
 
 		public unsafe int WriteNumeric(decimal d)
 		{
-			sbyte* val = Top(true);
+			CheckReset();
+			long len1 = Length();
 			PqsqlBinaryFormat.pqbf_set_numeric(mExpBuf, decimal.ToDouble(d));
-			sbyte* top = Top(false);
-			long len = top - val;
+			long len2 = Length();
+			long len = len2 - len1;
+			sbyte* val = Top() - len1;
 			return PutColumn(val, (uint) len);
 		}
 
 		public unsafe int WriteText(string s)
 		{
-			sbyte* val = Top(true);
+			CheckReset();
+			long len1 = Length();
 			fixed (char* sp = s)
 			{
 				PqsqlBinaryFormat.pqbf_set_unicode_text(mExpBuf, sp);
 			}
-			sbyte* top = Top(false);
-			long len = top - val;
+			long len2 = Length();
+			long len = len2 - len1 - 1; // don't store \0
+			sbyte* val = Top() - len1;
 			return PutColumn(val, (uint) len);
 		}
 
 		public unsafe int WriteTimestamp(DateTime dt)
 		{
-			sbyte* val = Top(true);
+			CheckReset();
+			long len = Length();
 			long ticks = dt.Ticks - PqsqlBinaryFormat.UnixEpochTicks;
 			long sec = ticks / TimeSpan.TicksPerSecond;
 			int usec = (int) ((ticks % TimeSpan.TicksPerSecond) / 10);
 			PqsqlBinaryFormat.pqbf_set_timestamp(mExpBuf, sec, usec);
+			sbyte* val = Top() - len;
 			return PutColumn(val, 8);
 		}
 
