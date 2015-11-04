@@ -176,11 +176,9 @@ namespace Pqsql
 		//     The depth of nesting for the current row.
 		public override int Depth
 		{
-			get
-			{
-				return 0;
-			}
+			get { return 0; }
 		}
+
 		//
 		// Summary:
 		//     Gets the number of columns in the current row.
@@ -211,11 +209,9 @@ namespace Pqsql
 		//     false.
 		public override bool HasRows
 		{
-			get
-			{
-				return mMaxRows > 0;
-			}
+			get { return mMaxRows > 0; }
 		}
+
 		//
 		// Summary:
 		//     Gets a value indicating whether the System.Data.Common.DbDataReader is closed.
@@ -264,12 +260,12 @@ namespace Pqsql
 					case ExecStatus.PGRES_TUPLES_OK:
 						return -1;
 
-					case ExecStatus.PGRES_COMMAND_OK: // UPDATE / DELETE / INSERT
+					case ExecStatus.PGRES_COMMAND_OK: // UPDATE / DELETE / INSERT / CREATE * / ...
 						unsafe
 						{
 							sbyte *tuples = PqsqlWrapper.PQcmdTuples(mResult);
 
-							if (tuples == null)
+							if (tuples == null || *tuples == '\0') // NULL pointer or empty string
 								break;
 						
 							string t = new string(tuples);
@@ -307,11 +303,9 @@ namespace Pqsql
 		//     The index passed was outside the range of 0 through System.Data.IDataRecord.FieldCount.
 		public override object this[int ordinal]
 		{
-			get
-			{
-				return GetValue(ordinal);
-			}
+			get { return GetValue(ordinal); }
 		}
+
 		//
 		// Summary:
 		//     Gets the value of the specified column as an instance of System.Object.
@@ -328,10 +322,7 @@ namespace Pqsql
 		//     No column with the specified name was found.
 		public override object this[string name]
 		{
-			get
-			{
-				return this[GetOrdinal(name)];
-			}
+			get { return this[GetOrdinal(name)]; }
 		}
 
 		bool mClosing;
@@ -441,7 +432,7 @@ namespace Pqsql
 
 			PqsqlDbType coloid = mRowInfo[ordinal].Oid;
 			if (oid != coloid)
-				throw new InvalidCastException(string.Format("Trying to access datatype {0} as datatype {1}", coloid, oid));
+				throw new InvalidCastException("Trying to access datatype " + coloid + " as datatype " + oid);
 		}
 
 		#endregion
@@ -1304,7 +1295,15 @@ namespace Pqsql
 			{
 				ExecStatus s = (ExecStatus) PqsqlWrapper.PQresultStatus(mResult);
 
-				if (s != ExecStatus.PGRES_SINGLE_TUPLE && s != ExecStatus.PGRES_TUPLES_OK)
+				if (s == ExecStatus.PGRES_COMMAND_OK)
+				{
+					// nothing to do, we just executed a command without result
+					// keep mResult so we can call PqsqlDatareader.RecordsAffected
+					Reset();
+					return false;
+				}
+
+				if (s != ExecStatus.PGRES_SINGLE_TUPLE && s != ExecStatus.PGRES_TUPLES_OK && s != ExecStatus.PGRES_COMMAND_OK)
 				{
 					// consume remaining results
 					Consume();
@@ -1312,6 +1311,8 @@ namespace Pqsql
 					string err = mConn.GetErrorMessage();
 					throw new PqsqlException(err);
 				}
+
+
 
 				if (mMaxRows == -1) // get number of tuples in a fresh result buffer
 				{
