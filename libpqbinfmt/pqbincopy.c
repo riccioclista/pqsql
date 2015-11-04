@@ -95,13 +95,17 @@ pqcb_put_buf(pqcopy_buffer *p, char* v, uint32_t len)
 
 		if (free >= len)
 		{
+			//printf("one shot: free:%d len:%d p->len:%d\n", free, len, p->len);
+
 			/* buffer can hold all of v */
 			memcpy(&p->payload[p->len], v, len);
 			p->len += len;
-			return 0;
+			return 1;
 		}
 		else if (free > 0)
 		{
+			//printf("split: free:%d len:%d p->len:%d\n", free, len, p->len);
+
 			/* exactly free bytes left */
 			memcpy(&p->payload[p->len], v, free);
 			p->len += free;
@@ -141,6 +145,8 @@ pqcb_put_col(pqcopy_buffer *p, const char* val, uint32_t len)
 
 	if (p->pos_cols == -1 || p->pos_cols >= p->num_cols)
 	{
+		//printf("new tuple: pos:%d num:%d\n", p->pos_cols, p->num_cols);
+
 		tuple_len = BYTESWAP2(p->num_cols);
 		v = (char*) &tuple_len;
 
@@ -159,11 +165,13 @@ pqcb_put_col(pqcopy_buffer *p, const char* val, uint32_t len)
 
 	if (val == NULL && len > 0)
 	{
+		//printf("new col: pos:%d NULL\n", p->pos_cols);
 		len = 0; /* NULL value, ignore field value */
 		v = (char*) NullValue;
 	}
 	else
 	{
+		//printf("new col: pos:%d len:%d\n", p->pos_cols, len);
 		/* len >= 0, we might want to copy empty strings or bytea */
 		col_len = BYTESWAP4(len);
 		v = (char*) &col_len;
@@ -176,6 +184,7 @@ pqcb_put_col(pqcopy_buffer *p, const char* val, uint32_t len)
 	/* potentially add field value to buffer / flush */
 	if (len > 0)
 	{
+		//printf("new val: pos:%d len:%d v:%p\n", p->pos_cols, len, v);
 		v = (char*) val;
 		ret = pqcb_put_buf(p, v, len);
 		if (ret != 1) return ret;
@@ -198,6 +207,8 @@ pqcb_put_end(pqcopy_buffer *p)
 	{
 		return -1;
 	}
+	
+	//printf("remaining buffer: len:%d\n", p->len);
 
 	if (p->len > 0)
 	{
@@ -208,5 +219,6 @@ pqcb_put_end(pqcopy_buffer *p)
 		p->pos_cols = -2; /* marks pqcopy_buffer as invalid */
 	}
 
+	//printf("copy end\n");
 	return PQputCopyEnd(p->conn, NULL);
 }
