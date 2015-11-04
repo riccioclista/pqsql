@@ -70,7 +70,7 @@ pqbf_get_bool(const char *p)
 DECLSPEC void __fastcall
 pqbf_set_bool(PQExpBuffer s, int b)
 {
-	resetPQExpBuffer(s);
+	BAILIFNULL(s);
 	pqbf_encode_bool(s, b);
 }
 
@@ -110,7 +110,7 @@ pqbf_get_bytea(const char *p, char* buf, size_t len)
 DECLSPEC void __fastcall
 pqbf_set_bytea(PQExpBuffer s, const char* buf, size_t buflen)
 {
-	resetPQExpBuffer(s);
+	BAILIFNULL(s);
 	pqbf_encode_bytea(s, buf, buflen);
 }
 
@@ -152,7 +152,7 @@ pqbf_get_int8(const char *p)
 DECLSPEC void __fastcall
 pqbf_set_int8(PQExpBuffer s, int64_t i)
 {
-	resetPQExpBuffer(s);
+	BAILIFNULL(s);
 	pqbf_encode_int8(s, i);
 }
 
@@ -195,7 +195,7 @@ pqbf_get_int2(const char *p)
 DECLSPEC void __fastcall
 pqbf_set_int2(PQExpBuffer s, int16_t i)
 {
-	resetPQExpBuffer(s);
+	BAILIFNULL(s);
 	pqbf_encode_int2(s, i);
 }
 
@@ -237,7 +237,7 @@ pqbf_get_int4(const char *p)
 DECLSPEC void __fastcall
 pqbf_set_int4(PQExpBuffer s, int32_t i)
 {
-	resetPQExpBuffer(s);
+	BAILIFNULL(s);
 	pqbf_encode_int4(s, i);
 }
 
@@ -359,8 +359,18 @@ pqbf_free_unicode_text(wchar_t *p)
 /*
  * standard utf-8 string
  */
+
+#define pqbf_encode_text(s,t) do { appendPQExpBufferStr(s, t); } while(0)
+
 DECLSPEC void __fastcall
-pqbf_set_text(pqparam_buffer *pb, const char *t)
+pqbf_set_text(PQExpBuffer s, const char *t)
+{
+	BAILIFNULL(s);
+	pqbf_encode_text(s, t);
+}
+
+DECLSPEC void __fastcall
+pqbf_add_text(pqparam_buffer *pb, const char *t)
 {
 	PQExpBuffer s;
 	char *top;
@@ -371,7 +381,7 @@ pqbf_set_text(pqparam_buffer *pb, const char *t)
 	s = pb->payload;
 	top = s->data + s->len; /* save top of payload */
 
-	appendPQExpBufferStr(s, t);
+	pqbf_encode_text(s,t);
 
 	pqpb_add(pb, TEXTOID, top, s->data + s->len - top);
 }
@@ -380,46 +390,51 @@ pqbf_set_text(pqparam_buffer *pb, const char *t)
  * https://msdn.microsoft.com/en-us/library/dd374081.aspx
  * windows utf-16 strings
  */
+
+#define pqbf_encode_unicode_text(s,t) \
+	do {               \
+		int utf16_len;   \
+		int utf8_len;    \
+		char *obuf;      \
+		                 \
+		utf16_len = wcslen(t); /* get number of characters in utf-16 string */  \
+		\
+		/* allocate enough room to hold standard utf8 text */             \
+		/* utf-8 requires 8, 16, 24, or 32 bits for a single character */ \
+		utf8_len = utf16_len * 4 + 1;                                     \
+		\
+		obuf = (char *) malloc(utf8_len); \
+		if (obuf == NULL)	return;         \
+		\
+		/* encode UTF-16 as UTF-8 */ \
+		utf8_len = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, t, -1, obuf, utf8_len, NULL, NULL); \
+		if (utf8_len == 0) { free(obuf); return; } \
+		\
+		appendPQExpBufferStr(s, obuf); \
+		free(obuf); \
+	} while(0)
+
 DECLSPEC void __fastcall
-pqbf_set_unicode_text(pqparam_buffer *pb, const wchar_t *t)
+pqbf_set_unicode_text(PQExpBuffer s, const wchar_t *t)
+{
+	if (s == NULL || t == NULL) /* use pqbf_set_null for NULL parameters */
+		return;
+	pqbf_encode_unicode_text(s, t);
+}
+
+DECLSPEC void __fastcall
+pqbf_add_unicode_text(pqparam_buffer *pb, const wchar_t *t)
 {
 	PQExpBuffer s;
 	char *top;
 	
-	int utf16_len;
-	int utf8_len;
-	char *obuf;
-
 	if (pb == NULL || t == NULL) /* use pqbf_set_null for NULL parameters */
 		return;
 
 	s = pb->payload;
 	top = s->data + s->len; /* save top of payload */
 
-	utf16_len = wcslen(t); /* get number of characters in utf-16 string */
-
-	/* allocate enough room to hold standard utf8 text */
-	/* utf-8 requires 8, 16, 24, or 32 bits for a single character */
-	utf8_len = utf16_len * 4 + 1;
-
-	obuf = (char *) malloc(utf8_len);
-	if (obuf == NULL)
-	{
-		//fprintf(stderr, "pqbf_set_unicode_text: malloc failed\n");
-		return;
-	}
-
-	/* encode UTF-16 as UTF-8 */
-	utf8_len = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, t, -1, obuf, utf8_len, NULL, NULL);
-	if (utf8_len == 0)
-	{
-		free(obuf);
-		//fprintf(stderr, "pqbf_set_unicode_text: WideCharToMultiByte failed with %d\n", GetLastError());
-		return;
-	}
-
-	appendPQExpBufferStr(s, obuf);
-	free(obuf);
+	pqbf_encode_unicode_text(s, t);
 
 	pqpb_add(pb, TEXTOID, top, s->data + s->len - top);
 }
@@ -437,7 +452,14 @@ pqbf_get_oid(const char *p)
 }
 
 DECLSPEC void __fastcall
-pqbf_set_oid(pqparam_buffer *pb, uint32_t i)
+pqbf_set_oid(PQExpBuffer s, uint32_t i)
+{
+	BAILIFNULL(s);
+	pqbf_encode_int4(s,i);
+}
+
+DECLSPEC void __fastcall
+pqbf_add_oid(pqparam_buffer *pb, uint32_t i)
 {
 	PQExpBuffer s;
 	char *top;
@@ -447,8 +469,7 @@ pqbf_set_oid(pqparam_buffer *pb, uint32_t i)
 	s = pb->payload;
 	top = s->data + s->len; /* save top of payload */
 
-	i = BYTESWAP4(i);
-	appendBinaryPQExpBuffer(s, (const char*) &i, sizeof(i));
+	pqbf_encode_int4(s,i);
 
 	pqpb_add(pb, OIDOID, top, sizeof(i));
 }
@@ -481,12 +502,27 @@ pqbf_get_float4(const char *p)
 	return swap.f;
 }
 
+
+#define pqbf_encode_float4(s,f) \
+	do { \
+		union float_swap swap; \
+		swap.f = f; \
+		swap.i = BYTESWAP4(swap.i); \
+		appendBinaryPQExpBuffer(s, (const char*) &swap.i, sizeof(swap.i)); \
+	} while(0)
+
 DECLSPEC void __fastcall
-pqbf_set_float4(pqparam_buffer *pb, float f)
+pqbf_set_float4(PQExpBuffer s, float f)
+{
+	BAILIFNULL(s);
+	pqbf_encode_float4(s,f);
+}
+
+DECLSPEC void __fastcall
+pqbf_add_float4(pqparam_buffer *pb, float f)
 {
 	PQExpBuffer s;
 	char *top;
-	union float_swap swap;
 
 	BAILIFNULL(pb);
 
@@ -494,11 +530,9 @@ pqbf_set_float4(pqparam_buffer *pb, float f)
 	top = s->data + s->len; /* save top of payload */
 
 	/* encode float4 */
-	swap.f = f;
-	swap.i = BYTESWAP4(swap.i);
-	appendBinaryPQExpBuffer(s, (const char*) &swap.i, sizeof(swap.i));
+	pqbf_encode_float4(s,f);
 
-	pqpb_add(pb, FLOAT4OID, top, sizeof(swap.i));
+	pqpb_add(pb, FLOAT4OID, top, 4);
 }
 
 
@@ -529,12 +563,26 @@ pqbf_get_float8(const char *p)
 	return swap.f;
 }
 
+#define pqbf_encode_float8(s,f) \
+	do { \
+		union double_swap swap; \
+		swap.f = f; \
+		swap.i = BYTESWAP8(swap.i); \
+		appendBinaryPQExpBuffer(s, (const char*) &swap.i, sizeof(swap.i)); \
+	} while(0)
+
 DECLSPEC void __fastcall
-pqbf_set_float8(pqparam_buffer *pb, double f)
+pqbf_set_float8(PQExpBuffer s, double f)
+{
+	BAILIFNULL(s);
+	pqbf_encode_float8(s,f);
+}
+
+DECLSPEC void __fastcall
+pqbf_add_float8(pqparam_buffer *pb, double f)
 {
 	PQExpBuffer s;
 	char *top;
-	union double_swap swap;
 
 	BAILIFNULL(pb);
 
@@ -542,11 +590,9 @@ pqbf_set_float8(pqparam_buffer *pb, double f)
 	top = s->data + s->len; /* save top of payload */
 
 	/* encode float8 */
-	swap.f = f;
-	swap.i = BYTESWAP8(swap.i);
-	appendBinaryPQExpBuffer(s, (const char*) &swap.i, sizeof(swap.i));
+	pqbf_encode_float8(s, f);
 
-	pqpb_add(pb, FLOAT8OID, top, sizeof(swap.i));
+	pqpb_add(pb, FLOAT8OID, top, 8);
 }
 
 
@@ -561,7 +607,14 @@ pqbf_get_date(const char *p)
 }
 
 DECLSPEC void __fastcall
-pqbf_set_date(pqparam_buffer *pb, int32_t t)
+pqbf_set_date(PQExpBuffer s, int32_t t)
+{
+	BAILIFNULL(s);
+	pqbf_encode_int4(s, t);
+}
+
+DECLSPEC void __fastcall
+pqbf_add_date(pqparam_buffer *pb, int32_t t)
 {
 	uint32_t i;
 	PQExpBuffer s;
@@ -572,9 +625,7 @@ pqbf_set_date(pqparam_buffer *pb, int32_t t)
 	s = pb->payload;
 	top = s->data + s->len; /* save top of payload */
 
-	i = BYTESWAP4(t);
-
-	appendBinaryPQExpBuffer(s, (const char*) &i, sizeof(i));
+	pqbf_encode_int4(s, t);
 
 	pqpb_add(pb, DATEOID, top, sizeof(i));
 }
@@ -603,8 +654,23 @@ pqbf_get_time(const char *p)
 	return POSTGRES_EPOCH_DATE + (int64_t) (i * POSTGRES_TICKS_PER_MILLISECOND);
 }
 
+#define pqbf_encode_time(s,t) \
+	do { \
+		t -= POSTGRES_EPOCH_DATE; \
+		t *= POSTGRES_MEGA; \
+		t = BYTESWAP8(t); \
+		appendBinaryPQExpBuffer(s, (const char*) &t, sizeof(t)); \
+	} while(0)
+
 DECLSPEC void __fastcall
-pqbf_set_time(pqparam_buffer *pb, time_t t)
+pqbf_set_time(PQExpBuffer s, time_t t)
+{
+	BAILIFNULL(s);
+	pqbf_encode_time(s, t);
+}
+
+DECLSPEC void __fastcall
+pqbf_add_time(pqparam_buffer *pb, time_t t)
 {
 	PQExpBuffer s;
 	char *top;
@@ -615,13 +681,7 @@ pqbf_set_time(pqparam_buffer *pb, time_t t)
 	s = pb->payload;
 	top = s->data + s->len; /* save top of payload */
 
-	t -= POSTGRES_EPOCH_DATE;
-	t *= POSTGRES_MEGA;
-
-	/* encode 64bit time */
-	i = BYTESWAP8(t);
-
-	appendBinaryPQExpBuffer(s, (const char*) &i, sizeof(i));
+	pqbf_encode_time(s, t);
 
 	pqpb_add(pb, TIMEOID, top, sizeof(i));
 }
@@ -649,27 +709,35 @@ pqbf_get_timestamp(const char *p, time_t *sec, int *usec)
 	*usec = i % POSTGRES_MEGA;
 }
 
+#define pqbf_encode_timestamp(s,sec,usec) \
+	do { \
+		sec -= POSTGRES_EPOCH_DATE; \
+		sec *= POSTGRES_MEGA; \
+		sec = BYTESWAP8((uint64_t) (sec + usec)); \
+		appendBinaryPQExpBuffer(s, (const char*) &sec, sizeof(sec)); \
+	} while(0)
+
 DECLSPEC void __fastcall
-pqbf_set_timestamp(pqparam_buffer *pb, time_t sec, int usec)
+pqbf_set_timestamp(PQExpBuffer s, time_t sec, int usec)
+{
+	BAILIFNULL(s);
+	pqbf_encode_timestamp(s, sec, usec);
+}
+
+DECLSPEC void __fastcall
+pqbf_add_timestamp(pqparam_buffer *pb, time_t sec, int usec)
 {
 	PQExpBuffer s;
 	char *top;
-	uint64_t i;
 
 	BAILIFNULL(pb);
 
 	s = pb->payload;
 	top = s->data + s->len; /* save top of payload */
 
-	sec -= POSTGRES_EPOCH_DATE;
-	sec *= POSTGRES_MEGA;
+	pqbf_encode_timestamp(s, sec, usec);
 
-	/* encode 64bit timestamp from sec and usec part */
-	i = BYTESWAP8((uint64_t) (sec + usec));
-
-	appendBinaryPQExpBuffer(s, (const char*) &i, sizeof(i));
-
-	pqpb_add(pb, TIMESTAMPOID, top, sizeof(i));
+	pqpb_add(pb, TIMESTAMPOID, top, sizeof(sec));
 }
 
 
@@ -698,29 +766,26 @@ pqbf_get_timestamptz(const char *p, time_t *sec, time_t *usec)
 }
 
 DECLSPEC void __fastcall
-pqbf_set_timestamptz(pqparam_buffer *pb, time_t sec, time_t usec)
+pqbf_set_timestamptz(PQExpBuffer s, time_t sec, int usec)
+{
+	BAILIFNULL(s);
+	pqbf_encode_timestamp(s, sec, usec);
+}
+
+DECLSPEC void __fastcall
+pqbf_add_timestamptz(pqparam_buffer *pb, time_t sec, int usec)
 {
 	PQExpBuffer s;
 	char *top;
-	uint64_t i;
 
 	BAILIFNULL(pb);
 
 	s = pb->payload;
 	top = s->data + s->len; /* save top of payload */
 
-	sec -= POSTGRES_EPOCH_DATE;
-	sec *= POSTGRES_MEGA;
+	pqbf_encode_timestamp(s, sec, usec);
 
-	usec *= POSTGRES_MEGA;
-
-	/* encode 64bit timestamp from sec and usec part */
-	i = sec + usec;
-	i = BYTESWAP8(i);
-
-	appendBinaryPQExpBuffer(s, (const char*) &i, sizeof(i));
-
-	pqpb_add(pb, TIMESTAMPTZOID, top, sizeof(i));
+	pqpb_add(pb, TIMESTAMPTZOID, top, sizeof(sec));
 }
 
 /*
@@ -751,8 +816,25 @@ pqbf_get_interval(const char *ptr, int64_t *offset, int32_t *day, int32_t *month
 	*month = BYTESWAP4(*((uint32_t*)p));
 }
 
+#define pqbf_encode_interval(s,offset,day,month) \
+	do { \
+		offset = BYTESWAP8(offset); \
+		appendBinaryPQExpBuffer(s, (const char*) &offset, sizeof(offset)); \
+		day = BYTESWAP4(day); \
+		appendBinaryPQExpBuffer(s, (const char*) &day, sizeof(day)); \
+		month = BYTESWAP4(month); \
+		appendBinaryPQExpBuffer(s, (const char*) &month, sizeof(month)); \
+	} while(0)
+
 DECLSPEC void __fastcall
-pqbf_set_interval(pqparam_buffer *pb, int64_t offset, int32_t day, int32_t month)
+pqbf_set_interval(PQExpBuffer s, int64_t offset, int32_t day, int32_t month)
+{
+	BAILIFNULL(s);
+	pqbf_encode_interval(s,offset,day,month);
+}
+
+DECLSPEC void __fastcall
+pqbf_add_interval(pqparam_buffer *pb, int64_t offset, int32_t day, int32_t month)
 {
 	PQExpBuffer s;
 	char *top;
@@ -762,15 +844,7 @@ pqbf_set_interval(pqparam_buffer *pb, int64_t offset, int32_t day, int32_t month
 	s = pb->payload;
 	top = s->data + s->len; /* save top of payload */
 
-	/* encode interval */
-	offset = BYTESWAP8(offset);
-	appendBinaryPQExpBuffer(s, (const char*) &offset, sizeof(offset));
-
-	day = BYTESWAP4(day);
-	appendBinaryPQExpBuffer(s, (const char*) &day, sizeof(day));
-
-	month = BYTESWAP4(month);
-	appendBinaryPQExpBuffer(s, (const char*) &month, sizeof(month));
+	pqbf_encode_interval(s,offset,day,month);
 
 	pqpb_add(pb, INTERVALOID, top, s->data + s->len - top);
 }
@@ -788,6 +862,30 @@ pqbf_get_timetz(const char *p)
 	BAILWITHVALUEIFNULL(p, 0);
 
 	return 0;
+}
+
+DECLSPEC void __fastcall
+pqbf_set_timetz(PQExpBuffer s, time_t t)
+{
+	// TODO
+	BAILIFNULL(s);
+	pqbf_encode_int8(s, t);
+}
+
+DECLSPEC void __fastcall
+pqbf_add_timetz(pqparam_buffer *pb, time_t t)
+{
+	PQExpBuffer s;
+	char *top;
+
+	BAILIFNULL(pb);
+
+	s = pb->payload;
+	top = s->data + s->len; /* save top of payload */
+
+	pqbf_encode_int8(s, t);
+
+	pqpb_add(pb, INTERVALOID, top, sizeof(time_t));
 }
 
 /*

@@ -523,7 +523,7 @@ pqbf_get_numeric(const char *ptr, int32_t typmod)
 
 	p = (char*) ptr;
 
-	len = (uint16_t) _byteswap_ushort(*((uint16_t *) p));
+	len = (uint16_t) BYTESWAP2(*((uint16_t *) p));
 	if (len < 0 || len > NUMERIC_MAX_PRECISION + NUMERIC_MAX_RESULT_SCALE)
 		return 0;
 ///		ereport(ERROR,
@@ -533,11 +533,11 @@ pqbf_get_numeric(const char *ptr, int32_t typmod)
 
 	alloc_var(&value, len);
 
-	value.weight = (uint16_t) _byteswap_ushort(*((uint16_t *) p));
+	value.weight = (uint16_t) BYTESWAP2(*((uint16_t *) p));
 	/* we allow any int16 for weight --- OK? */
 	p += sizeof(uint16_t);
 
-	value.sign = (uint16_t) _byteswap_ushort(*((uint16_t *) p));
+	value.sign = (uint16_t) BYTESWAP2(*((uint16_t *) p));
 	if (!(value.sign == NUMERIC_POS ||
 		  value.sign == NUMERIC_NEG ||
 		  value.sign == NUMERIC_NAN))
@@ -547,7 +547,7 @@ pqbf_get_numeric(const char *ptr, int32_t typmod)
 ///				 errmsg("invalid sign in external \"numeric\" value")));
 	p += sizeof(uint16_t);
 
-	value.dscale = (uint16_t) _byteswap_ushort(*((uint16_t *) p));
+	value.dscale = (uint16_t) BYTESWAP2(*((uint16_t *) p));
 	if ((value.dscale & NUMERIC_DSCALE_MASK) != value.dscale)
 		return 0;
 ///		ereport(ERROR,
@@ -557,7 +557,7 @@ pqbf_get_numeric(const char *ptr, int32_t typmod)
 
 	for (i = 0; i < len; i++)
 	{
-		NumericDigit d = (int16_t) _byteswap_ushort(*((int16_t *) p)); // pq_getmsgint(buf, sizeof(NumericDigit));
+		NumericDigit d = (int16_t) BYTESWAP2(*((int16_t *) p)); // pq_getmsgint(buf, sizeof(NumericDigit));
 
 		if (d < 0 || d >= NBASE)
 			return 0;
@@ -591,14 +591,55 @@ pqbf_get_numeric(const char *ptr, int32_t typmod)
 /*
  *		numeric_send			- converts numeric to binary format
  */
+
+#define pqbf_encode_numeric(s,x) \
+	do { \
+		int i; \
+		int16_t i16; \
+		i16 = (int16_t) BYTESWAP2((int16_t) x.ndigits); \
+		appendBinaryPQExpBuffer(s, (const char*) &i16, sizeof(i16)); \
+		\
+		i16 = (int16_t) BYTESWAP2((int16_t) x.weight); \
+		appendBinaryPQExpBuffer(s, (const char*) &i16, sizeof(i16)); \
+		\
+		i16 = (int16_t) BYTESWAP2((int16_t) x.sign); \
+		appendBinaryPQExpBuffer(s, (const char*) &i16, sizeof(i16)); \
+		\
+		i16 = (int16_t) BYTESWAP2((int16_t) x.dscale); \
+		appendBinaryPQExpBuffer(s, (const char*) &i16, sizeof(i16)); \
+		\
+		for (i = 0; i < x.ndigits; i++) { \
+			i16 = (int16_t) BYTESWAP2((int16_t) x.digits[i]); \
+			appendBinaryPQExpBuffer(s, (const char*) &i16, sizeof(NumericDigit)); \
+		} \
+	} while(0)
+
 DECLSPEC void __fastcall
-pqbf_set_numeric(pqparam_buffer *pb, double d)
+pqbf_set_numeric(PQExpBuffer s, double d)
+{
+	Numeric n;
+	NumericVar	x;
+
+	BAILIFNULL(s);
+	
+	/* encode double as numeric */
+	n = float8_numeric(d);
+	init_var_from_num(n, &x);
+
+	/* encode numeric to binary format */
+	pqbf_encode_numeric(s, x);
+
+	/* free temp numeric */
+	free_var(&x);
+	free(n);
+}
+
+DECLSPEC void __fastcall
+pqbf_add_numeric(pqparam_buffer *pb, double d)
 {
 	PQExpBuffer s;
 	char *top;
 
-	int i;
-	int16_t i16;
 	Numeric n;
 	NumericVar	x;
 	
@@ -612,24 +653,7 @@ pqbf_set_numeric(pqparam_buffer *pb, double d)
 	init_var_from_num(n, &x);
 
 	/* encode numeric to binary format */
-
-	i16 = (int16_t) _byteswap_ushort((int16_t) x.ndigits);
-	appendBinaryPQExpBuffer(s, (const char*) &i16, sizeof(i16));
-
-	i16 = (int16_t) _byteswap_ushort((int16_t) x.weight);
-	appendBinaryPQExpBuffer(s, (const char*) &i16, sizeof(i16));
-
-	i16 = (int16_t) _byteswap_ushort((int16_t) x.sign);
-	appendBinaryPQExpBuffer(s, (const char*) &i16, sizeof(i16));
-
-	i16 = (int16_t) _byteswap_ushort((int16_t) x.dscale);
-	appendBinaryPQExpBuffer(s, (const char*) &i16, sizeof(i16));
-
-	for (i = 0; i < x.ndigits; i++)
-	{
-		i16 = (int16_t) _byteswap_ushort((int16_t) x.digits[i]);
-		appendBinaryPQExpBuffer(s, (const char*) &i16, sizeof(NumericDigit));
-	}
+	pqbf_encode_numeric(s, x);
 
 	/* free temp numeric */
 	free_var(&x);
