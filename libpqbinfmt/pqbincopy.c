@@ -75,7 +75,7 @@ pqcb_reset(pqcopy_buffer *buf, int num_cols)
 	do { \
 		if (p->len >= PQBUFSIZ) { \
 			ret = PQputCopyData(p->conn, p->payload, PQBUFSIZ); \
-			if (ret == 0)	p->len = 0; \
+			if (ret == 1)	p->len = 0; \
 		} \
 	} while(0)
 
@@ -87,7 +87,7 @@ int __fastcall
 pqcb_put_buf(pqcopy_buffer *p, char* v, uint32_t len)
 {
 	int copied = 0;
-	int ret = 0;
+	int ret = 1;
 
 	do
 	{
@@ -111,7 +111,7 @@ pqcb_put_buf(pqcopy_buffer *p, char* v, uint32_t len)
 
 		PQCOPYFLUSH(p, ret);
 
-	} while (ret == 0 && copied < len);
+	} while (ret == 1 && copied < len);
 
 	return ret;
 }
@@ -119,7 +119,7 @@ pqcb_put_buf(pqcopy_buffer *p, char* v, uint32_t len)
 
 /* add val to pqcopy_buffer, potentially flushing */
 DECLSPEC int __fastcall
-pqcb_put_col(pqcopy_buffer *p, const char *val, uint32_t len)
+pqcb_put_col(pqcopy_buffer *p, const char* val, uint32_t len)
 {
 	int ret;
 	char *v;
@@ -146,7 +146,7 @@ pqcb_put_col(pqcopy_buffer *p, const char *val, uint32_t len)
 
 		/* add tuple length to buffer / flush */
 		ret = pqcb_put_buf(p, v, sizeof(tuple_len));
-		if (ret != 0) return ret;
+		if (ret != 1) return ret;
 
 		p->pos_cols = 0;
 	}
@@ -171,14 +171,14 @@ pqcb_put_col(pqcopy_buffer *p, const char *val, uint32_t len)
 
 	/* add field length to buffer / flush */
 	ret = pqcb_put_buf(p, v, sizeof(col_len));
-	if (ret != 0) return ret;
+	if (ret != 1) return ret;
 
 	/* potentially add field value to buffer / flush */
 	if (len > 0)
 	{
 		v = (char*) val;
 		ret = pqcb_put_buf(p, v, len);
-		if (ret != 0) return ret;
+		if (ret != 1) return ret;
 	}
 
 	p->pos_cols++;
@@ -203,7 +203,7 @@ pqcb_put_end(pqcopy_buffer *p)
 	{
 		/* flush remaining buffer */
 		int ret = PQputCopyData(p->conn, p->payload, p->len);
-		if (ret != 0)	return ret;
+		if (ret != 1)	return ret;
 		p->len = 0;
 		p->pos_cols = -2; /* marks pqcopy_buffer as invalid */
 	}
