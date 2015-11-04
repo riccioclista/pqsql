@@ -1,157 +1,308 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Text;
 
 namespace Pqsql
 {
-	class PqsqlCopyFrom : Stream
+	public class PqsqlCopyFrom
 	{
 
-		void Signature()
-		{
-			// 11-byte sequence PGCOPY\n\377\r\n\0
+		private PqsqlConnection mConn;
 
+		// fixed-size column buffer, flushes content to db connection once page size is reached
+		private IntPtr mColBuf;
+
+		// variable-size binary value buffer, used to store encoded column values
+		private IntPtr mExpBuf;
+
+		public PqsqlCopyFrom(PqsqlConnection conn)
+		{
+			mConn = conn;
+			mExpBuf = PqsqlWrapper.createPQExpBuffer();
+			mColBuf = IntPtr.Zero;
 		}
 
-		void Flags()
+		~PqsqlCopyFrom()
 		{
-			// 32-bit integer bit mask to denote important aspects of the file format
+			Dispose(false);
 		}
 
-		void HeaderExt()
+		#region Dispose
+
+		public void Dispose()
 		{
-			// 32-bit integer, length in bytes of remainder of header, not including self
+			Dispose(true);
+			GC.SuppressFinalize(this);
 		}
 
-		void Header()
+		bool mDisposed;
+
+		protected void Dispose(bool disposing)
 		{
-			// The file header consists of 15 bytes of fixed fields, followed by a variable-length header extension area. The fixed fields are:
-			Signature();
-			Flags();
-			HeaderExt();
+			if (mDisposed)
+			{
+				return;
+			}
+
+			// always release mColBuf (must not throw exception)
+			Close();
+
+			mDisposed = true;
 		}
-
-
-		void Trailer()
-		{
-			// The file trailer consists of a 16-bit integer word containing -1. This is easily distinguished from a tuple's field-count word.
-
-		}
-
-		#region Overrides of Stream
-
-		/// <summary>
-		/// When overridden in a derived class, clears all buffers for this stream and causes any buffered data to be written to the underlying device.
-		/// </summary>
-		/// <exception cref="T:System.IO.IOException">An I/O error occurs. </exception>
-		public override void Flush()
-		{
-			throw new NotImplementedException();
-		}
-
-		/// <summary>
-		/// When overridden in a derived class, sets the position within the current stream.
-		/// </summary>
-		/// <returns>
-		/// The new position within the current stream.
-		/// </returns>
-		/// <param name="offset">A byte offset relative to the <paramref name="origin"/> parameter. </param><param name="origin">A value of type <see cref="T:System.IO.SeekOrigin"/> indicating the reference point used to obtain the new position. </param><exception cref="T:System.IO.IOException">An I/O error occurs. </exception><exception cref="T:System.NotSupportedException">The stream does not support seeking, such as if the stream is constructed from a pipe or console output. </exception><exception cref="T:System.ObjectDisposedException">Methods were called after the stream was closed. </exception>
-		public override long Seek(long offset, SeekOrigin origin)
-		{
-			throw new NotImplementedException();
-		}
-
-		/// <summary>
-		/// When overridden in a derived class, sets the length of the current stream.
-		/// </summary>
-		/// <param name="value">The desired length of the current stream in bytes. </param><exception cref="T:System.IO.IOException">An I/O error occurs. </exception><exception cref="T:System.NotSupportedException">The stream does not support both writing and seeking, such as if the stream is constructed from a pipe or console output. </exception><exception cref="T:System.ObjectDisposedException">Methods were called after the stream was closed. </exception>
-		public override void SetLength(long value)
-		{
-			throw new NotImplementedException();
-		}
-
-		/// <summary>
-		/// When overridden in a derived class, reads a sequence of bytes from the current stream and advances the position within the stream by the number of bytes read.
-		/// </summary>
-		/// <returns>
-		/// The total number of bytes read into the buffer. This can be less than the number of bytes requested if that many bytes are not currently available, or zero (0) if the end of the stream has been reached.
-		/// </returns>
-		/// <param name="buffer">An array of bytes. When this method returns, the buffer contains the specified byte array with the values between <paramref name="offset"/> and (<paramref name="offset"/> + <paramref name="count"/> - 1) replaced by the bytes read from the current source. </param><param name="offset">The zero-based byte offset in <paramref name="buffer"/> at which to begin storing the data read from the current stream. </param><param name="count">The maximum number of bytes to be read from the current stream. </param><exception cref="T:System.ArgumentException">The sum of <paramref name="offset"/> and <paramref name="count"/> is larger than the buffer length. </exception><exception cref="T:System.ArgumentNullException"><paramref name="buffer"/> is null. </exception><exception cref="T:System.ArgumentOutOfRangeException"><paramref name="offset"/> or <paramref name="count"/> is negative. </exception><exception cref="T:System.IO.IOException">An I/O error occurs. </exception><exception cref="T:System.NotSupportedException">The stream does not support reading. </exception><exception cref="T:System.ObjectDisposedException">Methods were called after the stream was closed. </exception>
-		public override int Read(byte[] buffer, int offset, int count)
-		{
-			throw new NotImplementedException();
-		}
-
-		/// <summary>
-		/// When overridden in a derived class, writes a sequence of bytes to the current stream and advances the current position within this stream by the number of bytes written.
-		/// </summary>
-		/// <param name="buffer">An array of bytes. This method copies <paramref name="count"/> bytes from <paramref name="buffer"/> to the current stream. </param><param name="offset">The zero-based byte offset in <paramref name="buffer"/> at which to begin copying bytes to the current stream. </param><param name="count">The number of bytes to be written to the current stream. </param><exception cref="T:System.ArgumentException">The sum of <paramref name="offset"/> and <paramref name="count"/> is greater than the buffer length. </exception><exception cref="T:System.ArgumentNullException"><paramref name="buffer"/> is null. </exception><exception cref="T:System.ArgumentOutOfRangeException"><paramref name="offset"/> or <paramref name="count"/> is negative. </exception><exception cref="T:System.IO.IOException">An I/O error occurs. </exception><exception cref="T:System.NotSupportedException">The stream does not support writing. </exception><exception cref="T:System.ObjectDisposedException">Methods were called after the stream was closed. </exception>
-		public override void Write(byte[] buffer, int offset, int count)
-		{
-			throw new NotImplementedException();
-		}
-
-		public void WriteInt2(short i)
-		{
-			throw new NotImplementedException();
-		}
-
-		/// <summary>
-		/// When overridden in a derived class, gets a value indicating whether the current stream supports reading.
-		/// </summary>
-		/// <returns>
-		/// true if the stream supports reading; otherwise, false.
-		/// </returns>
-		public override bool CanRead
-		{
-			get { return false; }
-		}
-
-		/// <summary>
-		/// When overridden in a derived class, gets a value indicating whether the current stream supports seeking.
-		/// </summary>
-		/// <returns>
-		/// true if the stream supports seeking; otherwise, false.
-		/// </returns>
-		public override bool CanSeek
-		{
-			get { return false; }
-		}
-
-		/// <summary>
-		/// When overridden in a derived class, gets a value indicating whether the current stream supports writing.
-		/// </summary>
-		/// <returns>
-		/// true if the stream supports writing; otherwise, false.
-		/// </returns>
-		public override bool CanWrite
-		{
-			get { return true; }
-		}
-
-		/// <summary>
-		/// When overridden in a derived class, gets the length in bytes of the stream.
-		/// </summary>
-		/// <returns>
-		/// A long value representing the length of the stream in bytes.
-		/// </returns>
-		/// <exception cref="T:System.NotSupportedException">A class derived from Stream does not support seeking. </exception><exception cref="T:System.ObjectDisposedException">Methods were called after the stream was closed. </exception>
-		public override long Length
-		{
-			get { throw new NotImplementedException(); }
-		}
-
-		/// <summary>
-		/// When overridden in a derived class, gets or sets the position within the current stream.
-		/// </summary>
-		/// <returns>
-		/// The current position within the stream.
-		/// </returns>
-		/// <exception cref="T:System.IO.IOException">An I/O error occurs. </exception><exception cref="T:System.NotSupportedException">The stream does not support seeking. </exception><exception cref="T:System.ObjectDisposedException">Methods were called after the stream was closed. </exception>
-		public override long Position { get; set; }
 
 		#endregion
+
+		public void Start(string copy_query)
+		{
+			IntPtr res;
+			byte[] q = Encoding.UTF8.GetBytes(copy_query);
+			IntPtr conn = mConn.PGConnection;
+
+			unsafe
+			{
+				fixed (byte* qp = q)
+				{
+					res = PqsqlWrapper.PQexec(conn, qp);
+				}
+			}
+
+			if (res != IntPtr.Zero) // result buffer should contain column information
+			{
+				ExecStatus s = (ExecStatus) PqsqlWrapper.PQresultStatus(res);
+
+				if (s != ExecStatus.PGRES_COPY_IN)
+				{
+					PqsqlWrapper.PQclear(res);
+					// consume all remaining results until we reach the NULL result
+					while ((res = PqsqlWrapper.PQgetResult(conn)) != IntPtr.Zero)
+					{
+						// always free mResult
+						PqsqlWrapper.PQclear(res);
+					}
+
+					goto bailout;
+				}
+
+				// check first column format, current implementation will have all columns set to binary 
+				if (PqsqlWrapper.PQfformat(res, 0) == 0)
+				{
+					throw new PqsqlException("PqsqlCopyFrom only supports COPY FROM STDIN BINARY");
+				}
+
+				// get number of columns
+				int num_cols = PqsqlWrapper.PQnfields(res);
+				
+				// done with result inspection
+				PqsqlWrapper.PQclear(res);
+
+				if (mColBuf != IntPtr.Zero)
+				{
+					PqsqlBinaryFormat.pqcb_free(mColBuf);
+				}
+
+				mColBuf = PqsqlBinaryFormat.pqcb_create(conn, num_cols);
+
+				return;
+			}
+
+			bailout:
+			string err = mConn.GetErrorMessage();
+			throw new PqsqlException(err);
+		}
+
+
+		public void End()
+		{
+			IntPtr res;
+			string err = string.Empty;
+			IntPtr conn = mConn.PGConnection;
+
+			if (mColBuf == IntPtr.Zero)
+				return;
+
+			int ret = PqsqlBinaryFormat.pqcb_put_end(mColBuf); // flush column buffer
+
+			if (ret != 1)
+			{
+				err = err.Insert(0, "END failed: ");
+				goto bailout;
+			}
+
+			res = PqsqlWrapper.PQgetResult(conn);
+
+			if (res != IntPtr.Zero)
+			{
+				ExecStatus s = (ExecStatus) PqsqlWrapper.PQresultStatus(res);
+
+				PqsqlWrapper.PQclear(res);
+
+				if (s != ExecStatus.PGRES_COMMAND_OK)
+				{
+					// not done yet or still in COPY_IN mode? bail out!
+					byte[] b = Encoding.UTF8.GetBytes("COPY FROM cancelled by client");
+
+					unsafe
+					{
+						fixed (byte* bs = b)
+						{
+							ret = PqsqlWrapper.PQputCopyEnd(conn, bs);
+						}
+					}
+
+					res = PqsqlWrapper.PQgetResult(conn);
+
+					if (res != IntPtr.Zero)
+					{
+						s = (ExecStatus) PqsqlWrapper.PQresultStatus(res);
+						PqsqlWrapper.PQclear(res);
+					}
+
+					err = err.Insert(0, "COPY FROM failed(" + s + "," + ret + "): ");
+
+					goto bailout;
+				}
+
+				// consume all remaining results until we reach the NULL result
+				while ((res = PqsqlWrapper.PQgetResult(conn)) != IntPtr.Zero)
+				{
+					// always free mResult
+					PqsqlWrapper.PQclear(res);
+				}
+
+				return;
+			}
+
+		bailout:
+			err += mConn.GetErrorMessage();
+			throw new PqsqlException(err);
+		}
+
+
+		public void Close()
+		{
+			if (mExpBuf != IntPtr.Zero)
+			{
+				PqsqlWrapper.destroyPQExpBuffer(mExpBuf);
+				mExpBuf = IntPtr.Zero;
+			}
+
+			if (mColBuf != IntPtr.Zero)
+			{
+				PqsqlBinaryFormat.pqcb_free(mColBuf);
+				mColBuf = IntPtr.Zero;
+			}
+		}
+
+
+		private unsafe sbyte* Top(bool reset)
+		{
+			sbyte* data = PqsqlBinaryFormat.pqbf_get_bufval(mExpBuf);
+			long len = PqsqlBinaryFormat.pqbf_get_buflen(mExpBuf);
+
+			if (reset && len > 4096)
+			{
+				// if we exceed 4k write-boundary, we reset the buffer and
+				// start to write from the beginning again
+				PqsqlWrapper.resetPQExpBuffer(mExpBuf);
+				return data; // start from beginning of PQExpBuffer
+			}
+
+			return data + len; // get top of PQExpBuffer
+		}
+
+
+		private unsafe int PutColumn(sbyte* value, uint type_length)
+		{
+			int ret = PqsqlBinaryFormat.pqcb_put_col(mColBuf, value, type_length);
+			return ret == 1 ? (int) type_length : ret;
+		}
+
+		public unsafe int WriteInt2(short i)
+		{
+			sbyte* val = Top(true);
+			PqsqlBinaryFormat.pqbf_set_int2(mExpBuf, i);
+			return PutColumn(val, 2);
+		}
+
+		public unsafe int WriteInt4(int i)
+		{
+			sbyte* val = Top(true);
+			PqsqlBinaryFormat.pqbf_set_int4(mExpBuf, i);
+			return PutColumn(val, 4);
+		}
+
+		public unsafe int WriteInt8(long i)
+		{
+			sbyte* val = Top(true);
+			PqsqlBinaryFormat.pqbf_set_int8(mExpBuf, i);
+			return PutColumn(val, 8);
+		}
+
+		public unsafe int WriteFloat4(float f)
+		{
+			sbyte* val = Top(true);
+			PqsqlBinaryFormat.pqbf_set_float4(mExpBuf, f);
+			return PutColumn(val, 4);
+		}
+
+		public unsafe int WriteFloat8(double d)
+		{
+			sbyte* val = Top(true);
+			PqsqlBinaryFormat.pqbf_set_float8(mExpBuf, d);
+			return PutColumn(val, 8);
+		}
+
+		public unsafe int WriteNumeric(decimal d)
+		{
+			sbyte* val = Top(true);
+			PqsqlBinaryFormat.pqbf_set_numeric(mExpBuf, decimal.ToDouble(d));
+			sbyte* top = Top(false);
+			long len = top - val;
+			return PutColumn(val, (uint) len);
+		}
+
+		public unsafe int WriteText(string s)
+		{
+			sbyte* val = Top(true);
+			fixed (char* sp = s)
+			{
+				PqsqlBinaryFormat.pqbf_set_unicode_text(mExpBuf, sp);
+			}
+			sbyte* top = Top(false);
+			long len = top - val;
+			return PutColumn(val, (uint) len);
+		}
+
+		public unsafe int WriteTimestamp(DateTime dt)
+		{
+			sbyte* val = Top(true);
+			long ticks = dt.Ticks - PqsqlBinaryFormat.UnixEpochTicks;
+			long sec = ticks / TimeSpan.TicksPerSecond;
+			int usec = (int) ((ticks % TimeSpan.TicksPerSecond) / 10);
+			PqsqlBinaryFormat.pqbf_set_timestamp(mExpBuf, sec, usec);
+			return PutColumn(val, 8);
+		}
+
+		public unsafe int WriteTime(DateTime dt)
+		{
+			throw new NotImplementedException();
+		}
+
+		public unsafe int WriteDate(DateTime dt)
+		{
+			throw new NotImplementedException();
+		}
+
+		public unsafe int WriteInterval(TimeSpan ts)
+		{
+			throw new NotImplementedException();
+#if false
+			sbyte* val = Top();
+			long ticks = ts.Ticks - PqsqlBinaryFormat.UnixEpochTicks;
+			long sec = ticks / TimeSpan.TicksPerSecond;
+			int usec = (int) ((ticks % TimeSpan.TicksPerSecond) / 10);
+			PqsqlBinaryFormat.pqbf_set_timestamp(mExpBuf, sec, usec);
+			return PutColumn(val, 8);
+#endif
+		}
 	}
 }
