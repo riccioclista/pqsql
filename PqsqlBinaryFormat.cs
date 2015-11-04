@@ -15,6 +15,15 @@ namespace Pqsql
 		
 		#endregion
 
+		#region PQExpBuffer
+
+		[DllImport("libpqbinfmt.dll")]
+		public static extern long pqbf_get_buflen(IntPtr s);
+
+		[DllImport("libpqbinfmt.dll")]
+		public static extern sbyte* pqbf_get_bufval(IntPtr s);
+
+		#endregion
 
 		#region interface to pqparam_buffer
 
@@ -46,49 +55,90 @@ namespace Pqsql
 		#endregion
 
 
-		#region encode datatype to binary message
+		#region encode datatype as binary parameter
 
 		[DllImport("libpqbinfmt.dll")]
-		public static extern void pqbf_set_null(IntPtr pb, uint oid);
+		public static extern void pqbf_add_null(IntPtr pb, uint oid);
 
 		[DllImport("libpqbinfmt.dll")]
-		public static extern int pqbf_set_unicode_text(IntPtr pb, char* t);
+		public static extern int pqbf_add_unicode_text(IntPtr pb, char* t);
 
 		[DllImport("libpqbinfmt.dll")]
-		public static extern void pqbf_free_unicode_text(IntPtr ptr);
+		public static extern void pqbf_add_bool(IntPtr pb, int b);
 
 		[DllImport("libpqbinfmt.dll")]
-		public static extern void pqbf_set_bool(IntPtr pb, int b);
+		public static extern void pqbf_add_bytea(IntPtr pb, sbyte* buf, ulong len);
 
 		[DllImport("libpqbinfmt.dll")]
-		public static extern void pqbf_set_bytea(IntPtr pb, sbyte* buf, ulong len);
+		public static extern void pqbf_add_int8(IntPtr pb, long i);
 
 		[DllImport("libpqbinfmt.dll")]
-		public static extern void pqbf_set_int8(IntPtr pb, long i);
+		public static extern void pqbf_add_int4(IntPtr pb, int i);
 
 		[DllImport("libpqbinfmt.dll")]
-		public static extern void pqbf_set_int4(IntPtr pb, int i);
+		public static extern void pqbf_add_oid(IntPtr pb, uint i);
 
 		[DllImport("libpqbinfmt.dll")]
-		public static extern void pqbf_set_oid(IntPtr pb, uint i);
+		public static extern void pqbf_add_int2(IntPtr pb, short i);
 
 		[DllImport("libpqbinfmt.dll")]
-		public static extern void pqbf_set_int2(IntPtr pb, short i);
+		public static extern void pqbf_add_float4(IntPtr pb, float f);
 
 		[DllImport("libpqbinfmt.dll")]
-		public static extern void pqbf_set_float4(IntPtr pb, float f);
+		public static extern void pqbf_add_float8(IntPtr pb, double d);
 
 		[DllImport("libpqbinfmt.dll")]
-		public static extern void pqbf_set_float8(IntPtr pb, double d);
+		public static extern void pqbf_add_numeric(IntPtr pb, double d);
 
 		[DllImport("libpqbinfmt.dll")]
-		public static extern void pqbf_set_numeric(IntPtr pb, double d);
+		public static extern void pqbf_add_interval(IntPtr pbb, long offset, int day, int month);
 
 		[DllImport("libpqbinfmt.dll")]
-		public static extern void pqbf_set_interval(IntPtr pbb, long offset, int day, int month);
+		public static extern void pqbf_add_timestamp(IntPtr pbb, long sec, int usec);
+
+		#endregion
+
+
+		#region encode datatype to binary PQExpBuffer
 
 		[DllImport("libpqbinfmt.dll")]
-		public static extern void pqbf_set_timestamp(IntPtr pbb, long sec, int usec);
+		public static extern void pqbf_set_null(IntPtr s, uint oid);
+
+		[DllImport("libpqbinfmt.dll")]
+		public static extern int pqbf_set_unicode_text(IntPtr s, char* t);
+
+		[DllImport("libpqbinfmt.dll")]
+		public static extern void pqbf_set_bool(IntPtr s, int b);
+
+		[DllImport("libpqbinfmt.dll")]
+		public static extern void pqbf_set_bytea(IntPtr s, sbyte* buf, ulong len);
+
+		[DllImport("libpqbinfmt.dll")]
+		public static extern void pqbf_set_int8(IntPtr s, long i);
+
+		[DllImport("libpqbinfmt.dll")]
+		public static extern void pqbf_set_int4(IntPtr s, int i);
+
+		[DllImport("libpqbinfmt.dll")]
+		public static extern void pqbf_set_oid(IntPtr s, uint i);
+
+		[DllImport("libpqbinfmt.dll")]
+		public static extern void pqbf_set_int2(IntPtr s, short i);
+
+		[DllImport("libpqbinfmt.dll")]
+		public static extern void pqbf_set_float4(IntPtr s, float f);
+
+		[DllImport("libpqbinfmt.dll")]
+		public static extern void pqbf_set_float8(IntPtr s, double d);
+
+		[DllImport("libpqbinfmt.dll")]
+		public static extern void pqbf_set_numeric(IntPtr s, double d);
+
+		[DllImport("libpqbinfmt.dll")]
+		public static extern void pqbf_set_interval(IntPtr s, long offset, int day, int month);
+
+		[DllImport("libpqbinfmt.dll")]
+		public static extern void pqbf_set_timestamp(IntPtr s, long sec, int usec);
 
 		#endregion
 
@@ -100,6 +150,9 @@ namespace Pqsql
 
 		[DllImport("libpqbinfmt.dll")]
 		public static extern IntPtr pqbf_get_unicode_text(IntPtr p, int* len);
+
+		[DllImport("libpqbinfmt.dll")]
+		public static extern void pqbf_free_unicode_text(IntPtr ptr);
 
 		[DllImport("libpqbinfmt.dll")]
 		public static extern byte pqbf_get_byte(IntPtr p);
@@ -142,6 +195,7 @@ namespace Pqsql
 
 		#endregion
 
+
 		#region interface to pqcopy_buffer
 
 		[DllImport("libpqbinfmt.dll")]
@@ -152,7 +206,7 @@ namespace Pqsql
 		public static extern void pqcb_reset(IntPtr pc, int num_cols);
 		
 		[DllImport("libpqbinfmt.dll")]
-		public static extern int pqcb_put_col(IntPtr pc, IntPtr val, uint len);
+		public static extern int pqcb_put_col(IntPtr pc, sbyte* val, uint len);
 
 		[DllImport("libpqbinfmt.dll")]
 		public static extern int pqcb_put_end(IntPtr pc);

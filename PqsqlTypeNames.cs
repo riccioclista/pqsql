@@ -26,8 +26,8 @@ namespace Pqsql
 					Name="bool",
 					Type=typeof(bool),
 					DbType=DbType.Boolean,
-					GetValue=(IntPtr res,int row,int ord,int typmod) => { return PqsqlDataReader.GetBoolean(res,row,ord); },
-					SetValue=(IntPtr pb,object val) => PqsqlBinaryFormat.pqbf_set_bool(pb, (int) val)
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetBoolean(res,row,ord),
+					SetValue=(pb, val) => PqsqlBinaryFormat.pqbf_add_bool(pb, (int) val)
 				}
 			},
 			{ PqsqlDbType.Float8,
@@ -35,8 +35,8 @@ namespace Pqsql
 					Name="float8",
 					Type=typeof(double),
 					DbType=DbType.Double,
-					GetValue=(IntPtr res,int row,int ord,int typmod) => { return PqsqlDataReader.GetDouble(res,row,ord); },
-					SetValue=(IntPtr pb,object val) => PqsqlBinaryFormat.pqbf_set_float8(pb, (double) val)
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetDouble(res,row,ord),
+					SetValue=(pb, val) => PqsqlBinaryFormat.pqbf_add_float8(pb, (double) val)
 				}
 			},
 			{ PqsqlDbType.Int4,
@@ -44,8 +44,8 @@ namespace Pqsql
 					Name="int4",
 					Type=typeof(int),
 					DbType=DbType.Int32,
-					GetValue=(IntPtr res,int row,int ord,int typmod) => { return PqsqlDataReader.GetInt32(res,row,ord); },
-					SetValue=(IntPtr pb,object val) => PqsqlBinaryFormat.pqbf_set_int4(pb, (int) val)
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetInt32(res,row,ord),
+					SetValue=(pb, val) => PqsqlBinaryFormat.pqbf_add_int4(pb, (int) val)
 				}
 			},
 			{ PqsqlDbType.Int8,
@@ -53,8 +53,8 @@ namespace Pqsql
 					Name="int8",
 					Type=typeof(long),
 					DbType=DbType.Int64,
-					GetValue=(IntPtr res,int row,int ord,int typmod) => { return PqsqlDataReader.GetInt64(res,row,ord); },
-					SetValue=(IntPtr pb,object val) => PqsqlBinaryFormat.pqbf_set_int8(pb, (long) val)
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetInt64(res,row,ord),
+					SetValue=(pb, val) => PqsqlBinaryFormat.pqbf_add_int8(pb, (long) val)
 				}
 			},
 			{ PqsqlDbType.Numeric,
@@ -62,10 +62,10 @@ namespace Pqsql
 					Name="numeric",
 					Type=typeof(Decimal),
 					DbType=DbType.VarNumeric,
-					GetValue=(IntPtr res,int row,int ord,int typmod) => { return PqsqlDataReader.GetNumeric(res,row,ord,typmod); },
-					SetValue=(IntPtr pb,object val) => {
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetNumeric(res,row,ord,typmod),
+					SetValue=(pb, val) => {
 						double d = Convert.ToDouble(val);
-						PqsqlBinaryFormat.pqbf_set_numeric(pb, d);
+						PqsqlBinaryFormat.pqbf_add_numeric(pb, d);
 					}
 				}
 			},
@@ -74,8 +74,8 @@ namespace Pqsql
 					Name="float4",
 					Type=typeof(float),
 					DbType=DbType.Single,
-					GetValue=(IntPtr res,int row,int ord,int typmod) => { return PqsqlDataReader.GetFloat(res,row,ord); },
-					SetValue=(IntPtr pb,object val) => PqsqlBinaryFormat.pqbf_set_float4(pb, (float) val)
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetFloat(res,row,ord),
+					SetValue=(pb, val) => PqsqlBinaryFormat.pqbf_add_float4(pb, (float) val)
 				}
 			},
 			{ PqsqlDbType.Int2,
@@ -83,8 +83,8 @@ namespace Pqsql
 					Name="int2",
 					Type=typeof(short),
 					DbType=DbType.Int16,
-					GetValue=(IntPtr res,int row,int ord,int typmod) => { return PqsqlDataReader.GetInt16(res,row,ord); },
-					SetValue=(IntPtr pb,object val) => PqsqlBinaryFormat.pqbf_set_int2(pb, (short) val)
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetInt16(res,row,ord),
+					SetValue=(pb, val) => PqsqlBinaryFormat.pqbf_add_int2(pb, (short) val)
 				}
 			},
 			{ PqsqlDbType.Char,
@@ -101,8 +101,8 @@ namespace Pqsql
 					Name="text",
 					Type=typeof(string),
 					DbType=DbType.String,
-					GetValue=(IntPtr res,int row,int ord,int typmod) => { return PqsqlDataReader.GetString(res,row,ord); },
-					SetValue=(IntPtr pb,object val) => { unsafe { fixed (char* t = (string) val) { PqsqlBinaryFormat.pqbf_set_unicode_text(pb, t); } } }
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
+					SetValue=(pb, val) => { unsafe { fixed (char* t = (string) val) { PqsqlBinaryFormat.pqbf_add_unicode_text(pb, t); } } }
 				}
 			},
 			{ PqsqlDbType.Varchar,
@@ -110,8 +110,8 @@ namespace Pqsql
 					Name="varchar",
 					Type=typeof(string),
 					DbType=DbType.String,
-					GetValue=(IntPtr res,int row,int ord,int typmod) => { return PqsqlDataReader.GetString(res,row,ord); },
-					SetValue=(IntPtr pb,object val) => { unsafe { fixed (char* t = (string) val) { PqsqlBinaryFormat.pqbf_set_unicode_text(pb, t); } } }
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
+					SetValue=(pb, val) => { unsafe { fixed (char* t = (string) val) { PqsqlBinaryFormat.pqbf_add_unicode_text(pb, t); } } }
 				}
 			},
 			{ PqsqlDbType.Name,
@@ -119,8 +119,8 @@ namespace Pqsql
 					Name="name",
 					Type=typeof(string),
 					DbType=DbType.StringFixedLength,
-					GetValue=(IntPtr res,int row,int ord,int typmod) => { return PqsqlDataReader.GetString(res,row,ord); },
-					SetValue=(IntPtr pb,object val) => { unsafe { fixed (char* t = (string) val) { PqsqlBinaryFormat.pqbf_set_unicode_text(pb, t); } } }
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
+					SetValue=(pb, val) => { unsafe { fixed (char* t = (string) val) { PqsqlBinaryFormat.pqbf_add_unicode_text(pb, t); } } }
 				}
 			},
 			{ PqsqlDbType.Bytea,
@@ -137,8 +137,8 @@ namespace Pqsql
 					Name="date",
 					Type=typeof(DateTime),
 					DbType=DbType.Date,
-					GetValue=(IntPtr res,int row,int ord,int typmod) => { return PqsqlDataReader.GetDate(res,row,ord); },
-					SetValue=null // TODO (IntPtr pb,object val) => { PqsqlBinaryFormat.pqbf_set_date(pb, (DateTime) val); }
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetDate(res,row,ord),
+					SetValue=null // TODO (IntPtr pb,object val) => { PqsqlBinaryFormat.pqbf_add_date(pb, (DateTime) val); }
 				}
 			},
 			{ PqsqlDbType.Time,
@@ -146,8 +146,8 @@ namespace Pqsql
 					Name="time",
 					Type=typeof(DateTime),
 					DbType=DbType.Time,
-					GetValue=(IntPtr res,int row,int ord,int typmod) => { return PqsqlDataReader.GetTime(res,row,ord); },
-					SetValue=null // TODO (IntPtr pb,object val) => { PqsqlBinaryFormat.pqbf_set_date(pb, (DateTime) val); }
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetTime(res,row,ord),
+					SetValue=null // TODO (IntPtr pb,object val) => { PqsqlBinaryFormat.pqbf_add_time(pb, (DateTime) val); }
 				}
 			},
 			{ PqsqlDbType.Timestamp,
@@ -155,13 +155,13 @@ namespace Pqsql
 					Name="timestamp",
 					Type=typeof(DateTime),
 					DbType=DbType.DateTime,
-					GetValue=(IntPtr res,int row,int ord,int typmod) => { return PqsqlDataReader.GetDateTime(res,row,ord); },
-					SetValue=(IntPtr pb,object val) => {
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetDateTime(res,row,ord),
+					SetValue=(pb, val) => {
 						DateTime dt = (DateTime) val;
 						long ticks = dt.Ticks - PqsqlBinaryFormat.UnixEpochTicks;
 						long sec = ticks / TimeSpan.TicksPerSecond;
 						int usec = (int) ((ticks % TimeSpan.TicksPerSecond) / 10);
-						PqsqlBinaryFormat.pqbf_set_timestamp(pb, sec, usec);
+						PqsqlBinaryFormat.pqbf_add_timestamp(pb, sec, usec);
 					}
 				}
 			},
@@ -170,8 +170,8 @@ namespace Pqsql
 					Name="timestamptz",
 					Type=typeof(DateTime),
 					DbType=DbType.DateTimeOffset,
-					GetValue=(IntPtr res,int row,int ord,int typmod) => { return PqsqlDataReader.GetDateTime(res,row,ord); },
-					SetValue=null // TODO (IntPtr pb,object val) => { PqsqlBinaryFormat.pqbf_set_timestamp(pb, (DateTime) val); }
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetDateTime(res,row,ord),
+					SetValue=null // TODO (IntPtr pb,object val) => { PqsqlBinaryFormat.pqbf_add_timestamptz(pb, (DateTime) val); }
 				}
 			},
 			{ PqsqlDbType.Interval,
@@ -179,8 +179,8 @@ namespace Pqsql
 					Name="interval",
 					Type=typeof(TimeSpan),
 					DbType=DbType.DateTime,
-					GetValue=(IntPtr res,int row,int ord,int typmod) => { return PqsqlDataReader.GetInterval(res,row,ord); },
-					SetValue=null // TODO (IntPtr pb,object val) => { PqsqlBinaryFormat.pqbf_set_interval(pb, (DateTime) val); }
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetInterval(res,row,ord),
+					SetValue=null // TODO (IntPtr pb,object val) => { PqsqlBinaryFormat.pqbf_add_interval(pb, (DateTime) val); }
 				}
 			},
 			{ PqsqlDbType.TimeTZ,
@@ -188,8 +188,8 @@ namespace Pqsql
 					Name="timetz",
 					Type=typeof(DateTime),
 					DbType=DbType.DateTime,
-					GetValue=(IntPtr res,int row,int ord,int typmod) => { return PqsqlDataReader.GetTime(res,row,ord); },
-					SetValue=null // TODO (IntPtr pb,object val) => { PqsqlBinaryFormat.pqbf_set_date(pb, (DateTime) val); }
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetTime(res,row,ord),
+					SetValue=null // TODO (IntPtr pb,object val) => { PqsqlBinaryFormat.pqbf_add_timetz(pb, (DateTime) val); }
 				}
 			},
 			//{ PqsqlDbType.Inet, new PqsqlTypeName { Name="inet", Type=typeof() } },
@@ -202,8 +202,8 @@ namespace Pqsql
 					Name="uuid",
 					Type=typeof(Guid),
 					DbType=DbType.Guid,
-					GetValue=(IntPtr res,int row,int ord,int typmod) => { return PqsqlDataReader.GetGuid(res,row,ord); },
-					SetValue=null // TODO (IntPtr pb,object val) => { PqsqlBinaryFormat.pqbf_set_uuid(pb, (Guid) val); }
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetGuid(res,row,ord),
+					SetValue=null // TODO (IntPtr pb,object val) => { PqsqlBinaryFormat.pqbf_add_uuid(pb, (Guid) val); }
 				}
 			},
 			{ PqsqlDbType.Refcursor,
@@ -220,8 +220,8 @@ namespace Pqsql
 					Name="oid",
 					Type=typeof(uint),
 					DbType=DbType.UInt32,
-					GetValue=(IntPtr res,int row,int ord,int typmod) => { return (uint) PqsqlDataReader.GetInt32(res,row,ord); },
-					SetValue=(IntPtr pb,object val) => { PqsqlBinaryFormat.pqbf_set_oid(pb, (uint) val); }
+					GetValue=(res, row, ord, typmod) => (uint) PqsqlDataReader.GetInt32(res,row,ord),
+					SetValue=(pb, val) => PqsqlBinaryFormat.pqbf_add_oid(pb, (uint) val)
 				}
 			},
 			{ PqsqlDbType.Unknown,
@@ -229,8 +229,8 @@ namespace Pqsql
 					Name="unknown",
 					Type=typeof(string),
 					DbType=DbType.String,
-					GetValue=(IntPtr res,int row,int ord,int typmod) => { return PqsqlDataReader.GetString(res,row,ord); },
-					SetValue=(IntPtr pb,object val) => { unsafe { fixed (char* t = (string) val) { PqsqlBinaryFormat.pqbf_set_unicode_text(pb, t); } } }
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
+					SetValue=(pb, val) => { unsafe { fixed (char* t = (string) val) { PqsqlBinaryFormat.pqbf_add_unicode_text(pb, t); } } }
 				}
 			}
     };
