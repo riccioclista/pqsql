@@ -106,6 +106,24 @@ namespace Pqsql
 
 		// Note: On Windows, there is a way to improve performance if a single database connection is repeatedly started and shutdown. Internally, libpq calls WSAStartup() and WSACleanup() for connection startup and shutdown, respectively. WSAStartup() increments an internal Windows library reference count which is decremented by WSACleanup(). When the reference count is just one, calling WSACleanup() frees all resources and all DLLs are unloaded. This is an expensive operation. To avoid this, an application can manually call WSAStartup() so resources will not be freed when the last database connection is closed.
 
+
+		#region PQExpBuffer
+
+		[DllImport("libpq.dll")]
+		public static extern IntPtr createPQExpBuffer();
+		// PQExpBuffer createPQExpBuffer(void);
+
+		[DllImport("libpq.dll")]
+		public static extern void destroyPQExpBuffer(IntPtr s);
+		// void destroyPQExpBuffer(PQExpBuffer str);
+
+		[DllImport("libpq.dll")]
+		public static extern void resetPQExpBuffer(IntPtr s);
+		// void resetPQExpBuffer(PQExpBuffer str);
+
+		#endregion
+
+
 		//
 		// http://www.postgresql.org/docs/current/static/libpq-misc.html
 		//
@@ -388,7 +406,7 @@ namespace Pqsql
 		// int PQputCopyData(PGconn *conn, const char *buffer, int nbytes);
 
 		[DllImport("libpq.dll")]
-		public static extern unsafe int PQputCopyEnd(IntPtr conn, sbyte* errormsg);
+		public static extern unsafe int PQputCopyEnd(IntPtr conn, byte* errormsg);
 		// int PQputCopyEnd(PGconn *conn, const char *errormsg);
 
 		#endregion
