@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Data.Common;
 using System.ComponentModel;
 using System.Data;
@@ -9,17 +6,17 @@ using System.Diagnostics.Contracts;
 
 namespace Pqsql
 {
-	public class PqsqlParameter : DbParameter
+	public sealed class PqsqlParameter : DbParameter
 	{
-		protected DbType mDbType;
+		DbType mDbType;
 
-		protected PqsqlDbType mPqsqlDbType;
+		PqsqlDbType mPqsqlDbType;
 
-		protected string mName;
+		string mName;
 
-		protected int mSize;
+		int mSize;
 
-		protected object mValue;
+		object mValue;
 
 
 
