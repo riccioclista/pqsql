@@ -4,8 +4,6 @@
 #include <stdint.h>
 #include <libpq-fe.h>
 
-#include "pqexpbuffer.h"
-
 #if defined DLL_EXPORT
 #define DECLSPEC __declspec(dllexport)
 #else
@@ -23,11 +21,11 @@ extern "C" {
  */
 typedef struct pqcopy_buffer
 {
-	PGconn *conn;
-	uint16_t num_cols;
-	int16_t pos_cols;
-	size_t len;
-	char payload[PQBUFSIZ];
+	PGconn *conn;          /* connection for sending COPY data */
+	uint16_t num_cols;     /* number of columns for each tuple (fixed) */
+	int16_t pos_cols;      /* column number in current tuple */
+	size_t pos;            /* position in buffer */
+	char buffer[PQBUFSIZ]; /* stores COPY header, tuple / column length and data payload */
 } pqcopy_buffer;
 
 

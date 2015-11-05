@@ -5,7 +5,9 @@
 #include "pqbincopy.h"
 #include "pqbinfmt.h"
 
+/* COPY header signature */
 static const char BinarySignature[11] = "PGCOPY\n\377\r\n\0";
+/* NULL value stored in column length */
 static const char NullValue[4] = "\377\377\377\377";
 
 
@@ -60,62 +62,70 @@ pqcb_reset(pqcopy_buffer *buf, int num_cols)
 		 */
 
 		/* Signature: 11-byte sequence PGCOPY\n\377\r\n\0 */
-		memcpy(buf->payload, BinarySignature, 11);
+		memcpy(buf->buffer, BinarySignature, 11);
 		/* Flags field: 32-bit integer bit mask to denote important aspects of the file format (always 0 for now) */
-		memcpy(&buf->payload[11], &i, sizeof(i));
+		memcpy(&buf->buffer[11], &i, sizeof(i));
 		/* Header extension: 32-bit integer, length in bytes of remainder of header, not including self (no extension for now) */
-		memcpy(&buf->payload[15], &i, sizeof(i));
+		memcpy(&buf->buffer[15], &i, sizeof(i));
 
-		buf->len = 19;
+		buf->pos = 19;
 	}
 }
 
 
-#define PQCOPYFLUSH(p, ret) \
-	do { \
-		if (p->len >= PQBUFSIZ) { \
-			ret = PQputCopyData(p->conn, p->payload, PQBUFSIZ); \
-			if (ret == 1)	p->len = 0; \
-		} \
-	} while(0)
+/* flush buffer in case buffer is full or force = 1 */
+static int __fastcall
+pqcb_flush_buf(pqcopy_buffer *p, int force)
+{
+	int ret = 1;
+	size_t buf_len = p->pos + 1 >= PQBUFSIZ ? PQBUFSIZ : p->pos + 1;
+
+	if (force || buf_len == PQBUFSIZ)
+	{
+		ret = PQputCopyData(p->conn, p->buffer, buf_len);
+
+		if (ret == 1)
+		{
+			p->pos = 0;
+		}
+	}
+
+	return ret;
+}
 
 
-/* add len bytes starting from v to p->payload.
- * flushes buffer if p->payload is full during copying
+/* add len bytes starting from v to p->buffer.
+ * flushes buffer if p->buffer is getting full during copying
  */
-int __fastcall
+static int __fastcall
 pqcb_put_buf(pqcopy_buffer *p, char* v, uint32_t len)
 {
-	int copied = 0;
+	int remainder = len;
 	int ret = 1;
 
 	do
 	{
-		int free = PQBUFSIZ - p->len;
+		int free = PQBUFSIZ - p->pos;
 
-		if (free >= len)
+		if (free >= remainder)
 		{
-			//printf("one shot: free:%d len:%d p->len:%d\n", free, len, p->len);
-
-			/* buffer can hold all of v */
-			memcpy(&p->payload[p->len], v, len);
-			p->len += len;
+			/* buffer can hold remainder of v */
+			memcpy(&p->buffer[p->pos], v, remainder);
+			p->pos += remainder;
 			return 1;
 		}
 		else if (free > 0)
 		{
-			//printf("split: free:%d len:%d p->len:%d\n", free, len, p->len);
-
-			/* exactly free bytes left */
-			memcpy(&p->payload[p->len], v, free);
-			p->len += free;
+			/* exactly free bytes left in p->buffer */
+			memcpy(&p->buffer[p->pos], v, free);
+			p->pos += free;
 			v += free;
-			copied += free;
+			remainder -= free;
 		}
 
-		PQCOPYFLUSH(p, ret);
+		ret = pqcb_flush_buf(p, 0);
 
-	} while (ret == 1 && copied < len);
+	} while (ret == 1 && remainder > 0);
 
 	return ret;
 }
@@ -145,8 +155,6 @@ pqcb_put_col(pqcopy_buffer *p, const char* val, uint32_t len)
 
 	if (p->pos_cols == -1 || p->pos_cols >= p->num_cols)
 	{
-		//printf("new tuple: pos:%d num:%d\n", p->pos_cols, p->num_cols);
-
 		tuple_len = BYTESWAP2(p->num_cols);
 		v = (char*) &tuple_len;
 
@@ -165,14 +173,12 @@ pqcb_put_col(pqcopy_buffer *p, const char* val, uint32_t len)
 
 	if (val == NULL && len > 0)
 	{
-		//printf("new col: pos:%d NULL\n", p->pos_cols);
 		len = 0; /* NULL value, ignore field value */
 		v = (char*) NullValue;
 	}
 	else
 	{
-		//printf("new col: pos:%d len:%d\n", p->pos_cols, len);
-		/* len >= 0, we might want to copy empty strings or bytea */
+		/* len >= 0, we might want to copy empty strings or bytea (len == 0) */
 		col_len = BYTESWAP4(len);
 		v = (char*) &col_len;
 	}
@@ -184,7 +190,6 @@ pqcb_put_col(pqcopy_buffer *p, const char* val, uint32_t len)
 	/* potentially add field value to buffer / flush */
 	if (len > 0)
 	{
-		//printf("new val: pos:%d len:%d v:%p\n", p->pos_cols, len, v);
 		v = (char*) val;
 		ret = pqcb_put_buf(p, v, len);
 		if (ret != 1) return ret;
@@ -207,18 +212,16 @@ pqcb_put_end(pqcopy_buffer *p)
 	{
 		return -1;
 	}
-	
-	//printf("remaining buffer: len:%d\n", p->len);
 
-	if (p->len > 0)
+	if (p->pos > 0)
 	{
-		/* flush remaining buffer */
-		int ret = PQputCopyData(p->conn, p->payload, p->len);
+		/* force flush remaining buffer */
+		int ret = pqcb_flush_buf(p, 1);
 		if (ret != 1)	return ret;
-		p->len = 0;
+		p->pos = 0;
 		p->pos_cols = -2; /* marks pqcopy_buffer as invalid */
 	}
 
-	//printf("copy end\n");
+	/* send COPY trailer */
 	return PQputCopyEnd(p->conn, NULL);
 }
