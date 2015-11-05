@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Data.Common;
 using System.ComponentModel;
 using System.Collections;
@@ -15,7 +13,7 @@ namespace Pqsql
 		// Dictionary lookups for GetValue to improve performance
 		private Dictionary<string, int> lookup;
 
-		// TODO release memory
+		// pqparam_buffer*
 		private IntPtr mPqPB;
 
 		// Summary:
@@ -43,7 +41,7 @@ namespace Pqsql
 			GC.SuppressFinalize(this);
 		}
 
-		bool mDisposed = false;
+		bool mDisposed;
 
 		protected void Dispose(bool disposing)
 		{
@@ -52,7 +50,11 @@ namespace Pqsql
 				return;
 			}
 
-			PqsqlBinaryFormat.pqpb_free(mPqPB);
+			if (mPqPB != IntPtr.Zero)
+			{
+				PqsqlBinaryFormat.pqpb_free(mPqPB);
+				mPqPB = IntPtr.Zero;
+			}
 			mDisposed = true;
 		}
 

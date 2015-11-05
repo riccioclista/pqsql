@@ -55,6 +55,41 @@ namespace Pqsql
 			mCmdType = CommandType.Text;
 		}
 
+		~PqsqlCommand()
+		{
+			Dispose(false);
+		}
+
+		#region Overrides of Component
+
+		public new void Dispose()
+		{
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
+
+		private bool mDisposed;
+
+		protected override void Dispose(bool disposing)
+		{
+			if (mDisposed)
+			{
+				return;
+			}
+
+			if (disposing)
+			{
+				mParams.Dispose();
+				mTransaction = null;
+				mConn = null;
+			}
+
+			base.Dispose(disposing);
+			mDisposed = true;
+		}
+
+		#endregion
+
 		// Summary:
 		//     Gets or sets the text command to run against the data source.
 		//
@@ -269,8 +304,8 @@ namespace Pqsql
 
 			ConnectionState s = mConn.State;
 
-			// no cancel possible if connection is closed, connecting / broken,
-			if (s == ConnectionState.Closed || (s & (ConnectionState.Broken | ConnectionState.Connecting)) > 0)
+			// no cancel possible/necessary if connection is closed / open / connecting / broken
+			if (s == ConnectionState.Closed || s == ConnectionState.Open || (s & (ConnectionState.Broken | ConnectionState.Connecting)) > 0)
 				return;
 
 			IntPtr cancel = PqsqlWrapper.PQgetCancel(mConn.PGConnection);

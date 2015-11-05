@@ -55,6 +55,12 @@ namespace Pqsql
 			mIsolationLevel = isolationLevel;
 		}
 
+		~PqsqlTransaction()
+		{
+			Dispose(false);
+		}
+
+
 		// Summary:
 		//     Specifies the System.Data.Common.DbConnection object associated with the
 		//     transaction.
@@ -198,10 +204,11 @@ namespace Pqsql
 		//
 		// Summary:
 		//     Releases the unmanaged resources used by the System.Data.Common.DbTransaction.
-		//public virtual void Dispose()
-		//{
-		//	Dispose
-		//}
+		public new void Dispose()
+		{
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
 
 		bool mDisposed;
 
@@ -224,10 +231,11 @@ namespace Pqsql
 			if (disposing)
 			{
 				SaveTransaction(false); // send rollback if we are in a transaction
+				mConn = null;
 			}
 
-			mDisposed = true;
 			base.Dispose(disposing);
+			mDisposed = true;
 		}
 
 		#endregion
