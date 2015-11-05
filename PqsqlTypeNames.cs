@@ -9,7 +9,7 @@ namespace Pqsql
 	/// </summary>
 	internal static class PqsqlTypeNames
 	{
-		class PqsqlTypeName
+		public class PqsqlTypeName
 		{
 			public string Name {	get; set; }
 			public Type Type { get;	set; }
@@ -128,8 +128,8 @@ namespace Pqsql
 					Name="bytea",
 					Type=typeof(byte[]),
 					DbType=DbType.Object,
-					GetValue=null,
-					SetValue=null
+					GetValue=null, // TODO (res, row, ord, typmod) => PqsqlDataReader.GetDate(res,row,ord),
+					SetValue=null // TODO (IntPtr pb,object val) => { PqsqlBinaryFormat.pqbf_add_date(pb, (DateTime) val); }
 				}
 			},
 			{ PqsqlDbType.Date,
@@ -324,8 +324,8 @@ namespace Pqsql
 			
 		};
 
-
-		static PqsqlTypeName Get(PqsqlDbType oid)
+		// for PqsqlDataReader
+		static public PqsqlTypeName Get(PqsqlDbType oid)
 		{
 			PqsqlTypeName result;
 			if (mPqsqlDbTypeDict.TryGetValue(oid, out result))
@@ -335,34 +335,24 @@ namespace Pqsql
 			throw new NotSupportedException("Datatype not supported");
 		}
 
-		public static string GetName(PqsqlDbType oid)
+		// for PqsqlParameter
+		static public PqsqlDbType GetPqsqlDbType(DbType dbType)
 		{
-			return Get(oid).Name;
+			return mDbTypeArray[(int) dbType];
 		}
 
-		public static Type GetType(PqsqlDbType oid)
-		{
-			return Get(oid).Type;
-		}
-
-		public static Func<IntPtr, int, int, int, object> GetValue(PqsqlDbType oid)
-		{
-			return Get(oid).GetValue;
-		}
-
+		// for PqsqlParameter
 		public static DbType GetDbType(PqsqlDbType oid)
 		{
 			return Get(oid).DbType;
 		}
 
+		// for PqsqlParameterCollection
 		public static Action<IntPtr, object> SetValue(PqsqlDbType oid)
 		{
 			return Get(oid).SetValue;
 		}
 
-		public static PqsqlDbType GetPqsqlDbType(DbType dbType)
-		{
-			return mDbTypeArray[(int)dbType];
-		}
+
 	}
 }

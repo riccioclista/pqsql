@@ -20,6 +20,7 @@ namespace Pqsql
 		public string Name { get; set; }
 		public string DataTypeName { get; set; }
 		public Type Type  { get; set; }
+		public Func<IntPtr, int, int, int, object> GetValue { get; set; }
 	};
 
 
@@ -406,8 +407,20 @@ namespace Pqsql
 				return;
 			}
 
-			// always release mConnection (must not throw exception)
-			Close();
+			if (disposing)
+			{
+				// always release mConnection (must not throw exception)
+				Close();
+			}
+
+			// do not release connection this is handled in Close()
+			mPGConn = IntPtr.Zero;
+
+			if (mResult != IntPtr.Zero)
+			{
+				PqsqlWrapper.PQclear(mResult);
+				mResult = IntPtr.Zero;
+			}
 
 			base.Dispose(disposing);
 			mDisposed = true;
@@ -1180,7 +1193,7 @@ namespace Pqsql
 				return bs;
 			}
 
-			return PqsqlTypeNames.GetValue(ci.Oid)(mResult, mRowNum, ordinal, ci.Modifier);
+			return ci.GetValue(mResult, mRowNum, ordinal, ci.Modifier);
 		}
 
 		//
@@ -1298,21 +1311,18 @@ namespace Pqsql
 				if (s == ExecStatus.PGRES_COMMAND_OK)
 				{
 					// nothing to do, we just executed a command without result
-					// keep mResult so we can call PqsqlDatareader.RecordsAffected
+					Consume(); // consume remaining results, PqsqlDatareader.RecordsAffected will return 0
 					Reset();
 					return false;
 				}
 
-				if (s != ExecStatus.PGRES_SINGLE_TUPLE && s != ExecStatus.PGRES_TUPLES_OK && s != ExecStatus.PGRES_COMMAND_OK)
+				if (s != ExecStatus.PGRES_SINGLE_TUPLE && s != ExecStatus.PGRES_TUPLES_OK)
 				{
-					// consume remaining results
-					Consume();
+					Consume(); // consume remaining results
 
 					string err = mConn.GetErrorMessage();
 					throw new PqsqlException(err);
 				}
-
-
 
 				if (mMaxRows == -1) // get number of tuples in a fresh result buffer
 				{
@@ -1323,29 +1333,7 @@ namespace Pqsql
 				{
 					mPopulateRowInfo = false; // done populating row information
 
-					int n = PqsqlWrapper.PQnfields(mResult); // get number of columns
-					mRowInfo = new PqsqlColInfo[n];
-
-					for (int o = 0; o < n; o++)
-					{
-						mRowInfo[o] = new PqsqlColInfo();
-
-						PqsqlDbType oid = (PqsqlDbType) PqsqlWrapper.PQftype(mResult, o); // column type
-						mRowInfo[o].Oid = oid;
-
-						unsafe
-						{
-							sbyte *name = PqsqlWrapper.PQfname(mResult, o); // column name
-							mRowInfo[o].Name = new string(name); // TODO UTF-8 encoding ignored here!
-						}
-						
-						mRowInfo[o].Size = PqsqlWrapper.PQfsize(mResult, o);     // column datatype size
-						mRowInfo[o].Modifier = PqsqlWrapper.PQfmod(mResult, o);  // column modifier (e.g., varchar(n))
-						mRowInfo[o].Format = PqsqlWrapper.PQfformat(mResult, o); // data format (1: binary, 0: text)
-
-						mRowInfo[o].DataTypeName = PqsqlTypeNames.GetName(oid);  // cache PG datatype name
-						mRowInfo[o].Type = PqsqlTypeNames.GetType(oid);          // cache corresponding Type
-					}
+					PopulateRowInfo();
 
 					if ((mBehaviour & CommandBehavior.SchemaOnly) > 0)
 					{
@@ -1368,6 +1356,36 @@ namespace Pqsql
 			// result buffer exhausted, this was the last result of the current query
 			Reset();
 			return false;
+		}
+
+		// setup mRowInfo for current statement mStatements[mStmtNum]
+		private void PopulateRowInfo()
+		{
+			int n = PqsqlWrapper.PQnfields(mResult); // get number of columns
+			mRowInfo = new PqsqlColInfo[n];
+
+			for (int o = 0; o < n; o++)
+			{
+				mRowInfo[o] = new PqsqlColInfo();
+
+				PqsqlDbType oid = (PqsqlDbType) PqsqlWrapper.PQftype(mResult, o); // column type
+				mRowInfo[o].Oid = oid;
+
+				unsafe
+				{
+					sbyte* name = PqsqlWrapper.PQfname(mResult, o); // column name
+					mRowInfo[o].Name = new string(name); // TODO UTF-8 encoding ignored here!
+				}
+
+				mRowInfo[o].Size = PqsqlWrapper.PQfsize(mResult, o); // column datatype size
+				mRowInfo[o].Modifier = PqsqlWrapper.PQfmod(mResult, o); // column modifier (e.g., varchar(n))
+				mRowInfo[o].Format = PqsqlWrapper.PQfformat(mResult, o); // data format (1: binary, 0: text)
+
+				PqsqlTypeNames.PqsqlTypeName tn = PqsqlTypeNames.Get(oid); // lookup OID
+				mRowInfo[o].DataTypeName = tn.Name; // cache PG datatype name
+				mRowInfo[o].Type = tn.Type; // cache corresponding Type
+				mRowInfo[o].GetValue = tn.GetValue; // cache GetValue function
+			}
 		}
 
 		/// <summary>
