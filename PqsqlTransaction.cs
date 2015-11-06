@@ -183,7 +183,7 @@ namespace Pqsql
 		//     Rolls back a transaction from a pending state.
 		public override void Rollback()
 		{
-			ExecStatus s = SaveTransaction(true);
+			ExecStatus s = SaveTransaction(false);
 
 			switch (s)
 			{
