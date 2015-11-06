@@ -1158,7 +1158,15 @@ namespace Pqsql
 			if (utp == IntPtr.Zero)
 				return null;
 
-			string uni = Marshal.PtrToStringUni(utp, len);
+			string uni;
+			if (len > 0)
+			{
+				uni = Marshal.PtrToStringUni(utp, len - 1); // ignore trailing \0
+			}
+			else
+			{
+				uni = string.Empty;
+			}
 			PqsqlBinaryFormat.pqbf_free_unicode_text(utp);
 			return uni;
 		}
