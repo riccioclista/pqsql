@@ -9,7 +9,7 @@ namespace Pqsql
 	public class PqsqlCommand : DbCommand
 	{
 		const string mStatementTimeoutString = "set statement_timeout=";
-		const string mStoredProcString = "select ";
+		const string mStoredProcString = "select * from ";
 		const string mTableString = "table ";
 
 		protected string mCmdText;
@@ -120,8 +120,12 @@ namespace Pqsql
 			get	{	return mCmdTimeout; }
 			set
 			{
-				mCmdTimeout = value * 1000;
-				mCmdTimeoutSet = false;
+				int newTimeout = value*1000;
+				if (mCmdTimeout != newTimeout)
+				{
+					mCmdTimeout = newTimeout;
+					mCmdTimeoutSet = false;
+				}
 			}
 		}
 		//
@@ -388,6 +392,22 @@ namespace Pqsql
 		public override int ExecuteNonQuery()
 		{
 			PqsqlDataReader r = ExecuteReader(CommandBehavior.Default);
+
+			// fill OUT and INOUT parameters with result tuple from the first row
+			if (CommandType == CommandType.StoredProcedure)
+			{
+				r.Read(); // read first row
+				int i = 0;
+				foreach (PqsqlParameter p in Parameters)
+				{
+					if (p.Direction != ParameterDirection.Input)
+					{
+						p.Value = r.GetValue(i++);
+					}
+				}
+				r.Consume(); // sync protocol: consume remaining rows
+			}
+
 			return r.RecordsAffected;
 		}
 
@@ -431,13 +451,19 @@ namespace Pqsql
 					sb.Append(CommandText);
 					sb.Append('(');
 
-					// add parameter index $i for each parameter
-					int n = Parameters.Count;
-					for (int i = 1; i <= n; i++)
- 					{
-						if (i > 1) sb.Append(',');
-						sb.Append('$');
-						sb.Append(i);
+					// add parameter index $i for each IN and INOUT parameter
+					int i = 1;
+					bool comma = false;
+					foreach (PqsqlParameter p in Parameters)
+					{
+						if (p.Direction != ParameterDirection.Output)
+ 						{
+ 							if (comma) sb.Append(',');
+ 							sb.Append('$');
+ 							sb.Append(i);
+ 							comma = true;
+ 						}
+						i++;
 					}
 
 					sb.Append(')');
@@ -554,6 +580,9 @@ namespace Pqsql
 		{
 			StringBuilder sb = new StringBuilder();
 			bool quote = false;
+			bool dollarQuote = false;
+			bool dollarQuote0 = false;
+			bool dollarQuote1 = false;
 			string[] statements = new string[0];
 			int stmLen = 0; // length of statement
 
@@ -571,10 +600,51 @@ namespace Pqsql
 					}
 					sb.Append(c);
 				}
+				else if (dollarQuote0 && dollarQuote1) // found $$ previously, ignore everything except $
+				{
+					switch (c)
+					{
+						case '$':
+							dollarQuote1 = false;
+							break;
+					}
+					sb.Append(c);
+				}
+				else if (dollarQuote0) // found $ before
+				{
+					if (char.IsDigit(c))
+					{
+						if (dollarQuote) dollarQuote1 = true; // back to $$ mode
+						else dollarQuote0 = false; // back to standard mode
+					}
+					else
+					{
+						switch (c)
+						{
+						case '$':
+							if (dollarQuote)
+							{
+								dollarQuote = false; // closing $$
+								dollarQuote0 = false;
+							}
+							else
+							{
+								dollarQuote = true; // beginning $$
+								dollarQuote1 = true;
+							}
+							break;
+						}
+					}
+					sb.Append(c);
+				}
 				else
 				{
 					switch (c) // eat input until ;
 					{
+						case '$':
+							dollarQuote0 = true;
+							break;
+
 						case ';':
 							Array.Resize(ref statements, stmLen + 1);
 							ReplaceParameterNames(ref sb);

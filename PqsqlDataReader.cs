@@ -356,7 +356,7 @@ namespace Pqsql
 		}
 
 		// consume remaining input, see http://www.postgresql.org/docs/9.4/static/libpq-async.html
-		protected void Consume()
+		protected internal void Consume()
 		{
 			if (mResult != IntPtr.Zero)
 			{
