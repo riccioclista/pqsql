@@ -59,7 +59,7 @@ namespace Pqsql
 		public void Start(string copy_query)
 		{
 			IntPtr res;
-			byte[] q = Encoding.UTF8.GetBytes(copy_query);
+			byte[] q = PqsqlProviderFactory.Instance.CreateUTF8Statement(copy_query);
 			IntPtr conn = mConn.PGConnection;
 
 			unsafe
@@ -143,7 +143,7 @@ namespace Pqsql
 				if (s == ExecStatus.PGRES_COPY_IN)
 				{
 					// still in COPY_IN mode? bail out!
-					byte[] b = Encoding.UTF8.GetBytes("COPY FROM cancelled by client");
+					byte[] b = PqsqlProviderFactory.Instance.CreateUTF8Statement("COPY FROM cancelled by client");
 
 					unsafe
 					{
@@ -225,7 +225,7 @@ namespace Pqsql
 				if (s == ExecStatus.PGRES_COPY_IN)
 				{
 					// still in COPY_IN mode? bail out!
-					byte[] b = Encoding.UTF8.GetBytes("COPY FROM cancelled by client");
+					byte[] b = PqsqlProviderFactory.Instance.CreateUTF8Statement("COPY FROM cancelled by client");
 
 					unsafe
 					{

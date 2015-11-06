@@ -71,7 +71,7 @@ namespace Pqsql
 			mNewConnectionString = true;
 			mConnection = IntPtr.Zero;
 			mStatus = ConnectionStatus.CONNECTION_BAD;
-			mTransStatus = PGTransactionStatus.PQTRANS_IDLE;
+			mTransStatus = PGTransactionStatus.PQTRANS_UNKNOWN;
 			mServerVersion = -1;
 		}
 
@@ -475,7 +475,7 @@ namespace Pqsql
 		}
 
 
-		// return current error message (TODO: currently no UTF8 conversion performed)
+		// return current error message
 		internal string GetErrorMessage()
 		{
 			string msg = string.Empty;
@@ -484,11 +484,11 @@ namespace Pqsql
 			{
 				unsafe
 				{
-					sbyte* err = PqsqlWrapper.PQerrorMessage(mConnection);
+					IntPtr err = new IntPtr(PqsqlWrapper.PQerrorMessage(mConnection));
 
-					if (err != null)
+					if (err != IntPtr.Zero)
 					{
-						msg = new string(err);
+						msg = PqsqlProviderFactory.Instance.CreateStringFromUTF8(err);
 					}
 				}
 			}

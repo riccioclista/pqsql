@@ -8,16 +8,19 @@ namespace Pqsql
 {
 	public class PqsqlTransaction : DbTransaction
 	{
-		IsolationLevel mIsolationLevel;
-		PqsqlConnection mConn;
 
-		private static readonly byte[] mBeginReadCommitted = Encoding.UTF8.GetBytes("BEGIN ISOLATION LEVEL READ COMMITTED");
-		private static readonly byte[] mBeginRepeatableRead = Encoding.UTF8.GetBytes("BEGIN ISOLATION LEVEL REPEATABLE READ");
-		private static readonly byte[] mBeginSerializable = Encoding.UTF8.GetBytes("BEGIN ISOLATION LEVEL SERIALIZABLE");
-		private static readonly byte[] mBeginReadUncommitted = Encoding.UTF8.GetBytes("BEGIN ISOLATION LEVEL READ UNCOMMITTED");
+		private IsolationLevel mIsolationLevel;
 
-		private static readonly byte[] mCommit = Encoding.UTF8.GetBytes("COMMIT");
-		private static readonly byte[] mRollback = Encoding.UTF8.GetBytes("ROLLBACK");
+		private PqsqlConnection mConn;
+
+		private static readonly byte[] mBeginReadCommitted = PqsqlProviderFactory.Instance.CreateUTF8Statement("BEGIN ISOLATION LEVEL READ COMMITTED");
+		private static readonly byte[] mBeginRepeatableRead = PqsqlProviderFactory.Instance.CreateUTF8Statement("BEGIN ISOLATION LEVEL REPEATABLE READ");
+		private static readonly byte[] mBeginSerializable = PqsqlProviderFactory.Instance.CreateUTF8Statement("BEGIN ISOLATION LEVEL SERIALIZABLE");
+		private static readonly byte[] mBeginReadUncommitted = PqsqlProviderFactory.Instance.CreateUTF8Statement("BEGIN ISOLATION LEVEL READ UNCOMMITTED");
+
+		private static readonly byte[] mCommit = PqsqlProviderFactory.Instance.CreateUTF8Statement("COMMIT");
+		private static readonly byte[] mRollback = PqsqlProviderFactory.Instance.CreateUTF8Statement("ROLLBACK");
+
 
 		// Summary:
 		//     Initializes a new System.Data.Common.DbTransaction object.

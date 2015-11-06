@@ -1403,9 +1403,9 @@ namespace Pqsql
 		protected bool Execute()
 		{
 			// convert query string to utf8
-			byte[] utf8query = Encoding.UTF8.GetBytes(mStatements[mStmtNum]);
+			byte[] utf8query = PqsqlProviderFactory.Instance.CreateUTF8Statement(mStatements[mStmtNum]);
 			
-			if (utf8query.Length == 0)
+			if (utf8query == null || utf8query[0] == 0x0) // null or empty string
 				return false;
 
 			unsafe

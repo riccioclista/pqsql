@@ -329,7 +329,7 @@ namespace Pqsql
 						if (cret == 1)
 							return;
 
-						err = new string(b, 0, 255);
+						err = PqsqlProviderFactory.Instance.CreateStringFromUTF8(new IntPtr(b));
 					}
 				}
 				
@@ -437,45 +437,21 @@ namespace Pqsql
 		//     An System.Data.Common.DbDataReader object.
 		public new PqsqlDataReader ExecuteReader(CommandBehavior behavior)
 		{
-			string[] statements = null;
+			string[] statements = new string[0];
 
 			switch(CommandType)
 			{
 				case CommandType.Text:
-					statements = ParseStatements();
+					ParseStatements(ref statements);
 					break;
 
 				case CommandType.StoredProcedure:
-					StringBuilder sb = new StringBuilder();
-					sb.Append(mStoredProcString);
-					sb.Append(CommandText);
-					sb.Append('(');
-
-					// add parameter index $i for each IN and INOUT parameter
-					int i = 1;
-					bool comma = false;
-					foreach (PqsqlParameter p in Parameters)
-					{
-						if (p.Direction != ParameterDirection.Output)
- 						{
- 							if (comma) sb.Append(',');
- 							sb.Append('$');
- 							sb.Append(i);
- 							comma = true;
- 						}
-						i++;
-					}
-
-					sb.Append(')');
-
-					statements = new string[1];
-					statements[0] = sb.ToString();
-					break;
+					BuildStoredProcStatement(ref statements);
+				break;
 
 				case CommandType.TableDirect:
-					statements = new string[1];
-					statements[0] = mTableString + CommandText;
-					break;
+					BuildTableStatement(ref statements);
+				break;
 			}
 
 			CheckOpen();
@@ -487,6 +463,44 @@ namespace Pqsql
 			return reader;
 		}
 
+		private void BuildTableStatement(ref string[] statements)
+		{
+			StringBuilder tq = new StringBuilder(mTableString);
+			tq.Append(CommandText);
+			Array.Resize(ref statements, 1);
+			statements[0] = tq.ToString();
+		}
+
+		private void BuildStoredProcStatement(ref string[] statements)
+		{
+			StringBuilder spq = new StringBuilder();
+			spq.Append(mStoredProcString);
+			spq.Append(CommandText);
+			spq.Append('(');
+
+			// add parameter index $i for each IN and INOUT parameter
+			int i = 1;
+			bool comma = false;
+			foreach (PqsqlParameter p in Parameters)
+			{
+				if (p.Direction != ParameterDirection.Output)
+				{
+					if (comma)
+					{
+						spq.Append(',');
+					}
+					spq.Append('$');
+					spq.Append(i);
+					comma = true;
+				}
+				i++;
+			}
+
+			spq.Append(')');
+
+			Array.Resize(ref statements, 1);
+			statements[0] = spq.ToString();
+		}
 
 		// open connection if it is closed or broken
 		protected void CheckOpen()
@@ -505,7 +519,10 @@ namespace Pqsql
 		{
 			if (mCmdTimeout > 0 && mCmdTimeoutSet == false)
 			{
-				byte[] stmtTimeout = Encoding.UTF8.GetBytes(mStatementTimeoutString + CommandTimeout);
+				StringBuilder sb = new StringBuilder();
+				sb.Append(mStatementTimeoutString);
+				sb.Append(CommandTimeout);
+				byte[] stmtTimeout = PqsqlProviderFactory.Instance.CreateUTF8Statement(sb);
 				IntPtr res;
 				IntPtr pc = mConn.PGConnection;
 
@@ -576,14 +593,13 @@ namespace Pqsql
 		/// split PqsqlCommand.CommandText into an array of sub-statements
 		/// </summary>
 		/// <returns></returns>
-		protected string[] ParseStatements()
+		protected void ParseStatements(ref string[] statements)
 		{
 			StringBuilder sb = new StringBuilder();
 			bool quote = false;
 			bool dollarQuote = false;
 			bool dollarQuote0 = false;
 			bool dollarQuote1 = false;
-			string[] statements = new string[0];
 			int stmLen = 0; // length of statement
 
 			// parse multiple statements separated by ;
@@ -668,8 +684,6 @@ namespace Pqsql
 				statements[stmLen] = sb.ToString();
 				sb.Clear();
 			}
-
-			return statements;
 		}
 
 		//
