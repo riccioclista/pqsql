@@ -1,9 +1,8 @@
 ﻿using System;
-using System.Text;
 
 namespace Pqsql
 {
-	public class PqsqlCopyFrom
+	public sealed class PqsqlCopyFrom
 	{
 
 		private PqsqlConnection mConn;
@@ -36,7 +35,7 @@ namespace Pqsql
 
 		bool mDisposed;
 
-		protected void Dispose(bool disposing)
+		private void Dispose(bool disposing)
 		{
 			if (mDisposed)
 			{
@@ -59,7 +58,7 @@ namespace Pqsql
 		public void Start(string copy_query)
 		{
 			IntPtr res;
-			byte[] q = PqsqlProviderFactory.Instance.CreateUTF8Statement(copy_query);
+			byte[] q = PqsqlUTF8Statement.CreateUTF8Statement(copy_query);
 			IntPtr conn = mConn.PGConnection;
 
 			unsafe
@@ -143,7 +142,7 @@ namespace Pqsql
 				if (s == ExecStatus.PGRES_COPY_IN)
 				{
 					// still in COPY_IN mode? bail out!
-					byte[] b = PqsqlProviderFactory.Instance.CreateUTF8Statement("COPY FROM cancelled by client");
+					byte[] b = PqsqlUTF8Statement.CreateUTF8Statement("COPY FROM cancelled by client");
 
 					unsafe
 					{
@@ -225,7 +224,7 @@ namespace Pqsql
 				if (s == ExecStatus.PGRES_COPY_IN)
 				{
 					// still in COPY_IN mode? bail out!
-					byte[] b = PqsqlProviderFactory.Instance.CreateUTF8Statement("COPY FROM cancelled by client");
+					byte[] b = PqsqlUTF8Statement.CreateUTF8Statement("COPY FROM cancelled by client");
 
 					unsafe
 					{

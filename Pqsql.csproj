@@ -56,6 +56,7 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="PqsqlConnectionStringBuilder.cs" />
+    <Compile Include="PqsqlCopyFrom.cs" />
     <Compile Include="PqsqlDataAdapter.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -67,6 +68,7 @@
     <Compile Include="PqsqlProviderFactory.cs" />
     <Compile Include="PqsqlTransaction.cs" />
     <Compile Include="PqsqlTypeNames.cs" />
+    <Compile Include="PqsqlUTF8Statement.cs" />
     <Compile Include="PqsqlWrapper.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

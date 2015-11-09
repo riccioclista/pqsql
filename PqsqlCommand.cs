@@ -6,26 +6,27 @@ using System.Data;
 
 namespace Pqsql
 {
-	public class PqsqlCommand : DbCommand
+	public sealed class PqsqlCommand : DbCommand
 	{
 		const string mStatementTimeoutString = "set statement_timeout=";
 		const string mStoredProcString = "select * from ";
 		const string mTableString = "table ";
 
-		protected string mCmdText;
+		private string mCmdText;
 
-		protected int mCmdTimeout;
-		protected bool mCmdTimeoutSet;
+		private int mCmdTimeout;
 
-		protected CommandType mCmdType;
+		private bool mCmdTimeoutSet;
 
-		protected PqsqlConnection mConn;
+		private CommandType mCmdType;
 
-		protected readonly PqsqlParameterCollection mParams;
+		private PqsqlConnection mConn;
 
-		protected PqsqlTransaction mTransaction;
+		private readonly PqsqlParameterCollection mParams;
 
-		protected UpdateRowSource mUpdateRowSource = UpdateRowSource.Both;
+		private PqsqlTransaction mTransaction;
+
+		private UpdateRowSource mUpdateRowSource = UpdateRowSource.Both;
 
 
 		// Summary:
@@ -47,7 +48,7 @@ namespace Pqsql
 			mConn = conn;
 		}
 
-		protected void Init(string q)
+		private void Init(string q)
 		{
 			mCmdText = q;
 			mCmdTimeout = -1;
@@ -329,7 +330,7 @@ namespace Pqsql
 						if (cret == 1)
 							return;
 
-						err = PqsqlProviderFactory.Instance.CreateStringFromUTF8(new IntPtr(b));
+						err = PqsqlUTF8Statement.CreateStringFromUTF8(new IntPtr(b));
 					}
 				}
 				
@@ -503,7 +504,7 @@ namespace Pqsql
 		}
 
 		// open connection if it is closed or broken
-		protected void CheckOpen()
+		private void CheckOpen()
 		{
 			ConnectionState s = mConn.State;
 
@@ -515,14 +516,14 @@ namespace Pqsql
 
 
 		// sets statement_timeout of the current session
-		protected void SetStatementTimeout()
+		private void SetStatementTimeout()
 		{
 			if (mCmdTimeout > 0 && mCmdTimeoutSet == false)
 			{
 				StringBuilder sb = new StringBuilder();
 				sb.Append(mStatementTimeoutString);
 				sb.Append(CommandTimeout);
-				byte[] stmtTimeout = PqsqlProviderFactory.Instance.CreateUTF8Statement(sb);
+				byte[] stmtTimeout = PqsqlUTF8Statement.CreateUTF8Statement(sb);
 				IntPtr res;
 				IntPtr pc = mConn.PGConnection;
 
@@ -567,7 +568,7 @@ namespace Pqsql
 
 
 		// replace parameter names :ParameterName with parameter index $j
-		protected void ReplaceParameterNames(ref StringBuilder sb)
+		private void ReplaceParameterNames(ref StringBuilder sb)
 		{
 			if (mParams == null)
 				return;
@@ -593,7 +594,7 @@ namespace Pqsql
 		/// split PqsqlCommand.CommandText into an array of sub-statements
 		/// </summary>
 		/// <returns></returns>
-		protected void ParseStatements(ref string[] statements)
+		private void ParseStatements(ref string[] statements)
 		{
 			StringBuilder sb = new StringBuilder();
 			bool quote = false;

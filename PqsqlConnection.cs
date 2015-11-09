@@ -9,14 +9,14 @@ namespace Pqsql
 	// Close, BeginDbTransaction, ChangeDatabase, CreateDbCommand, Open, and StateChange. 
 	// You must also provide the following properties:
 	// ConnectionString, Database, DataSource, ServerVersion, and State.
-	public class PqsqlConnection : DbConnection
+	public sealed class PqsqlConnection : DbConnection
 	{
 		#region libpq connection
 
 		/// <summary>
 		/// PGconn*
 		/// </summary>
-		protected IntPtr mConnection;
+		private IntPtr mConnection;
 
 		// Open / Broken / Connecting
 		private ConnectionStatus mStatus;
@@ -34,12 +34,12 @@ namespace Pqsql
 		/// <summary>
 		/// an ADO.NET connection string
 		/// </summary>
-		protected PqsqlConnectionStringBuilder mConnectionStringBuilder;
+		private PqsqlConnectionStringBuilder mConnectionStringBuilder;
 
 		/// <summary>
 		/// Server Version
 		/// </summary>
-		protected int mServerVersion;
+		private int mServerVersion;
 
 		#endregion
 
@@ -66,7 +66,7 @@ namespace Pqsql
 		/// initializes all member variables, except mConnectionStringBuilder
 		/// who will only be set in the ctors once and for all
 		/// </summary>
-		protected void Init()
+		private void Init()
 		{
 			mNewConnectionString = true;
 			mConnection = IntPtr.Zero;
@@ -488,7 +488,7 @@ namespace Pqsql
 
 					if (err != IntPtr.Zero)
 					{
-						msg = PqsqlProviderFactory.Instance.CreateStringFromUTF8(err);
+						msg = PqsqlUTF8Statement.CreateStringFromUTF8(err);
 					}
 				}
 			}

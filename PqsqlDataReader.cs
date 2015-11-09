@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Text;
 using System.Data.Common;
 using System.Data;
 using System.ComponentModel;
@@ -11,7 +10,7 @@ namespace Pqsql
 	/// <summary>
 	/// cache column name and type information
 	/// </summary>
-	internal class PqsqlColInfo
+	internal sealed class PqsqlColInfo
 	{
 		public PqsqlDbType Oid { get; set; }
 		public int Format { get; set; }
@@ -24,9 +23,9 @@ namespace Pqsql
 	};
 
 
-	internal class PqsqlEnumerator : IEnumerator
+	internal sealed class PqsqlEnumerator : IEnumerator
 	{
-		protected PqsqlDataReader mReader;
+		private PqsqlDataReader mReader;
 
 		public PqsqlEnumerator(PqsqlDataReader reader)
 		{
@@ -86,7 +85,7 @@ namespace Pqsql
 	/// <summary>
 	/// 
 	/// </summary>
-	public class PqsqlDataReader : DbDataReader
+	public sealed class PqsqlDataReader : DbDataReader
 	{
 		// the current PGresult* buffer
 		IntPtr mResult;
@@ -148,7 +147,7 @@ namespace Pqsql
 			Reset();
 		}
 
-		protected void Reset()
+		private void Reset()
 		{
 			// no data available for the current query, set mMaxRows == mRownum.
 			// next call to NextResult() will issue the next query and start to Read() again
@@ -356,7 +355,7 @@ namespace Pqsql
 		}
 
 		// consume remaining input, see http://www.postgresql.org/docs/9.4/static/libpq-async.html
-		protected internal void Consume()
+		internal void Consume()
 		{
 			if (mResult != IntPtr.Zero)
 			{
@@ -430,7 +429,7 @@ namespace Pqsql
 
 		#region datatype and bounds checks
 
-		protected void CheckOrdinal(int ordinal)
+		private void CheckOrdinal(int ordinal)
 		{
 			if (mResult == IntPtr.Zero)
 				throw new IndexOutOfRangeException("No tuple available");
@@ -439,7 +438,7 @@ namespace Pqsql
 				throw new IndexOutOfRangeException("Column " + ordinal + " out of range");
 		}
 
-		protected void CheckOrdinalType(int ordinal, PqsqlDbType oid)
+		private void CheckOrdinalType(int ordinal, PqsqlDbType oid)
 		{
 			CheckOrdinal(ordinal);
 
@@ -1400,10 +1399,10 @@ namespace Pqsql
 		/// executes the next statement
 		/// </summary>
 		/// <returns></returns>
-		protected bool Execute()
+		private bool Execute()
 		{
 			// convert query string to utf8
-			byte[] utf8query = PqsqlProviderFactory.Instance.CreateUTF8Statement(mStatements[mStmtNum]);
+			byte[] utf8query = PqsqlUTF8Statement.CreateUTF8Statement(mStatements[mStmtNum]);
 			
 			if (utf8query == null || utf8query[0] == 0x0) // null or empty string
 				return false;
