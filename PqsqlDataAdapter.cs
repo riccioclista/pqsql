@@ -3,7 +3,7 @@ using System.Data.Common;
 
 namespace Pqsql
 {
-	public class PqsqlDataAdapter : DbDataAdapter
+	public sealed class PqsqlDataAdapter : DbDataAdapter
 	{
 
 		public PqsqlDataAdapter()

@@ -99,7 +99,7 @@ namespace Pqsql
 	/// </summary>
 	/// <remarks>https://msdn.microsoft.com/en-us/library/system.security.suppressunmanagedcodesecurityattribute%28v=vs.100%29.aspx</remarks>
 	[SuppressUnmanagedCodeSecurity]
-	internal class PqsqlWrapper
+	internal sealed class PqsqlWrapper
 	{
 		// libpq.dll depends on libeay32.dll, libintl-8.dll, ssleay32.dll
 		// (DllImport would throw a DllNotFoundException if some of them are missing)
@@ -397,12 +397,10 @@ namespace Pqsql
 		// http://www.postgresql.org/docs/current/static/libpq-copy.html
 		//
 
-		// TODO add COPY support
-
 		#region COPY FROM STDIN
 
 		[DllImport("libpq.dll")]
-		public static extern unsafe int PQputCopyData(IntPtr conn, IntPtr buffer, int nbytes);
+		public static extern int PQputCopyData(IntPtr conn, IntPtr buffer, int nbytes);
 		// int PQputCopyData(PGconn *conn, const char *buffer, int nbytes);
 
 		[DllImport("libpq.dll")]
@@ -414,7 +412,7 @@ namespace Pqsql
 		#region COPY TO STDOUT
 
 		[DllImport("libpq.dll")]
-		public static extern unsafe int PQgetCopyData(IntPtr conn, IntPtr buffer, int async);
+		public static extern int PQgetCopyData(IntPtr conn, IntPtr buffer, int async);
 		// int PQgetCopyData(PGconn* conn, char** buffer, int async);
 
 		#endregion

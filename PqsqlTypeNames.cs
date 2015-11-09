@@ -9,7 +9,7 @@ namespace Pqsql
 	/// </summary>
 	internal static class PqsqlTypeNames
 	{
-		public class PqsqlTypeName
+		public sealed class PqsqlTypeName
 		{
 			public string Name {	get; set; }
 			public Type Type { get;	set; }

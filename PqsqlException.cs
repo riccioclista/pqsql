@@ -3,7 +3,7 @@ using System.Data.Common;
 
 namespace Pqsql
 {
-	public class PqsqlException : DbException
+	public sealed class PqsqlException : DbException
 	{
 		public PqsqlException(string message)
 			: base(message)

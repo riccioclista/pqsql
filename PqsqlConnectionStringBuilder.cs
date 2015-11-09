@@ -108,7 +108,7 @@ namespace Pqsql
 	//service
 	//    Service name to use for additional parameters. It specifies a service name in pg_service.conf that holds additional connection parameters. This allows applications to specify only a service name so connection parameters can be centrally maintained. See Section 31.16.
 	//
-	public class PqsqlConnectionStringBuilder : DbConnectionStringBuilder
+	public sealed class PqsqlConnectionStringBuilder : DbConnectionStringBuilder
 	{
 		public const string host = "host";
 		public const string hostaddr = "hostaddr";

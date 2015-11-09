@@ -5,7 +5,7 @@ using System.Globalization;
 
 namespace Pqsql
 {
-	public class PqsqlCommandBuilder : DbCommandBuilder
+	public sealed class PqsqlCommandBuilder : DbCommandBuilder
 	{
 
 		// Summary:
@@ -87,7 +87,7 @@ namespace Pqsql
 		//   System.InvalidOperationException:
 		//     This property cannot be changed after an insert, update, or delete command
 		//     has been generated.
-		public override sealed string QuotePrefix
+		public override string QuotePrefix
 		{
 			get
 			{
@@ -115,7 +115,7 @@ namespace Pqsql
 		//
 		// Returns:
 		//     The ending character or characters to use. The default is an empty string.
-		public override sealed string QuoteSuffix
+		public override string QuoteSuffix
 		{
 			get
 			{

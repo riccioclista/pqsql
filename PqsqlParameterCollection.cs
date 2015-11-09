@@ -6,7 +6,7 @@ using System.Collections;
 
 namespace Pqsql
 {
-	public class PqsqlParameterCollection : DbParameterCollection, IDisposable
+	public sealed class PqsqlParameterCollection : DbParameterCollection, IDisposable
 	{
 		private readonly List<PqsqlParameter> mParamList = new List<PqsqlParameter>();
 
@@ -24,7 +24,7 @@ namespace Pqsql
 			Init();
 		}
 
-		protected void Init()
+		private void Init()
 		{
 			mPqPB = PqsqlBinaryFormat.pqpb_create(); // create pqparam_buffer
 			lookup = new Dictionary<string, int>();
@@ -43,7 +43,7 @@ namespace Pqsql
 
 		bool mDisposed;
 
-		protected void Dispose(bool disposing)
+		private void Dispose(bool disposing)
 		{
 			if (mDisposed)
 			{
