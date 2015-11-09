@@ -306,6 +306,17 @@ namespace Pqsql
 			}
 		}
 
+		public int WriteBool(bool b)
+		{
+			long begin = LengthCheckReset();
+			PqsqlBinaryFormat.pqbf_set_bool(mExpBuf, b ? 1 : 0);
+			unsafe
+			{
+				sbyte* val = PqsqlBinaryFormat.pqbf_get_bufval(mExpBuf) + begin;
+				return PutColumn(val, 1);
+			}
+		}
+
 		public int WriteInt2(short i)
 		{
 			long begin = LengthCheckReset();
@@ -410,12 +421,12 @@ namespace Pqsql
 
 		public unsafe int WriteTime(DateTime dt)
 		{
-			throw new NotImplementedException();
+			throw new NotImplementedException("WriteTime not implemented");
 		}
 
 		public unsafe int WriteDate(DateTime dt)
 		{
-			throw new NotImplementedException();
+			throw new NotImplementedException("WriteDate not implemented");
 		}
 
 		public int WriteInterval(TimeSpan ts)

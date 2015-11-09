@@ -6,6 +6,11 @@ namespace Pqsql
 	{
 		public static PqsqlProviderFactory Instance = new PqsqlProviderFactory();
 
+		public static int ClientVersion 
+		{
+			get { return PqsqlWrapper.PQlibVersion(); }
+		}
+
 		private PqsqlProviderFactory()
 		{
 		}
