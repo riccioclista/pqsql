@@ -95,6 +95,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="array.c" />
     <ClCompile Include="float.c" />
     <ClCompile Include="numeric.c" />
     <ClCompile Include="pqbinfmt.c" />
