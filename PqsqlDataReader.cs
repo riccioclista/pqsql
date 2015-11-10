@@ -992,6 +992,79 @@ namespace Pqsql
 			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
 			return PqsqlBinaryFormat.pqbf_get_int4(v);
 		}
+
+		internal static ArrayList GetInt32Array(IntPtr res, int row, int ordinal)
+		{
+			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
+
+			int ndim;
+			int flags;
+			uint oid;
+			int[] dim = new int[6];
+			int[] lbound = new int[6];
+			long nitems;
+			int size = 0;
+			int itemlen;
+			IntPtr val;
+
+
+			IntPtr dimbuf = Marshal.AllocCoTaskMem(Marshal.SizeOf(size) * dim.Length);
+			IntPtr lboundbuf = Marshal.AllocCoTaskMem(Marshal.SizeOf(size) * lbound.Length);
+
+			unsafe
+			{
+				val = PqsqlBinaryFormat.pqbf_get_array(v, &ndim, &flags, &oid, ref dimbuf, ref lboundbuf, &nitems);
+
+				Marshal.Copy(dimbuf, dim, 0, 6);
+				Marshal.Copy(lboundbuf, lbound, 0, 6);
+
+				Marshal.FreeCoTaskMem(dimbuf);
+				Marshal.FreeCoTaskMem(lboundbuf);
+
+				ArrayList l = new ArrayList();
+				
+				for (int d = 0; d < ndim; d++)
+				{
+					int ub = dim[d];
+					int lb = lbound[d] - 1;
+
+					if (flags > 0) // nullable
+					{
+						int?[] tmp = new int?[ub];
+						for (int i = lb; i < ub; i++)
+						{
+							val = PqsqlBinaryFormat.pqbf_get_array_value(val, &itemlen);
+
+							if (itemlen < 0)
+								tmp[i] = null;
+							else
+								tmp[i] = PqsqlBinaryFormat.pqbf_get_int4(val);
+							
+							val += itemlen;
+						}
+						l.Add(tmp);
+					}
+					else
+					{
+						int[] tmp = new int[ub];
+						for (int i = lb; i < ub; i++)
+						{
+							val = PqsqlBinaryFormat.pqbf_get_array_value(val, &itemlen);
+
+							if (itemlen < 0)
+								throw new NoNullAllowedException("PGSQL returned NULL value, but flags == 0");
+
+							tmp[i] = PqsqlBinaryFormat.pqbf_get_int4(val);
+							val += itemlen;
+						}
+						l.Add(tmp);
+					}			
+				}
+
+				return l;
+			}
+		}
+
 		//
 		// Summary:
 		//     Gets the value of the specified column as a 64-bit signed integer.
@@ -1169,6 +1242,7 @@ namespace Pqsql
 			PqsqlBinaryFormat.pqbf_free_unicode_text(utp);
 			return uni;
 		}
+
 
 		//
 		// Summary:

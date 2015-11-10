@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-namespace Pqsql
+﻿namespace Pqsql
 {
 	/// <summary>
 	/// Represents a PostgreSQL data type that can be written or read to the database.
@@ -223,7 +218,13 @@ namespace Pqsql
 		/// via a bit OR (e.g. NpgsqlDbType.Array | NpgsqlDbType.Integer)
 		/// </summary>
 		/// <remarks>See http://www.postgresql.org/docs/current/static/arrays.html</remarks>
-		//Array = int.MinValue,
+		Array = int.MinValue,
+
+		Int2Array =	1005,
+		Int4Array =	1007,
+		TextArray = 1009,
+		OidArray = 1028,
+		Float4Array = 1021,
 
 		#endregion
 

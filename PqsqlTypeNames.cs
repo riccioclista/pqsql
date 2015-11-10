@@ -232,7 +232,56 @@ namespace Pqsql
 					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
 					SetValue=(pb, val) => { unsafe { fixed (char* t = (string) val) { PqsqlBinaryFormat.pqbf_add_unicode_text(pb, t); } } }
 				}
-			}
+			},
+
+
+
+			{ PqsqlDbType.Int2Array,
+				new PqsqlTypeName {
+					Name="int2array",
+					Type=typeof(short[]),
+					DbType=DbType.Object,
+					GetValue=null,
+					SetValue=null
+				}
+			},
+			{ PqsqlDbType.Int4Array,
+				new PqsqlTypeName {
+					Name="int4array",
+					Type=typeof(int[]),
+					DbType=DbType.String,
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetInt32Array(res, row, ord),
+					SetValue=null
+				}
+			},
+			{ PqsqlDbType.TextArray,
+				new PqsqlTypeName {
+					Name="textarray",
+					Type=typeof(string),
+					DbType=DbType.String,
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
+					SetValue=null
+				}
+			},
+			{ PqsqlDbType.OidArray,
+				new PqsqlTypeName {
+					Name="oidarray",
+					Type=typeof(string),
+					DbType=DbType.String,
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
+					SetValue=null
+				}
+			},
+			{ PqsqlDbType.Float4Array,
+				new PqsqlTypeName {
+					Name="float4array",
+					Type=typeof(string),
+					DbType=DbType.String,
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
+					SetValue=null
+				}
+			},
+
     };
 
 		// maps DbType to PqsqlDbType (DbType.DateTimeOffset is maximal integer for the array)
