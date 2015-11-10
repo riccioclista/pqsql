@@ -87,7 +87,7 @@ namespace Pqsql
 	/// <summary>
 	/// mode bitmask for lo_open
 	/// </summary>
-	internal enum LoOpen
+	public enum LoOpen
 	{
 		INV_WRITE = 0x00020000,
 		INV_READ = 0x00040000
@@ -474,11 +474,11 @@ namespace Pqsql
 		#region LO write / read / truncate
 
 		[DllImport("libpq.dll")]
-		public static extern unsafe int lo_write(IntPtr conn, int fd, sbyte* buf, ulong len);
+		public static extern unsafe int lo_write(IntPtr conn, int fd, byte* buf, ulong len);
 		// int lo_write(PGconn *conn, int fd, const char *buf, size_t len);
 
 		[DllImport("libpq.dll")]
-		public static extern unsafe int lo_read(IntPtr conn, int fd, sbyte* buf, ulong len);
+		public static extern unsafe int lo_read(IntPtr conn, int fd, byte* buf, ulong len);
 		// int lo_read(PGconn *conn, int fd, char *buf, size_t len);
 
 		[DllImport("libpq.dll")]
