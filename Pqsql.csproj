@@ -63,6 +63,7 @@
     <Compile Include="PqsqlDataReader.cs" />
     <Compile Include="PqsqlDbType.cs" />
     <Compile Include="PqsqlException.cs" />
+    <Compile Include="PqsqlLargeObject.cs" />
     <Compile Include="PqsqlParameter.cs" />
     <Compile Include="PqsqlParameterCollection.cs" />
     <Compile Include="PqsqlProviderFactory.cs" />
