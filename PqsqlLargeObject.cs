@@ -26,6 +26,49 @@ namespace Pqsql
 			mPos = -1;
 		}
 
+
+		~PqsqlLargeObject()
+		{
+			Dispose(false);
+		}
+
+		#region Dispose
+
+		public new void Dispose()
+		{
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
+
+		bool mDisposed;
+
+		/// <summary>
+		/// Releases the unmanaged resources used by the <see cref="T:System.IO.Stream"/> and optionally releases the managed resources.
+		/// </summary>
+		/// <param name="disposing">true to release both managed and unmanaged resources; false to release only unmanaged resources.</param>
+		protected override void Dispose(bool disposing)
+		{
+			if (mDisposed)
+			{
+				return;
+			}
+
+			if (disposing)
+			{
+				// do not close connection
+			}
+
+			// always close LO
+			Close();
+
+			base.Dispose(disposing);
+			mDisposed = true;
+		}
+
+		#endregion
+
+
+
 		public uint Create()
 		{
 			return PqsqlWrapper.lo_create(mConn, 0);
@@ -52,46 +95,43 @@ namespace Pqsql
 			if (mFd < 0 || mConn == IntPtr.Zero)
 				return;
 
-			int ret = PqsqlWrapper.lo_close(mConn, mFd);
+			PqsqlWrapper.lo_close(mConn, mFd);
 			mFd = -1;
 			mMode = 0;
 			mPos = -1;
-
-			if (ret < 0)
-			{
-				throw new PqsqlException("lo_close failed: " + ret);
-			}
 		}
 
 		public override void Flush()
 		{
+			// noop
 		}
 
-
+		// sets new position in the LO
 		public override long Seek(long offset, SeekOrigin whence)
 		{
 			if (mFd < 0 || mConn == IntPtr.Zero)
 				return -1;
 
-			return PqsqlWrapper.lo_lseek64(mConn, mFd, offset, (int) whence);
+			mPos = PqsqlWrapper.lo_lseek64(mConn, mFd, offset, (int) whence);
+
+			return mPos;
 		}
 
+		// truncates LO to value
 		public override void SetLength(long value)
 		{
 			if (mFd < 0 || mConn == IntPtr.Zero)
 				return;
 
-			int len = PqsqlWrapper.lo_truncate64(mConn, mFd, value);
+			int ret = PqsqlWrapper.lo_truncate64(mConn, mFd, value);
 
-			if (len < value)
+			if (ret < 0)
 			{
-				throw new PqsqlException("lo_truncate64 failed: " + len);
+				throw new PqsqlException("lo_truncate64 failed");
 			}
-
-			if (mPos > len)
-				mPos = len;
 		}
 
+		// read from LO
 		public override int Read(byte[] buffer, int offset, int count)
 		{
 			if (buffer == null)
@@ -122,6 +162,7 @@ namespace Pqsql
 			}
 		}
 
+		// write to LO
 		public override void Write(byte[] buffer, int offset, int count)
 		{
 			if (buffer == null)
@@ -163,7 +204,7 @@ namespace Pqsql
 	
 			if (ret < 0)
 			{
-				throw new PqsqlException("lo_write failed: " + ret);
+				throw new PqsqlException("lo_write failed");
 			}
 		}
 
@@ -195,7 +236,11 @@ namespace Pqsql
 				if (mFd < 0 || mConn == IntPtr.Zero)
 					return -1;
 
-				return PqsqlWrapper.lo_tell64(mConn, mFd);
+				long cur = mPos;
+				long ret = Seek(0, SeekOrigin.End);
+				if (ret != cur)
+					Seek(cur, SeekOrigin.Begin);
+				return ret;
 			}
 		}
 
@@ -214,7 +259,7 @@ namespace Pqsql
 				if (mFd < 0 || mConn == IntPtr.Zero || mPos == value)
 					return;
 
-				mPos = PqsqlWrapper.lo_lseek64(mConn, mFd, value, (int) SeekOrigin.Begin);
+				Seek(value, SeekOrigin.Begin);
 			} 
 		}
 
