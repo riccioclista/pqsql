@@ -8,7 +8,7 @@
 DECLSPEC const char * __fastcall
 pqbf_get_array(const char* p,
 								int32_t* ndim, int32_t* flags, uint32_t* o,
-								int* dim[MAXDIM],	int* lbound[MAXDIM], size_t *nitems)
+								int* dim[MAXDIM],	int* lbound[MAXDIM])
 {
 	char *v;
 	int i;
@@ -30,23 +30,14 @@ pqbf_get_array(const char* p,
 
 	/* dimension header */
 
-	*nitems = 1;
 	for (i = 0; i < *ndim; i++)
 	{
+		/* we trust pgsql here for correct lower and upper bounds */
 		*dim[i] = pqbf_get_int4(v);
 		v += sizeof(int);
 
 		*lbound[i] = pqbf_get_int4(v);
 		v += sizeof(int);
-
-		/* we trust pgsql here for correct lower and upper bounds */
-		*nitems *= (int64_t) dim[i];
-	}
-
-	if (*nitems == 0)
-	{
-		/* empty array */
-		return NULL;
 	}
 
 	/* array data start */

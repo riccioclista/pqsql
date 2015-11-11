@@ -97,7 +97,7 @@ extern DECLSPEC void __fastcall pqbf_set_date(PQExpBuffer s, int32_t t);
 extern DECLSPEC void __fastcall pqbf_add_date(pqparam_buffer *pb, int32_t t);
 
 #define MAXDIM 6
-extern DECLSPEC const char * __fastcall pqbf_get_array(const char* p, int32_t* ndim, int32_t* flags, uint32_t* o,	int* dim[MAXDIM],	int* lbound[MAXDIM], size_t *nitems);
+extern DECLSPEC const char * __fastcall pqbf_get_array(const char* p, int32_t* ndim, int32_t* flags, uint32_t* o,	int* dim[MAXDIM],	int* lbound[MAXDIM]);
 extern DECLSPEC const char * __fastcall pqbf_get_array_value(const char* p, int32_t* itemlen);
 
 #ifdef  __cplusplus
