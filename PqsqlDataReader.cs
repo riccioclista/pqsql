@@ -993,76 +993,213 @@ namespace Pqsql
 			return PqsqlBinaryFormat.pqbf_get_int4(v);
 		}
 
-		internal static ArrayList GetInt32Array(IntPtr res, int row, int ordinal)
+		public Array GetInt32Array(int ordinal)
+		{
+			CheckOrdinalType(ordinal, PqsqlDbType.Int4Array);
+			return GetInt32Array(mResult, mRowNum, ordinal);
+		}
+
+		internal static void GetArray(IntPtr res, int row, int ordinal, out int ndim, out int flags, out PqsqlDbType oid, out int[] dim, out int[] lbound, out IntPtr val)
 		{
 			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
 
-			int ndim;
-			int flags;
-			uint oid;
-			int[] dim = new int[6];
-			int[] lbound = new int[6];
-			long nitems;
+			const int maxdim = 6;
 			int size = 0;
-			int itemlen;
-			IntPtr val;
 
-
-			IntPtr dimbuf = Marshal.AllocCoTaskMem(Marshal.SizeOf(size) * dim.Length);
-			IntPtr lboundbuf = Marshal.AllocCoTaskMem(Marshal.SizeOf(size) * lbound.Length);
+			size = Marshal.SizeOf(size) * maxdim;
+			IntPtr dimbuf = Marshal.AllocCoTaskMem(size);
+			IntPtr lboundbuf = Marshal.AllocCoTaskMem(size);
 
 			unsafe
 			{
-				val = PqsqlBinaryFormat.pqbf_get_array(v, &ndim, &flags, &oid, ref dimbuf, ref lboundbuf, &nitems);
-
-				Marshal.Copy(dimbuf, dim, 0, 6);
-				Marshal.Copy(lboundbuf, lbound, 0, 6);
-
-				Marshal.FreeCoTaskMem(dimbuf);
-				Marshal.FreeCoTaskMem(lboundbuf);
-
-				ArrayList l = new ArrayList();
-				
-				for (int d = 0; d < ndim; d++)
+				fixed (int* d = &ndim)
 				{
-					int ub = dim[d];
-					int lb = lbound[d] - 1;
-
-					if (flags > 0) // nullable
+					fixed (int* f = &flags)
 					{
-						int?[] tmp = new int?[ub];
-						for (int i = lb; i < ub; i++)
-						{
-							val = PqsqlBinaryFormat.pqbf_get_array_value(val, &itemlen);
+						uint o = 0;
+						val = PqsqlBinaryFormat.pqbf_get_array(v, d, f, &o, ref dimbuf, ref lboundbuf);
+						oid = (PqsqlDbType) o;
+					}
+				}
+			}
 
-							if (itemlen < 0)
-								tmp[i] = null;
-							else
-								tmp[i] = PqsqlBinaryFormat.pqbf_get_int4(val);
-							
-							val += itemlen;
-						}
-						l.Add(tmp);
+			dim = new int[ndim];
+			lbound = new int[ndim];
+
+			Marshal.Copy(dimbuf, dim, 0, ndim);
+			Marshal.Copy(lboundbuf, lbound, 0, ndim);
+
+			Marshal.FreeCoTaskMem(dimbuf);
+			Marshal.FreeCoTaskMem(lboundbuf);
+		}
+
+		internal delegate object GetProviderValue(IntPtr v);
+
+		internal static void FillArray(ref Array a, IntPtr val, int ndim, int flags, GetProviderValue gpv)
+		{
+			int[] idx = new int[ndim];
+			for (int d = 0; d < ndim; d++)
+				idx[d] = a.GetLowerBound(d);
+
+			int last = ndim - 1;
+
+			// we only support 1 dimensional arrays for now
+			while (idx[last] <= a.GetUpperBound(last))
+			{
+				int itemlen;
+				unsafe
+				{
+					val = PqsqlBinaryFormat.pqbf_get_array_value(val, &itemlen);
+				}
+
+				if (itemlen < 0)
+				{
+					// nothing to do
+					a.SetValue(null, idx);
+				}
+				else
+				{
+					object o = gpv(val);
+					a.SetValue(o, idx);
+					val += itemlen;
+				}
+
+				idx[last]++;
+			}
+		}
+
+		internal static Array GetInt32Array(IntPtr res, int row, int ordinal)
+		{
+			int ndim;
+			int flags;
+			PqsqlDbType oid;
+			IntPtr val;
+			int[] dim;
+			int[] lbound;
+
+			GetArray(res, row, ordinal, out ndim, out flags, out oid, out dim, out lbound, out val);
+
+			if (oid != PqsqlDbType.Int4)
+			{
+				throw new InvalidCastException("Array has wrong datatype " + oid);
+			}
+
+			Type t;
+			
+			if (flags > 0)
+			{
+				t = typeof(int?);
+			}
+			else
+			{
+				t = typeof(int);
+			}
+			
+			Array a = Array.CreateInstance(t, dim, lbound);
+
+			FillArray(ref a, val, ndim, flags, x => PqsqlBinaryFormat.pqbf_get_int4(x));
+
+			return a;
+
+#if false
+				int[] idx = new int[ndim];
+				for (int d = 0; d < ndim; d++)
+					idx[d] = a.GetLowerBound(d);
+
+				int last = ndim - 1;
+				// we only support 1 dimensional arrays for now
+				while (idx[last] <= a.GetUpperBound(last))
+				{
+					val = PqsqlBinaryFormat.pqbf_get_array_value(val, &itemlen);
+
+					if (itemlen < 0)
+					{
+						// nothing to do
+						a.SetValue(null, idx);
 					}
 					else
 					{
-						int[] tmp = new int[ub];
-						for (int i = lb; i < ub; i++)
+						int ival = PqsqlBinaryFormat.pqbf_get_int4(val);
+						a.SetValue(ival, idx);
+						val += itemlen;
+					}
+
+					idx[last]++;
+				} 
+#endif
+
+#if false
+				int[] idx = new int[ndim];
+				for (int d = 0; d < ndim; d++) idx[d] = a.GetLowerBound(d);
+
+				int i = ndim - 2;
+				int j = ndim - 2;
+				int last = ndim - 1;
+
+				do
+				{
+					while (idx[last] <= a.GetUpperBound(last))
+					{
+						val = PqsqlBinaryFormat.pqbf_get_array_value(val, &itemlen);
+
+						if (itemlen < 0)
 						{
-							val = PqsqlBinaryFormat.pqbf_get_array_value(val, &itemlen);
-
-							if (itemlen < 0)
-								throw new NoNullAllowedException("PGSQL returned NULL value, but flags == 0");
-
-							tmp[i] = PqsqlBinaryFormat.pqbf_get_int4(val);
+							// nothing to do
+							a.SetValue(null, idx);
+						}
+						else
+						{
+							int ival = PqsqlBinaryFormat.pqbf_get_int4(val);
+							a.SetValue(ival, idx);
 							val += itemlen;
 						}
-						l.Add(tmp);
-					}			
-				}
 
-				return l;
-			}
+						idx[last]++;
+					}
+
+					idx[last] = a.GetLowerBound(last); // reset
+
+					bool carryi;
+					bool carryj;
+					if (i >= 0 && j >= 0)
+					{
+						carryi = a.GetUpperBound(i) == idx[i];
+						carryj = a.GetUpperBound(j) == idx[j];
+					}
+					else
+						break;
+
+					if (carryi && carryj && i == 0 && j == 0)
+						break;
+					
+					if (carryi && i > 0)
+					{
+						for (int k = (j > 0 ? j : 1); k < last; k++)
+						{
+							idx[k] = a.GetLowerBound(k);
+						}
+
+						if (carryi && carryj)
+						{
+							// full reset
+							i = ndim - 2;
+							j--;
+							idx[j]++;
+						}
+						else // carryi
+						{
+							// intermediate reset
+							i--;
+							idx[i]++;
+						}
+					}
+					else
+					{
+						// increase
+						idx[i]++;
+					}
+				} while (i >= 0);
+#endif
 		}
 
 		//

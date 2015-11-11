@@ -194,7 +194,7 @@ namespace Pqsql
 		public static extern long pqbf_get_time(IntPtr p);
 
 		[DllImport("libpqbinfmt.dll")]
-		public static extern IntPtr pqbf_get_array(IntPtr p, int* ndim, int* flags, uint* oid, ref IntPtr dim, ref IntPtr lbound, long* nitems);
+		public static extern IntPtr pqbf_get_array(IntPtr p, int* ndim, int* flags, uint* oid, ref IntPtr dim, ref IntPtr lbound);
 
 		[DllImport("libpqbinfmt.dll")]
 		public static extern IntPtr pqbf_get_array_value(IntPtr p, int* itemlen);
