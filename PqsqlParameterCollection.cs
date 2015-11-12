@@ -313,7 +313,7 @@ namespace Pqsql
 		//     false.
 		public override bool Contains(object value)
 		{
-			return (IndexOf(value) != -1);
+			return IndexOf(value) != -1;
 		}
 		//
 		// Summary:
@@ -329,7 +329,7 @@ namespace Pqsql
 		//     false.
 		public override bool Contains(string value)
 		{
-			return (IndexOf(value) != -1);
+			return IndexOf(value) != -1;
 		}
 		//
 		// Summary:

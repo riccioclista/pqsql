@@ -409,7 +409,7 @@ namespace Pqsql
 
 			long ticks = dt.Ticks - PqsqlBinaryFormat.UnixEpochTicks;
 			long sec = ticks / TimeSpan.TicksPerSecond;
-			int usec = (int) ((ticks % TimeSpan.TicksPerSecond) / 10);
+			int usec = (int) (ticks % TimeSpan.TicksPerSecond / 10);
 
 			PqsqlBinaryFormat.pqbf_set_timestamp(mExpBuf, sec, usec);
 			unsafe

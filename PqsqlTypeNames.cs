@@ -160,7 +160,7 @@ namespace Pqsql
 						DateTime dt = (DateTime) val;
 						long ticks = dt.Ticks - PqsqlBinaryFormat.UnixEpochTicks;
 						long sec = ticks / TimeSpan.TicksPerSecond;
-						int usec = (int) ((ticks % TimeSpan.TicksPerSecond) / 10);
+						int usec = (int) (ticks % TimeSpan.TicksPerSecond / 10);
 						PqsqlBinaryFormat.pqbf_add_timestamp(pb, sec, usec);
 					}
 				}
@@ -396,7 +396,7 @@ namespace Pqsql
 		};
 
 		// for PqsqlDataReader
-		static public PqsqlTypeName Get(PqsqlDbType oid)
+		public static PqsqlTypeName Get(PqsqlDbType oid)
 		{
 			PqsqlTypeName result;
 			if (mPqsqlDbTypeDict.TryGetValue(oid, out result))
@@ -407,7 +407,7 @@ namespace Pqsql
 		}
 
 		// for PqsqlParameter
-		static public PqsqlDbType GetPqsqlDbType(DbType dbType)
+		public static PqsqlDbType GetPqsqlDbType(DbType dbType)
 		{
 			return mDbTypeArray[(int) dbType];
 		}
