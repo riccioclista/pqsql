@@ -278,7 +278,7 @@ pqbf_get_unicode_text(const char *p, size_t *utf16_len)
 
 	for (retry = 0; retry < 2; retry++)
 	{
-		*utf16_len = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, p, -1, obuf, *utf16_len);
+		*utf16_len = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, p, len, obuf, *utf16_len);
 
 		if (*utf16_len == 0)
 		{
