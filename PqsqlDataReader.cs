@@ -1515,7 +1515,7 @@ namespace Pqsql
 			string uni;
 			if (itemlen > 0)
 			{
-				uni = Marshal.PtrToStringUni(utp, itemlen - 1); // ignore trailing \0
+				uni = Marshal.PtrToStringUni(utp, itemlen);
 			}
 			else
 			{
