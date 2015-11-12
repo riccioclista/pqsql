@@ -244,7 +244,10 @@ DECLSPEC const char* __fastcall
 pqbf_get_text(const char *p, size_t *len)
 {
 	BAILWITHVALUEIFNULL(p, NULL);
-	*len = strlen(p);
+
+	if (*len == 0)
+		*len = strlen(p); /* total utf8 length given by strlen */
+
 	return p;
 }
 
@@ -257,7 +260,10 @@ pqbf_get_unicode_text(const char *p, size_t *utf16_len)
 
 	BAILWITHVALUEIFNULL(p, NULL);
 
-	len = strlen(p); /* total utf8 length */
+	if (*utf16_len == 0)
+		len = strlen(p); /* total utf8 length given by strlen */
+	else
+		len = *utf16_len; /* total utf8 length given as parameter */
 
 	/* allocate enough room to hold standard utf16 text (2 bytes per char) */
 	*utf16_len = 2 * len + 1;
