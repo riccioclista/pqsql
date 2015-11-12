@@ -31,7 +31,11 @@ namespace Pqsql
 					ArrayDbType=PqsqlDbType.Array, // TODO
 					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetBoolean(res,row,ord),
 					SetValue=(pb, val) => PqsqlBinaryFormat.pqbf_add_bool(pb, (int) val),
-					SetArrayValue = null
+					SetArrayValue = (a, o) => {
+						bool v = (bool) o;
+						PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 1);
+						PqsqlBinaryFormat.pqbf_set_bool(a, v ? 1 : 0);
+					}
 				}
 			},
 			{ PqsqlDbType.Float8,
@@ -72,7 +76,11 @@ namespace Pqsql
 					ArrayDbType=PqsqlDbType.Int8Array,
 					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetInt64(res,row,ord),
 					SetValue=(pb, val) => PqsqlBinaryFormat.pqbf_add_int8(pb, (long) val),
-					SetArrayValue = null
+					SetArrayValue = (a, o) => {
+						long v = (long) o;
+						PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 8);
+						PqsqlBinaryFormat.pqbf_set_int8(a, v);
+					}
 				}
 			},
 			{ PqsqlDbType.Numeric,
@@ -86,7 +94,11 @@ namespace Pqsql
 						double d = Convert.ToDouble(val);
 						PqsqlBinaryFormat.pqbf_add_numeric(pb, d);
 					},
-					SetArrayValue = null
+					SetArrayValue = (a, o) => {
+						double d = Convert.ToDouble(o); // TODO get length of numeric value!!
+						PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 8);
+						PqsqlBinaryFormat.pqbf_set_numeric(a, d);
+					}
 				}
 			},
 			{ PqsqlDbType.Float4,
@@ -97,7 +109,11 @@ namespace Pqsql
 					ArrayDbType=PqsqlDbType.Float4Array,
 					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetFloat(res,row,ord),
 					SetValue=(pb, val) => PqsqlBinaryFormat.pqbf_add_float4(pb, (float) val),
-					SetArrayValue = null
+					SetArrayValue = (a, o) => {
+						float v = (float) o;
+						PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 4);
+						PqsqlBinaryFormat.pqbf_set_float4(a, v);
+					}
 				}
 			},
 			{ PqsqlDbType.Int2,
@@ -108,7 +124,11 @@ namespace Pqsql
 					ArrayDbType=PqsqlDbType.Int2Array,
 					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetInt16(res,row,ord),
 					SetValue=(pb, val) => PqsqlBinaryFormat.pqbf_add_int2(pb, (short) val),
-					SetArrayValue = null
+					SetArrayValue = (a, o) => {
+						short v = (short) o;
+						PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 2);
+						PqsqlBinaryFormat.pqbf_set_int2(a, v);
+					}
 				}
 			},
 			{ PqsqlDbType.Char,
@@ -130,7 +150,17 @@ namespace Pqsql
 					ArrayDbType=PqsqlDbType.TextArray,
 					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
 					SetValue=(pb, val) => { unsafe { fixed (char* t = (string) val) { PqsqlBinaryFormat.pqbf_add_unicode_text(pb, t); } } },
-					SetArrayValue = null
+					SetArrayValue = (a, o) => {
+						string v = (string) o;
+						PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 2); // TODO get utf16 length upfront
+						unsafe
+						{
+							fixed (char* t = v)
+							{
+								PqsqlBinaryFormat.pqbf_set_unicode_text(a, t);
+							}
+						}
+					}
 				}
 			},
 			{ PqsqlDbType.Varchar,
@@ -141,7 +171,17 @@ namespace Pqsql
 					ArrayDbType=PqsqlDbType.TextArray,
 					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
 					SetValue=(pb, val) => { unsafe { fixed (char* t = (string) val) { PqsqlBinaryFormat.pqbf_add_unicode_text(pb, t); } } },
-					SetArrayValue = null
+					SetArrayValue = (a, o) => {
+						string v = (string) o;
+						PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 2); // TODO get utf16 length upfront
+						unsafe
+						{
+							fixed (char* t = v)
+							{
+								PqsqlBinaryFormat.pqbf_set_unicode_text(a, t);
+							}
+						}
+					}
 				}
 			},
 			{ PqsqlDbType.Name,
@@ -152,7 +192,17 @@ namespace Pqsql
 					ArrayDbType=PqsqlDbType.TextArray,
 					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
 					SetValue=(pb, val) => { unsafe { fixed (char* t = (string) val) { PqsqlBinaryFormat.pqbf_add_unicode_text(pb, t); } } },
-					SetArrayValue = null
+					SetArrayValue = (a, o) => {
+						string v = (string) o;
+						PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 2); // TODO get utf16 length upfront
+						unsafe
+						{
+							fixed (char* t = v)
+							{
+								PqsqlBinaryFormat.pqbf_set_unicode_text(a, t);
+							}
+						}
+					}
 				}
 			},
 			{ PqsqlDbType.Bytea,
@@ -273,7 +323,11 @@ namespace Pqsql
 					ArrayDbType=PqsqlDbType.OidArray,
 					GetValue=(res, row, ord, typmod) => (uint) PqsqlDataReader.GetInt32(res,row,ord),
 					SetValue=(pb, val) => PqsqlBinaryFormat.pqbf_add_oid(pb, (uint) val),
-					SetArrayValue = null
+					SetArrayValue = (a, o) => {
+						uint v = (uint) o;
+						PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 4);
+						PqsqlBinaryFormat.pqbf_set_oid(a, v);
+					}
 				}
 			},
 			{ PqsqlDbType.Unknown,
@@ -284,7 +338,17 @@ namespace Pqsql
 					ArrayDbType=PqsqlDbType.TextArray,
 					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
 					SetValue=(pb, val) => { unsafe { fixed (char* t = (string) val) { PqsqlBinaryFormat.pqbf_add_unicode_text(pb, t); } } },
-					SetArrayValue = null
+					SetArrayValue = (a, o) => {
+						string v = (string) o;
+						PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 2); // TODO get utf16 length upfront
+						unsafe
+						{
+							fixed (char* t = v)
+							{
+								PqsqlBinaryFormat.pqbf_set_unicode_text(a, t);
+							}
+						}
+					}
 				}
 			},
 
