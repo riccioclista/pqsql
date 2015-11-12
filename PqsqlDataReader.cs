@@ -859,6 +859,41 @@ namespace Pqsql
 			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
 			return PqsqlBinaryFormat.pqbf_get_float8(v);
 		}
+
+		internal static Array GetDoubleArray(IntPtr res, int row, int ordinal)
+		{
+			int ndim;
+			int flags;
+			PqsqlDbType oid;
+			IntPtr val;
+			int[] dim;
+			int[] lbound;
+
+			GetArray(res, row, ordinal, out ndim, out flags, out oid, out dim, out lbound, out val);
+
+			if (oid != PqsqlDbType.Float8)
+			{
+				throw new InvalidCastException("Array has wrong datatype " + oid);
+			}
+
+			Type t;
+
+			if (flags > 0)
+			{
+				t = typeof(double?);
+			}
+			else
+			{
+				t = typeof(double);
+			}
+
+			Array a = Array.CreateInstance(t, dim, lbound);
+
+			FillArray(ref a, val, ndim, (x,len) => PqsqlBinaryFormat.pqbf_get_float8(x));
+
+			return a;
+		}
+
 		//
 		// Summary:
 		//     Returns an System.Collections.IEnumerator that can be used to iterate through
@@ -917,6 +952,41 @@ namespace Pqsql
 			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
 			return PqsqlBinaryFormat.pqbf_get_float4(v);
 		}
+
+		internal static Array GetFloatArray(IntPtr res, int row, int ordinal)
+		{
+			int ndim;
+			int flags;
+			PqsqlDbType oid;
+			IntPtr val;
+			int[] dim;
+			int[] lbound;
+
+			GetArray(res, row, ordinal, out ndim, out flags, out oid, out dim, out lbound, out val);
+
+			if (oid != PqsqlDbType.Float4)
+			{
+				throw new InvalidCastException("Array has wrong datatype " + oid);
+			}
+
+			Type t;
+
+			if (flags > 0)
+			{
+				t = typeof(float?);
+			}
+			else
+			{
+				t = typeof(float);
+			}
+
+			Array a = Array.CreateInstance(t, dim, lbound);
+
+			FillArray(ref a, val, ndim, (x,len) => PqsqlBinaryFormat.pqbf_get_float4(x));
+
+			return a;
+		}
+
 		//
 		// Summary:
 		//     Gets the value of the specified column as a globally-unique identifier (GUID).
@@ -967,6 +1037,42 @@ namespace Pqsql
 			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
 			return PqsqlBinaryFormat.pqbf_get_int2(v);
 		}
+
+		internal static Array GetInt16Array(IntPtr res, int row, int ordinal)
+		{
+			int ndim;
+			int flags;
+			PqsqlDbType oid;
+			IntPtr val;
+			int[] dim;
+			int[] lbound;
+
+			GetArray(res, row, ordinal, out ndim, out flags, out oid, out dim, out lbound, out val);
+
+			if (oid != PqsqlDbType.Int2)
+			{
+				throw new InvalidCastException("Array has wrong datatype " + oid);
+			}
+
+			Type t;
+
+			if (flags > 0)
+			{
+				t = typeof (short?);
+			}
+			else
+			{
+				t = typeof (short);
+			}
+
+			Array a = Array.CreateInstance(t, dim, lbound);
+
+			FillArray(ref a, val, ndim, (x,len) => PqsqlBinaryFormat.pqbf_get_int2(x));
+
+			return a;
+		}
+
+
 		//
 		// Summary:
 		//     Gets the value of the specified column as a 32-bit signed integer.
@@ -1033,10 +1139,14 @@ namespace Pqsql
 			Marshal.FreeCoTaskMem(lboundbuf);
 		}
 
-		internal delegate object GetProviderValue(IntPtr v);
 
-		internal static void FillArray(ref Array a, IntPtr val, int ndim, int flags, GetProviderValue gpv)
+		internal delegate object GetArrayItem(IntPtr v, int itemlen);
+
+		internal static void FillArray(ref Array a, IntPtr val, int ndim, GetArrayItem gpv)
 		{
+			if (ndim != 1)
+				throw new NotImplementedException("Arrays with ndim=" + ndim + " not supported yet");
+
 			int[] idx = new int[ndim];
 			for (int d = 0; d < ndim; d++)
 				idx[d] = a.GetLowerBound(d);
@@ -1059,7 +1169,7 @@ namespace Pqsql
 				}
 				else
 				{
-					object o = gpv(val);
+					object o = gpv(val, itemlen); // in situations where itemlen is not fixed by datatype (text values do not have \0)
 					a.SetValue(o, idx);
 					val += itemlen;
 				}
@@ -1097,7 +1207,7 @@ namespace Pqsql
 			
 			Array a = Array.CreateInstance(t, dim, lbound);
 
-			FillArray(ref a, val, ndim, flags, x => PqsqlBinaryFormat.pqbf_get_int4(x));
+			FillArray(ref a, val, ndim, (x,len) => PqsqlBinaryFormat.pqbf_get_int4(x));
 
 			return a;
 
@@ -1227,6 +1337,43 @@ namespace Pqsql
 			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
 			return PqsqlBinaryFormat.pqbf_get_int8(v);
 		}
+
+		internal static Array GetInt64Array(IntPtr res, int row, int ordinal)
+		{
+			int ndim;
+			int flags;
+			PqsqlDbType oid;
+			IntPtr val;
+			int[] dim;
+			int[] lbound;
+
+			GetArray(res, row, ordinal, out ndim, out flags, out oid, out dim, out lbound, out val);
+
+			if (oid != PqsqlDbType.Int8)
+			{
+				throw new InvalidCastException("Array has wrong datatype " + oid);
+			}
+
+			Type t;
+
+			if (flags > 0)
+			{
+				t = typeof(long?);
+			}
+			else
+			{
+				t = typeof(long);
+			}
+
+			Array a = Array.CreateInstance(t, dim, lbound);
+
+			FillArray(ref a, val, ndim, (x,len) => PqsqlBinaryFormat.pqbf_get_int8(x));
+
+			return a;
+		}
+
+
+
 		//
 		// Summary:
 		//     Gets the name of the column, given the zero-based column ordinal.
@@ -1353,24 +1500,22 @@ namespace Pqsql
 			return GetString(mResult, mRowNum, ordinal);	
 		}
 
-		internal static string GetString(IntPtr res, int row, int ordinal)
+		internal static string GetStringValue(IntPtr v, int itemlen)
 		{
-			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
-
 			IntPtr utp;
-			int len;
+
 			unsafe
 			{
-				utp = PqsqlBinaryFormat.pqbf_get_unicode_text(v, &len);
+				utp = PqsqlBinaryFormat.pqbf_get_unicode_text(v, &itemlen);
 			}
 
 			if (utp == IntPtr.Zero)
 				return null;
 
 			string uni;
-			if (len > 0)
+			if (itemlen > 0)
 			{
-				uni = Marshal.PtrToStringUni(utp, len - 1); // ignore trailing \0
+				uni = Marshal.PtrToStringUni(utp, itemlen - 1); // ignore trailing \0
 			}
 			else
 			{
@@ -1380,6 +1525,34 @@ namespace Pqsql
 			return uni;
 		}
 
+		internal static string GetString(IntPtr res, int row, int ordinal)
+		{
+			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
+			return GetStringValue(v, 0); // 0...unknown strlen
+		}
+
+		internal static Array GetStringArray(IntPtr res, int row, int ordinal)
+		{
+			int ndim;
+			int flags;
+			PqsqlDbType oid;
+			IntPtr val;
+			int[] dim;
+			int[] lbound;
+
+			GetArray(res, row, ordinal, out ndim, out flags, out oid, out dim, out lbound, out val);
+
+			if (oid != PqsqlDbType.Text)
+			{
+				throw new InvalidCastException("Array has wrong datatype " + oid);
+			}
+
+			Array a = Array.CreateInstance(typeof(string), dim, lbound);
+
+			FillArray(ref a, val, ndim, GetStringValue);
+
+			return a;
+		}
 
 		//
 		// Summary:

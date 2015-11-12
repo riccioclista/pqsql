@@ -223,8 +223,12 @@
 		Int2Array =	1005,
 		Int4Array =	1007,
 		TextArray = 1009,
-		OidArray = 1028,
+		Int8Array = 1016,
 		Float4Array = 1021,
+		Float8Array = 1022,
+		OidArray = 1028,
+
+		TimestampArray = 1115,
 
 		#endregion
 

@@ -238,49 +238,71 @@ namespace Pqsql
 
 			{ PqsqlDbType.Int2Array,
 				new PqsqlTypeName {
-					Name="int2array",
-					Type=typeof(short[]),
+					Name="_int2",
+					Type=typeof(Array),
 					DbType=DbType.Object,
-					GetValue=null,
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetInt16Array(res, row, ord),
 					SetValue=null
 				}
 			},
 			{ PqsqlDbType.Int4Array,
 				new PqsqlTypeName {
-					Name="int4array",
-					Type=typeof(int[]),
-					DbType=DbType.String,
+					Name="_int4",
+					Type=typeof(Array),
+					DbType=DbType.Object,
 					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetInt32Array(res, row, ord),
 					SetValue=null
 				}
 			},
+
 			{ PqsqlDbType.TextArray,
 				new PqsqlTypeName {
-					Name="textarray",
-					Type=typeof(string),
-					DbType=DbType.String,
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
+					Name="_text",
+					Type=typeof(Array),
+					DbType=DbType.Object,
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetStringArray(res,row,ord),
 					SetValue=null
 				}
 			},
-			{ PqsqlDbType.OidArray,
+
+			{ PqsqlDbType.Int8Array,
 				new PqsqlTypeName {
-					Name="oidarray",
-					Type=typeof(string),
-					DbType=DbType.String,
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
+					Name="_int8",
+					Type=typeof(Array),
+					DbType=DbType.Object,
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetInt64Array(res, row, ord),
 					SetValue=null
 				}
 			},
 			{ PqsqlDbType.Float4Array,
 				new PqsqlTypeName {
-					Name="float4array",
-					Type=typeof(string),
-					DbType=DbType.String,
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
+					Name="_float4",
+					Type=typeof(Array),
+					DbType=DbType.Object,
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetFloatArray(res, row, ord),
 					SetValue=null
 				}
 			},
+			{ PqsqlDbType.Float8Array,
+				new PqsqlTypeName {
+					Name="_float8",
+					Type=typeof(Array),
+					DbType=DbType.Object,
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetDoubleArray(res, row, ord),
+					SetValue=null
+				}
+			},
+
+			{ PqsqlDbType.OidArray,
+				new PqsqlTypeName {
+					Name="_oid",
+					Type=typeof(Array),
+					DbType=DbType.Object,
+					GetValue=null,
+					SetValue=null
+				}
+			},
+
 
     };
 
