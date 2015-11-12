@@ -76,7 +76,11 @@ namespace Pqsql
 
 						if (p.IsNullable && p.Value == null)
 						{
-							PqsqlBinaryFormat.pqbf_set_null(mPqPB, (uint) oid);
+							PqsqlBinaryFormat.pqbf_set_null(mPqPB, (uint) (oid & ~PqsqlDbType.Array));
+						}
+						else if ((oid & PqsqlDbType.Array) == PqsqlDbType.Array)
+						{
+							PqsqlTypeNames.SetArrayValue(oid)(mPqPB, p.Value);
 						}
 						else
 						{

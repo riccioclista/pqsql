@@ -96,6 +96,9 @@ namespace Pqsql
 		[DllImport("libpqbinfmt.dll")]
 		public static extern void pqbf_add_timestamp(IntPtr pbb, long sec, int usec);
 
+		[DllImport("libpqbinfmt.dll")]
+		public static extern void pqbf_add_array(IntPtr pbb, IntPtr a, uint oid);
+
 		#endregion
 
 
@@ -139,6 +142,12 @@ namespace Pqsql
 
 		[DllImport("libpqbinfmt.dll")]
 		public static extern void pqbf_set_timestamp(IntPtr s, long sec, int usec);
+
+		[DllImport("libpqbinfmt.dll")]
+		public static extern void pqbf_set_array(IntPtr s, int ndim, int flags, uint oid, int[] dim,	int[] lbound);
+
+		[DllImport("libpqbinfmt.dll")]
+		public static extern void pqbf_set_array_itemlength(IntPtr a, int itemlen);
 
 		#endregion
 
@@ -198,7 +207,6 @@ namespace Pqsql
 
 		[DllImport("libpqbinfmt.dll")]
 		public static extern IntPtr pqbf_get_array_value(IntPtr p, int* itemlen);
-
 
 		#endregion
 

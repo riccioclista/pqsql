@@ -35,10 +35,9 @@ namespace Pqsql
 		{
 		}
 		
-		public PqsqlParameter(string parameterName, object value)
-			: this()
+		public PqsqlParameter(string parameterName, DbType parameterType, object value)
+			: this(parameterName, parameterType, 0, String.Empty)
 		{
-			ParameterName = parameterName;
 			Value = value;
 		}
 
@@ -114,7 +113,14 @@ namespace Pqsql
 			set
 			{
 				mPqsqlDbType = value;
-				mDbType = PqsqlTypeNames.GetDbType(value);
+				if ((value & PqsqlDbType.Array) == PqsqlDbType.Array)
+				{
+					mDbType = PqsqlTypeNames.GetDbType(value & ~PqsqlDbType.Array);
+				}
+				else
+				{
+					mDbType = PqsqlTypeNames.GetDbType(value);
+				}
 			}
 		}
 		//

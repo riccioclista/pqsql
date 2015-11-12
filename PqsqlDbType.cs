@@ -1,4 +1,6 @@
-﻿namespace Pqsql
+﻿using System;
+
+namespace Pqsql
 {
 	/// <summary>
 	/// Represents a PostgreSQL data type that can be written or read to the database.
@@ -6,6 +8,7 @@
 	/// how to encode or decode values.
 	/// </summary>
 	/// <remarks>See http://www.postgresql.org/docs/current/static/datatype.html</remarks>
+	[Flags]
 	public enum PqsqlDbType
 	{
 		// Note that it's important to never change the numeric values of this enum, since user applications
@@ -41,8 +44,9 @@
 		/// </summary>
 		Float4 = 700,
 
-		/// <summary>
+		/// <summary/>
 		/// Corresponds to the PostgreSQL 2-byte "smallint" type.
+		/// </summary>
 		Int2 = 21,
 
 		#endregion
@@ -227,7 +231,6 @@
 		Float4Array = 1021,
 		Float8Array = 1022,
 		OidArray = 1028,
-
 		TimestampArray = 1115,
 
 		#endregion
