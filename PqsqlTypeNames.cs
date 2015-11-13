@@ -5,20 +5,67 @@ using System.Data;
 namespace Pqsql
 {
 	/// <summary>
-	/// Static dictionary of Postgres types, datatype names, GetValue() / SetValue() delegates
+	/// Static dictionary of Postgres types, datatype names, GetValue() / SetValue() / SetArrayValue() delegates
 	/// </summary>
 	internal static class PqsqlTypeNames
 	{
 		public sealed class PqsqlTypeName
 		{
-			public string Name {	get; set; }
-			public Type Type { get;	set; }
-			public DbType DbType { get;	set; }
+			public string Name { get; set; }
+			public Type Type { get; set; }
+			public DbType DbType { get; set; }
 			public PqsqlDbType ArrayDbType { get; set; }
-			public Func<IntPtr,int,int,int,object> GetValue	{	get; set; }
-			public Action<IntPtr,object> SetValue	{	get; set; }
-			public Action<IntPtr,object> SetArrayValue { get; set; }
+			public Func<IntPtr, int, int, int, object> GetValue { get; set; }
+			public Action<IntPtr, object> SetValue { get; set; }
+			public Action<IntPtr, object> SetArrayValue { get; set; }
 		}
+
+		private static Action<IntPtr, object> setNumericArray = (a, o) =>
+		{
+			double d = Convert.ToDouble(o);
+
+			long len0 = PqsqlBinaryFormat.pqbf_get_buflen(a); // get start position
+
+			PqsqlBinaryFormat.pqbf_set_array_itemlength(a, -2); // first set an invalid item length
+			PqsqlBinaryFormat.pqbf_set_numeric(a, d); // encode numeric value (variable length)
+
+			int len = (int) (PqsqlBinaryFormat.pqbf_get_buflen(a) - len0); // get new buffer length
+			// update array item length == len - 4 bytes
+			PqsqlBinaryFormat.pqbf_update_array_itemlength(a, -len, len - 4);
+		};
+
+		private static Action<IntPtr, object> setText = (pb, val) =>
+		{
+			unsafe
+			{
+				fixed (char* t = (string) val)
+				{
+					PqsqlBinaryFormat.pqbf_add_unicode_text(pb, t);
+				}
+			}
+		}; 
+
+		private static Action<IntPtr, object> setTextArray = (a, o) =>
+		{
+			string v = (string) o;
+
+			long len0 = PqsqlBinaryFormat.pqbf_get_buflen(a); // get start position
+
+			PqsqlBinaryFormat.pqbf_set_array_itemlength(a, -2); // first set an invalid item length
+
+			unsafe
+			{
+				fixed (char* t = v)
+				{
+					PqsqlBinaryFormat.pqbf_set_unicode_text(a, t); // encode text value (variable length)
+				}
+			}
+
+			int len = (int) (PqsqlBinaryFormat.pqbf_get_buflen(a) - len0); // get new buffer length
+			// update array item length == len - 4 bytes
+			PqsqlBinaryFormat.pqbf_update_array_itemlength(a, -len, len - 4);
+		};
+
 
 		// maps PqsqlDbType to PqsqlTypeName
 		static readonly Dictionary<PqsqlDbType, PqsqlTypeName> mPqsqlDbTypeDict = new Dictionary<PqsqlDbType, PqsqlTypeName>
@@ -31,7 +78,8 @@ namespace Pqsql
 					ArrayDbType=PqsqlDbType.Array, // TODO
 					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetBoolean(res,row,ord),
 					SetValue=(pb, val) => PqsqlBinaryFormat.pqbf_add_bool(pb, (int) val),
-					SetArrayValue = (a, o) => {
+					SetArrayValue = (a, o) =>
+					{
 						bool v = (bool) o;
 						PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 1);
 						PqsqlBinaryFormat.pqbf_set_bool(a, v ? 1 : 0);
@@ -88,17 +136,13 @@ namespace Pqsql
 					Name="numeric",
 					Type=typeof(Decimal),
 					DbType=DbType.VarNumeric,
-					ArrayDbType=PqsqlDbType.Array, // TODO
+					ArrayDbType=PqsqlDbType.NumericArray,
 					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetNumeric(res,row,ord,typmod),
 					SetValue=(pb, val) => {
 						double d = Convert.ToDouble(val);
 						PqsqlBinaryFormat.pqbf_add_numeric(pb, d);
 					},
-					SetArrayValue = (a, o) => {
-						double d = Convert.ToDouble(o); // TODO get length of numeric value!!
-						PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 8);
-						PqsqlBinaryFormat.pqbf_set_numeric(a, d);
-					}
+					SetArrayValue = setNumericArray
 				}
 			},
 			{ PqsqlDbType.Float4,
@@ -149,18 +193,8 @@ namespace Pqsql
 					DbType=DbType.String,
 					ArrayDbType=PqsqlDbType.TextArray,
 					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
-					SetValue=(pb, val) => { unsafe { fixed (char* t = (string) val) { PqsqlBinaryFormat.pqbf_add_unicode_text(pb, t); } } },
-					SetArrayValue = (a, o) => {
-						string v = (string) o;
-						PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 2); // TODO get utf16 length upfront
-						unsafe
-						{
-							fixed (char* t = v)
-							{
-								PqsqlBinaryFormat.pqbf_set_unicode_text(a, t);
-							}
-						}
-					}
+					SetValue = setText,
+					SetArrayValue = setTextArray
 				}
 			},
 			{ PqsqlDbType.Varchar,
@@ -170,18 +204,8 @@ namespace Pqsql
 					DbType=DbType.String,
 					ArrayDbType=PqsqlDbType.TextArray,
 					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
-					SetValue=(pb, val) => { unsafe { fixed (char* t = (string) val) { PqsqlBinaryFormat.pqbf_add_unicode_text(pb, t); } } },
-					SetArrayValue = (a, o) => {
-						string v = (string) o;
-						PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 2); // TODO get utf16 length upfront
-						unsafe
-						{
-							fixed (char* t = v)
-							{
-								PqsqlBinaryFormat.pqbf_set_unicode_text(a, t);
-							}
-						}
-					}
+					SetValue = setText,
+					SetArrayValue = setTextArray
 				}
 			},
 			{ PqsqlDbType.Name,
@@ -191,18 +215,8 @@ namespace Pqsql
 					DbType=DbType.StringFixedLength,
 					ArrayDbType=PqsqlDbType.TextArray,
 					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
-					SetValue=(pb, val) => { unsafe { fixed (char* t = (string) val) { PqsqlBinaryFormat.pqbf_add_unicode_text(pb, t); } } },
-					SetArrayValue = (a, o) => {
-						string v = (string) o;
-						PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 2); // TODO get utf16 length upfront
-						unsafe
-						{
-							fixed (char* t = v)
-							{
-								PqsqlBinaryFormat.pqbf_set_unicode_text(a, t);
-							}
-						}
-					}
+					SetValue = setText,
+					SetArrayValue = setTextArray
 				}
 			},
 			{ PqsqlDbType.Bytea,
@@ -337,18 +351,8 @@ namespace Pqsql
 					DbType=DbType.String,
 					ArrayDbType=PqsqlDbType.TextArray,
 					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
-					SetValue=(pb, val) => { unsafe { fixed (char* t = (string) val) { PqsqlBinaryFormat.pqbf_add_unicode_text(pb, t); } } },
-					SetArrayValue = (a, o) => {
-						string v = (string) o;
-						PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 2); // TODO get utf16 length upfront
-						unsafe
-						{
-							fixed (char* t = v)
-							{
-								PqsqlBinaryFormat.pqbf_set_unicode_text(a, t);
-							}
-						}
-					}
+					SetValue = setText,
+					SetArrayValue = setTextArray
 				}
 			},
 
@@ -384,8 +388,8 @@ namespace Pqsql
 					DbType=DbType.Object,
 					ArrayDbType=PqsqlDbType.TextArray,
 					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetStringArray(res,row,ord),
-					SetValue=null,
-					SetArrayValue = null
+					SetValue = null,
+					SetArrayValue = setTextArray
 				}
 			},
 
@@ -435,6 +439,18 @@ namespace Pqsql
 				}
 			},
 
+
+			{ PqsqlDbType.NumericArray,
+				new PqsqlTypeName {
+					Name="_numeric",
+					Type=typeof(Array),
+					DbType=DbType.Object,
+					ArrayDbType=PqsqlDbType.NumericArray,
+					GetValue=null,
+					SetValue=null,
+					SetArrayValue = null
+				}
+			},
 
     };
 
@@ -566,8 +582,8 @@ namespace Pqsql
 			// return closure
 			return (pb, val) =>
 			{
-				Array tmp = val as Array;
-				int rank = tmp.Rank;
+				Array aparam = val as Array;
+				int rank = aparam.Rank;
 
 				// TODO we only support one-dimensional array for now
 				if (rank != 1)
@@ -576,10 +592,11 @@ namespace Pqsql
 				int[] dim = new int[rank];
 				int[] lbound = new int[rank];
 
+				// always set 1-based numbering for indexes, we cannot reuse lower and upper bounds from aparam
 				for (int i = 0; i < rank; i++)
 				{
-					dim[i] = tmp.GetUpperBound(i);
-					lbound[i] = tmp.GetLowerBound(i);
+					lbound[i] = 1;
+					dim[i] = aparam.GetLength(i);
 				}
 
 				IntPtr a = IntPtr.Zero;
@@ -591,13 +608,12 @@ namespace Pqsql
 						throw new OutOfMemoryException("Cannot create PQExpBuffer");
 
 					// create array header
-					PqsqlBinaryFormat.pqbf_set_array(a, rank, /* no nulls allowed */ 0, (uint) oid, dim, lbound);
+					PqsqlBinaryFormat.pqbf_set_array(a, rank, /* TODO no nulls allowed */ 0, (uint) oid, dim, lbound);
 
-					// add array items
-					for (int i = lbound[0]; i <= dim[0]; i++)
+					// copy array items to buffer
+					foreach (object o in aparam)
 					{
-						object o = tmp.GetValue(i);
-						if (o == null) // null values have itemlength -1
+						if (o == null) // null values have itemlength -1 only
 						{
 							PqsqlBinaryFormat.pqbf_set_array_itemlength(a, -1);
 						}

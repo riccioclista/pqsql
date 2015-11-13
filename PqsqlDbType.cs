@@ -232,6 +232,7 @@ namespace Pqsql
 		Float8Array = 1022,
 		OidArray = 1028,
 		TimestampArray = 1115,
+		NumericArray = 1231,
 
 		#endregion
 

@@ -149,6 +149,9 @@ namespace Pqsql
 		[DllImport("libpqbinfmt.dll")]
 		public static extern void pqbf_set_array_itemlength(IntPtr a, int itemlen);
 
+		[DllImport("libpqbinfmt.dll")]
+		public static extern void pqbf_update_array_itemlength(IntPtr a, long offset, int itemlen);
+
 		#endregion
 
 

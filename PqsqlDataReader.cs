@@ -1154,7 +1154,8 @@ namespace Pqsql
 			int last = ndim - 1;
 
 			// we only support 1 dimensional arrays for now
-			while (idx[last] <= a.GetUpperBound(last))
+			int ub = a.GetUpperBound(last);
+			while (idx[last] <= ub)
 			{
 				int itemlen;
 				unsafe
