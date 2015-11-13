@@ -83,6 +83,14 @@ namespace Pqsql
 		public const char PG_DIAG_SOURCE_FUNCTION = 'R';
 	};
 
+	/// <summary>
+	/// PG_DIAG_SQLSTATE strings encoded as integers (PqsqlException.ErrorCode)
+	/// </summary>
+	public enum PqsqlState
+	{
+		QUERY_CANCELED = 67371461, // '57014' (query_canceled)
+	}
+
 
 	/// <summary>
 	/// mode bitmask for lo_open
@@ -368,7 +376,7 @@ namespace Pqsql
 		// ExecStatusType PQresultStatus(const PGresult *res);
 
 		[DllImport("libpq.dll")]
-		public static extern string PQresultErrorField(IntPtr res, int fieldcode);
+		public static extern unsafe sbyte* PQresultErrorField(IntPtr res, int fieldcode);
 		// char *PQresultErrorField(const PGresult *res, int fieldcode);
 
 		#endregion

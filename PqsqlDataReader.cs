@@ -1663,7 +1663,6 @@ namespace Pqsql
 			return true;
 		}
 
-
 		//
 		// Summary:
 		//     Advances the reader to the next record in a result set.
@@ -1710,10 +1709,12 @@ namespace Pqsql
 
 				if (s != ExecStatus.PGRES_SINGLE_TUPLE && s != ExecStatus.PGRES_TUPLES_OK)
 				{
+					string err = mConn.GetErrorMessage();
+					PqsqlException ex = new PqsqlException(err, mResult);
+
 					Consume(); // consume remaining results
 
-					string err = mConn.GetErrorMessage();
-					throw new PqsqlException(err);
+					throw ex;
 				}
 
 				if (mMaxRows == -1) // get number of tuples in a fresh result buffer
