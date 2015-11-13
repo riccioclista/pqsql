@@ -66,7 +66,7 @@ namespace Pqsql
 				for (int j = 0; j < 5; j++)
 				{
 					int i = (code >> j*6) & 0x3F;
-					i = i < 65 ? i + 48 : i + 55;
+					i = i < 10 ? i + 48 : i + 55;
 					err[j] = (char) i;
 				}
 				return new string(err);
