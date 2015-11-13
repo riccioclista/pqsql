@@ -88,7 +88,8 @@ namespace Pqsql
 	/// </summary>
 	public enum PqsqlState
 	{
-		QUERY_CANCELED = 67371461, // '57014' (query_canceled)
+		DEADLOCK_DETECTED = 16879620, // 40P01 (deadlock_detected)
+		QUERY_CANCELED = 67371461,    // 57014 (query_canceled)
 	}
 
 
