@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define DLL_EXPORT
 #include "pqbinfmt.h"
-#include "pq_types.h"
 
 
 DECLSPEC const char * __fastcall
@@ -103,16 +103,15 @@ pqbf_set_array_itemlength(PQExpBuffer a, int32_t itemlen)
 	/* next comes array item */
 }
 
-#if 0
 DECLSPEC void __fastcall
-pqbf_set_array_value(PQExpBuffer a, const char* p, int32_t itemlen)
+pqbf_update_array_itemlength(PQExpBuffer a, ptrdiff_t offset, int32_t itemlen)
 {
 	BAILIFNULL(a);
-	/* null values have itemlen == -1 */
-	if (p != NULL && itemlen >= 0) /* add non-null value array item */
-		appendBinaryPQExpBuffer(a, p, itemlen);
+	itemlen = BYTESWAP4(itemlen);
+	/* overwrite data starting at offset position (we assume offset is negative) with new item length */
+	memcpy(a->data + a->len + offset, (const char*) &itemlen, sizeof(itemlen));
+	/* next comes array item */
 }
-#endif
 
 DECLSPEC void __fastcall
 pqbf_add_array(pqparam_buffer *pb, PQExpBuffer a, uint32_t oid)

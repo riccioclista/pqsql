@@ -102,6 +102,7 @@ extern DECLSPEC const char * __fastcall pqbf_get_array_value(const char* p, int3
 extern DECLSPEC void __fastcall pqbf_set_array(PQExpBuffer s, int32_t ndim, int32_t flags, uint32_t oid, int dim[MAXDIM],	int lbound[MAXDIM]);
 extern DECLSPEC void __fastcall pqbf_add_array(pqparam_buffer *pb, PQExpBuffer a, uint32_t oid);
 extern DECLSPEC void __fastcall pqbf_set_array_itemlength(PQExpBuffer a, int32_t itemlen);
+extern DECLSPEC void __fastcall pqbf_update_array_itemlength(PQExpBuffer a, ptrdiff_t offset, int32_t itemlen);
 extern DECLSPEC void __fastcall pqbf_set_array_value(PQExpBuffer a, const char* p, int32_t itemlen);
 
 #ifdef  __cplusplus
