@@ -576,7 +576,6 @@ namespace Pqsql
 			StringBuilder paramName = new StringBuilder();
 			StringBuilder paramIndex = new StringBuilder();
 
-			paramName.Append(':');
 			paramIndex.Append('$');
 
 			int n = mParams.Count;
@@ -585,7 +584,7 @@ namespace Pqsql
 				paramName.Append(mParams[i].ParameterName);
 				paramIndex.Append(i + 1);
 				sb.Replace(paramName.ToString(), paramIndex.ToString());
-				paramName.Length = 1;
+				paramName.Length = 0;
 				paramIndex.Length = 1;
 			}
 		}

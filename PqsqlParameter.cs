@@ -3,6 +3,7 @@ using System.Data.Common;
 using System.ComponentModel;
 using System.Data;
 using System.Diagnostics.Contracts;
+using System.Text;
 
 namespace Pqsql
 {
@@ -18,7 +19,7 @@ namespace Pqsql
 
 		object mValue;
 
-
+		private static readonly char[] mTrimStart = { ' ', ':', '@', '\t', '\n' };
 
 		// Summary:
 		//     Initializes a new instance of the System.Data.Common.DbParameter class.
@@ -177,10 +178,13 @@ namespace Pqsql
 				}
 				else
 				{
+					StringBuilder sb = new StringBuilder();
+					sb.Append(':');
 					if (value[0] != '"')
-						mName = value.Trim().ToLowerInvariant();
+						sb.Append(value.TrimStart(mTrimStart).TrimEnd().ToLowerInvariant());
 					else
-						mName = value;
+						sb.Append(value);
+					mName = sb.ToString();
 				}
 			}
 		}
