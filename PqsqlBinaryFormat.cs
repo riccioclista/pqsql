@@ -105,9 +105,6 @@ namespace Pqsql
 		#region encode datatype to binary PQExpBuffer
 
 		[DllImport("libpqbinfmt.dll")]
-		public static extern void pqbf_set_null(IntPtr s, uint oid);
-
-		[DllImport("libpqbinfmt.dll")]
 		public static extern int pqbf_set_unicode_text(IntPtr s, char* t);
 
 		[DllImport("libpqbinfmt.dll")]
