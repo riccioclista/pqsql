@@ -563,7 +563,15 @@ namespace Pqsql
 		public override object ExecuteScalar()
 		{
 			PqsqlDataReader r = ExecuteReader(CommandBehavior.Default);
-			return r.GetValue(0);
+
+			object o;
+			if (r.Read())
+				o = r.GetValue(0);
+			else
+				o = null;
+
+			r.Consume(); // consume remaining results
+			return o;
 		}
 
 
