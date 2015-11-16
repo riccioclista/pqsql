@@ -1493,12 +1493,18 @@ namespace Pqsql
 			CheckOrdinal(ordinal);
 
 			PqsqlDbType oid = mRowInfo[ordinal].Oid;
-			if (oid != PqsqlDbType.Text && oid != PqsqlDbType.Varchar && oid != PqsqlDbType.Unknown)
+
+			switch (oid)
 			{
-				throw new InvalidCastException("Trying to access datatype " + oid + " as datatype Text");
+				case PqsqlDbType.Text:
+				case PqsqlDbType.Varchar:
+				case PqsqlDbType.Unknown:
+				case PqsqlDbType.Name:
+				case PqsqlDbType.Refcursor:
+					return GetString(mResult, mRowNum, ordinal);
 			}
 
-			return GetString(mResult, mRowNum, ordinal);	
+			throw new InvalidCastException("Trying to access datatype " + oid + " as datatype Text");	
 		}
 
 		internal static string GetStringValue(IntPtr v, int itemlen)
