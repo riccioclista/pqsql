@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data.Common;
 using System.ComponentModel;
 using System.Collections;
+using System.Text;
 
 namespace Pqsql
 {
@@ -429,22 +430,27 @@ namespace Pqsql
 		//     name.
 		public override int IndexOf(string param)
 		{
-			if (param == null)
+			if (!string.IsNullOrEmpty(param))
 			{
-				return -1;
-			}
+				StringBuilder sb = new StringBuilder();
 
-			if (param.Length > 0 && ((param[0] == ':') || (param[0] == '@')))
-			{
-				param = param.Remove(0, 1);
-			}
+				char f = param[0];
 
-			param = param.Trim().ToLowerInvariant();
+				if (f != ':')
+				{
+					sb.Append(':'); // assume :
+				}
 
-			int ret;
-			if (lookup.TryGetValue(param, out ret))
-			{
-				return ret;
+				if (f != '"')
+					sb.Append(param.TrimStart(PqsqlParameter.TrimStart).TrimEnd().ToLowerInvariant());
+				else
+					sb.Append(param);
+
+				int ret;
+				if (lookup.TryGetValue(sb.ToString(), out ret))
+				{
+					return ret;
+				}
 			}
 
 			return -1;

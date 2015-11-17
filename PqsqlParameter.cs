@@ -19,7 +19,7 @@ namespace Pqsql
 
 		object mValue;
 
-		private static readonly char[] mTrimStart = { ' ', ':', '@', '\t', '\n' };
+		internal static readonly char[] TrimStart = { ' ', ':', '@', '\t', '\n' };
 
 		// Summary:
 		//     Initializes a new instance of the System.Data.Common.DbParameter class.
@@ -181,7 +181,7 @@ namespace Pqsql
 					StringBuilder sb = new StringBuilder();
 					sb.Append(':');
 					if (value[0] != '"')
-						sb.Append(value.TrimStart(mTrimStart).TrimEnd().ToLowerInvariant());
+						sb.Append(value.TrimStart(TrimStart).TrimEnd().ToLowerInvariant());
 					else
 						sb.Append(value);
 					mName = sb.ToString();

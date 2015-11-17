@@ -398,14 +398,16 @@ namespace Pqsql
 			if (CommandType == CommandType.StoredProcedure)
 			{
 				r.Read(); // read first row
-				int i = 0;
-				foreach (PqsqlParameter p in Parameters)
+
+				int fc = r.FieldCount;
+				for (int i = 0; i < fc; i++) // set values for all output parameters
 				{
-					if (p.Direction != ParameterDirection.Input)
-					{
-						p.Value = r.GetValue(i++);
-					}
+					string col = r.GetName(i);
+
+					PqsqlParameter p = mParams[col];
+					p.Value = r.GetValue(i);
 				}
+
 				r.Consume(); // sync protocol: consume remaining rows
 			}
 
@@ -570,7 +572,7 @@ namespace Pqsql
 			else
 				o = null;
 
-			r.Consume(); // consume remaining results
+			r.Consume(); // sync protocol: consume remaining rows
 			return o;
 		}
 
