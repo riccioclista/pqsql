@@ -74,20 +74,29 @@ namespace Pqsql
 					foreach (PqsqlParameter p in mParamList)
 					{
 						PqsqlDbType oid = p.PqsqlDbType;
+						uint naoid = (uint) (oid & ~PqsqlDbType.Array);
 
 						object v = p.Value;
 
-						if (v == null || v == DBNull.Value)
+						try
 						{
-							PqsqlBinaryFormat.pqbf_add_null(mPqPB, (uint) (oid & ~PqsqlDbType.Array));
+							if (v == null || v == DBNull.Value)
+							{
+								PqsqlBinaryFormat.pqbf_add_null(mPqPB, naoid);
+							}
+							else if ((oid & PqsqlDbType.Array) == PqsqlDbType.Array)
+							{
+								PqsqlTypeNames.SetArrayValue(oid)(mPqPB, v);
+							}
+							else
+							{
+								PqsqlTypeNames.SetValue(oid)(mPqPB, v);
+							}
 						}
-						else if ((oid & PqsqlDbType.Array) == PqsqlDbType.Array)
+						catch (InvalidCastException)
 						{
-							PqsqlTypeNames.SetArrayValue(oid)(mPqPB, p.Value);
-						}
-						else
-						{
-							PqsqlTypeNames.SetValue(oid)(mPqPB, p.Value);
+							// ignore invalid casts, just set the parameter to NULL instead
+							PqsqlBinaryFormat.pqbf_add_null(mPqPB, naoid);
 						}
 					}
 				}
