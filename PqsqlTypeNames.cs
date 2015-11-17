@@ -75,9 +75,9 @@ namespace Pqsql
 					Name="bool",
 					Type=typeof(bool),
 					DbType=DbType.Boolean,
-					ArrayDbType=PqsqlDbType.Array, // TODO
+					ArrayDbType=PqsqlDbType.BooleanArray,
 					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetBoolean(res,row,ord),
-					SetValue=(pb, val) => PqsqlBinaryFormat.pqbf_add_bool(pb, (int) val),
+					SetValue=(pb, val) => PqsqlBinaryFormat.pqbf_add_bool(pb, (bool) val ? 1 : 0),
 					SetArrayValue = (a, o) =>
 					{
 						bool v = (bool) o;
@@ -323,10 +323,10 @@ namespace Pqsql
 					Name="refcursor",
 					Type=typeof(object),
 					DbType=DbType.Object,
-					ArrayDbType=PqsqlDbType.Array, // TODO
-					GetValue=null,
-					SetValue=null,
-					SetArrayValue = null
+					ArrayDbType=PqsqlDbType.TextArray,
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
+					SetValue = setText,
+					SetArrayValue = setTextArray
 				}
 			},
 			{ PqsqlDbType.Oid,
@@ -357,14 +357,24 @@ namespace Pqsql
 			},
 
 
-
+			{ PqsqlDbType.BooleanArray,
+				new PqsqlTypeName {
+					Name="_bool",
+					Type=typeof(Array),
+					DbType=DbType.Object,
+					ArrayDbType=PqsqlDbType.BooleanArray,
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Boolean, typeof(bool?), typeof(bool), (x, len) => PqsqlBinaryFormat.pqbf_get_bool(x) > 0),
+					SetValue=null,
+					SetArrayValue = null
+				}
+			},
 			{ PqsqlDbType.Int2Array,
 				new PqsqlTypeName {
 					Name="_int2",
 					Type=typeof(Array),
 					DbType=DbType.Object,
 					ArrayDbType=PqsqlDbType.Int2Array,
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetInt16Array(res, row, ord),
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Int2, typeof(short?), typeof(short), (x, len) => PqsqlBinaryFormat.pqbf_get_int2(x)),
 					SetValue=null,
 					SetArrayValue = null
 				}
@@ -375,7 +385,7 @@ namespace Pqsql
 					Type=typeof(Array),
 					DbType=DbType.Object,
 					ArrayDbType=PqsqlDbType.Int4Array,
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetInt32Array(res, row, ord),
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Int4, typeof(int?), typeof(int), (x, len) => PqsqlBinaryFormat.pqbf_get_int4(x)),
 					SetValue=null,
 					SetArrayValue = null
 				}
@@ -387,7 +397,7 @@ namespace Pqsql
 					Type=typeof(Array),
 					DbType=DbType.Object,
 					ArrayDbType=PqsqlDbType.TextArray,
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetStringArray(res,row,ord),
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Text, typeof(string), typeof(string), PqsqlDataReader.GetStringValue),
 					SetValue = null,
 					SetArrayValue = setTextArray
 				}
@@ -399,7 +409,7 @@ namespace Pqsql
 					Type=typeof(Array),
 					DbType=DbType.Object,
 					ArrayDbType=PqsqlDbType.Int8Array,
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetInt64Array(res, row, ord),
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Int8, typeof(long?), typeof(long), (x, len) => PqsqlBinaryFormat.pqbf_get_int8(x)),
 					SetValue=null,
 					SetArrayValue = null
 				}
@@ -410,7 +420,7 @@ namespace Pqsql
 					Type=typeof(Array),
 					DbType=DbType.Object,
 					ArrayDbType=PqsqlDbType.Float4Array,
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetFloatArray(res, row, ord),
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Float4, typeof(float?), typeof(float), (x, len) => PqsqlBinaryFormat.pqbf_get_float4(x)),
 					SetValue=null,
 					SetArrayValue = null
 				}
@@ -421,32 +431,29 @@ namespace Pqsql
 					Type=typeof(Array),
 					DbType=DbType.Object,
 					ArrayDbType=PqsqlDbType.Float8Array,
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetDoubleArray(res, row, ord),
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Float8, typeof(double?), typeof(double), (x, len) => PqsqlBinaryFormat.pqbf_get_float8(x)),
 					SetValue=null,
 					SetArrayValue = null
 				}
 			},
-
 			{ PqsqlDbType.OidArray,
 				new PqsqlTypeName {
 					Name="_oid",
 					Type=typeof(Array),
 					DbType=DbType.Object,
 					ArrayDbType=PqsqlDbType.OidArray,
-					GetValue=null,
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Oid, typeof(uint?), typeof(uint), (x, len) => (uint) PqsqlBinaryFormat.pqbf_get_int4(x)),
 					SetValue=null,
 					SetArrayValue = null
 				}
 			},
-
-
 			{ PqsqlDbType.NumericArray,
 				new PqsqlTypeName {
 					Name="_numeric",
 					Type=typeof(Array),
 					DbType=DbType.Object,
 					ArrayDbType=PqsqlDbType.NumericArray,
-					GetValue=null,
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Numeric, typeof(double?), typeof(double), (x, len) => PqsqlBinaryFormat.pqbf_get_numeric(x,typmod)),
 					SetValue=null,
 					SetArrayValue = null
 				}

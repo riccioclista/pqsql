@@ -449,6 +449,106 @@ namespace Pqsql
 
 		#endregion
 
+
+
+		internal static void GetArray(IntPtr res, int row, int ordinal, out int ndim, out int flags, out PqsqlDbType oid, out int[] dim, out int[] lbound, out IntPtr val)
+		{
+			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
+
+			const int maxdim = 6;
+			int size = 0;
+
+			size = Marshal.SizeOf(size) * maxdim;
+			IntPtr dimbuf = Marshal.AllocCoTaskMem(size);
+			IntPtr lboundbuf = Marshal.AllocCoTaskMem(size);
+
+			unsafe
+			{
+				fixed (int* d = &ndim)
+				{
+					fixed (int* f = &flags)
+					{
+						uint o = 0;
+						val = PqsqlBinaryFormat.pqbf_get_array(v, d, f, &o, ref dimbuf, ref lboundbuf);
+						oid = (PqsqlDbType) o;
+					}
+				}
+			}
+
+			dim = new int[ndim];
+			lbound = new int[ndim];
+
+			Marshal.Copy(dimbuf, dim, 0, ndim);
+			Marshal.Copy(lboundbuf, lbound, 0, ndim);
+
+			Marshal.FreeCoTaskMem(dimbuf);
+			Marshal.FreeCoTaskMem(lboundbuf);
+		}
+
+
+		internal delegate object GetArrayItem(IntPtr v, int itemlen);
+
+		internal static void FillArray(ref Array a, IntPtr val, int ndim, GetArrayItem gpv)
+		{
+			if (ndim != 1)
+				throw new NotImplementedException("Arrays with ndim=" + ndim + " not supported yet");
+
+			int[] idx = new int[ndim];
+			for (int d = 0; d < ndim; d++)
+				idx[d] = a.GetLowerBound(d);
+
+			int last = ndim - 1;
+
+			// we only support 1 dimensional arrays for now
+			int ub = a.GetUpperBound(last);
+			while (idx[last] <= ub)
+			{
+				int itemlen;
+				unsafe
+				{
+					val = PqsqlBinaryFormat.pqbf_get_array_value(val, &itemlen);
+				}
+
+				if (itemlen < 0)
+				{
+					// nothing to do
+					a.SetValue(null, idx);
+				}
+				else
+				{
+					object o = gpv(val, itemlen); // in situations where itemlen is not fixed by datatype (text values do not have \0)
+					a.SetValue(o, idx);
+					val += itemlen;
+				}
+
+				idx[last]++;
+			}
+		}
+
+
+		internal static Array GetArrayFill(IntPtr res, int row, int ordinal, PqsqlDbType typoid, Type nullable, Type nonNullable, Func<IntPtr, int, object> itemDelegate)
+		{
+			int ndim;
+			int flags;
+			PqsqlDbType oid;
+			IntPtr val;
+			int[] dim;
+			int[] lbound;
+
+			GetArray(res, row, ordinal, out ndim, out flags, out oid, out dim, out lbound, out val);
+
+			if (oid != typoid)
+			{
+				throw new InvalidCastException("Array has wrong datatype " + oid);
+			}
+
+			Array a = Array.CreateInstance(flags > 0 ? nullable : nonNullable, dim, lbound);
+
+			FillArray(ref a, val, ndim, (x, len) => itemDelegate(x, len));
+
+			return a;
+		}
+
 		//
 		// Summary:
 		//     Gets the value of the specified column as a Boolean.
@@ -474,6 +574,7 @@ namespace Pqsql
 			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
 			return PqsqlBinaryFormat.pqbf_get_bool(v) > 0;
 		}
+
 		//
 		// Summary:
 		//     Gets the value of the specified column as a byte.
@@ -860,40 +961,6 @@ namespace Pqsql
 			return PqsqlBinaryFormat.pqbf_get_float8(v);
 		}
 
-		internal static Array GetDoubleArray(IntPtr res, int row, int ordinal)
-		{
-			int ndim;
-			int flags;
-			PqsqlDbType oid;
-			IntPtr val;
-			int[] dim;
-			int[] lbound;
-
-			GetArray(res, row, ordinal, out ndim, out flags, out oid, out dim, out lbound, out val);
-
-			if (oid != PqsqlDbType.Float8)
-			{
-				throw new InvalidCastException("Array has wrong datatype " + oid);
-			}
-
-			Type t;
-
-			if (flags > 0)
-			{
-				t = typeof(double?);
-			}
-			else
-			{
-				t = typeof(double);
-			}
-
-			Array a = Array.CreateInstance(t, dim, lbound);
-
-			FillArray(ref a, val, ndim, (x,len) => PqsqlBinaryFormat.pqbf_get_float8(x));
-
-			return a;
-		}
-
 		//
 		// Summary:
 		//     Returns an System.Collections.IEnumerator that can be used to iterate through
@@ -953,40 +1020,6 @@ namespace Pqsql
 			return PqsqlBinaryFormat.pqbf_get_float4(v);
 		}
 
-		internal static Array GetFloatArray(IntPtr res, int row, int ordinal)
-		{
-			int ndim;
-			int flags;
-			PqsqlDbType oid;
-			IntPtr val;
-			int[] dim;
-			int[] lbound;
-
-			GetArray(res, row, ordinal, out ndim, out flags, out oid, out dim, out lbound, out val);
-
-			if (oid != PqsqlDbType.Float4)
-			{
-				throw new InvalidCastException("Array has wrong datatype " + oid);
-			}
-
-			Type t;
-
-			if (flags > 0)
-			{
-				t = typeof(float?);
-			}
-			else
-			{
-				t = typeof(float);
-			}
-
-			Array a = Array.CreateInstance(t, dim, lbound);
-
-			FillArray(ref a, val, ndim, (x,len) => PqsqlBinaryFormat.pqbf_get_float4(x));
-
-			return a;
-		}
-
 		//
 		// Summary:
 		//     Gets the value of the specified column as a globally-unique identifier (GUID).
@@ -1038,41 +1071,6 @@ namespace Pqsql
 			return PqsqlBinaryFormat.pqbf_get_int2(v);
 		}
 
-		internal static Array GetInt16Array(IntPtr res, int row, int ordinal)
-		{
-			int ndim;
-			int flags;
-			PqsqlDbType oid;
-			IntPtr val;
-			int[] dim;
-			int[] lbound;
-
-			GetArray(res, row, ordinal, out ndim, out flags, out oid, out dim, out lbound, out val);
-
-			if (oid != PqsqlDbType.Int2)
-			{
-				throw new InvalidCastException("Array has wrong datatype " + oid);
-			}
-
-			Type t;
-
-			if (flags > 0)
-			{
-				t = typeof (short?);
-			}
-			else
-			{
-				t = typeof (short);
-			}
-
-			Array a = Array.CreateInstance(t, dim, lbound);
-
-			FillArray(ref a, val, ndim, (x,len) => PqsqlBinaryFormat.pqbf_get_int2(x));
-
-			return a;
-		}
-
-
 		//
 		// Summary:
 		//     Gets the value of the specified column as a 32-bit signed integer.
@@ -1097,220 +1095,6 @@ namespace Pqsql
 		{
 			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
 			return PqsqlBinaryFormat.pqbf_get_int4(v);
-		}
-
-		public Array GetInt32Array(int ordinal)
-		{
-			CheckOrdinalType(ordinal, PqsqlDbType.Int4Array);
-			return GetInt32Array(mResult, mRowNum, ordinal);
-		}
-
-		internal static void GetArray(IntPtr res, int row, int ordinal, out int ndim, out int flags, out PqsqlDbType oid, out int[] dim, out int[] lbound, out IntPtr val)
-		{
-			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
-
-			const int maxdim = 6;
-			int size = 0;
-
-			size = Marshal.SizeOf(size) * maxdim;
-			IntPtr dimbuf = Marshal.AllocCoTaskMem(size);
-			IntPtr lboundbuf = Marshal.AllocCoTaskMem(size);
-
-			unsafe
-			{
-				fixed (int* d = &ndim)
-				{
-					fixed (int* f = &flags)
-					{
-						uint o = 0;
-						val = PqsqlBinaryFormat.pqbf_get_array(v, d, f, &o, ref dimbuf, ref lboundbuf);
-						oid = (PqsqlDbType) o;
-					}
-				}
-			}
-
-			dim = new int[ndim];
-			lbound = new int[ndim];
-
-			Marshal.Copy(dimbuf, dim, 0, ndim);
-			Marshal.Copy(lboundbuf, lbound, 0, ndim);
-
-			Marshal.FreeCoTaskMem(dimbuf);
-			Marshal.FreeCoTaskMem(lboundbuf);
-		}
-
-
-		internal delegate object GetArrayItem(IntPtr v, int itemlen);
-
-		internal static void FillArray(ref Array a, IntPtr val, int ndim, GetArrayItem gpv)
-		{
-			if (ndim != 1)
-				throw new NotImplementedException("Arrays with ndim=" + ndim + " not supported yet");
-
-			int[] idx = new int[ndim];
-			for (int d = 0; d < ndim; d++)
-				idx[d] = a.GetLowerBound(d);
-
-			int last = ndim - 1;
-
-			// we only support 1 dimensional arrays for now
-			int ub = a.GetUpperBound(last);
-			while (idx[last] <= ub)
-			{
-				int itemlen;
-				unsafe
-				{
-					val = PqsqlBinaryFormat.pqbf_get_array_value(val, &itemlen);
-				}
-
-				if (itemlen < 0)
-				{
-					// nothing to do
-					a.SetValue(null, idx);
-				}
-				else
-				{
-					object o = gpv(val, itemlen); // in situations where itemlen is not fixed by datatype (text values do not have \0)
-					a.SetValue(o, idx);
-					val += itemlen;
-				}
-
-				idx[last]++;
-			}
-		}
-
-		internal static Array GetInt32Array(IntPtr res, int row, int ordinal)
-		{
-			int ndim;
-			int flags;
-			PqsqlDbType oid;
-			IntPtr val;
-			int[] dim;
-			int[] lbound;
-
-			GetArray(res, row, ordinal, out ndim, out flags, out oid, out dim, out lbound, out val);
-
-			if (oid != PqsqlDbType.Int4)
-			{
-				throw new InvalidCastException("Array has wrong datatype " + oid);
-			}
-
-			Type t;
-			
-			if (flags > 0)
-			{
-				t = typeof(int?);
-			}
-			else
-			{
-				t = typeof(int);
-			}
-			
-			Array a = Array.CreateInstance(t, dim, lbound);
-
-			FillArray(ref a, val, ndim, (x,len) => PqsqlBinaryFormat.pqbf_get_int4(x));
-
-			return a;
-
-#if false
-				int[] idx = new int[ndim];
-				for (int d = 0; d < ndim; d++)
-					idx[d] = a.GetLowerBound(d);
-
-				int last = ndim - 1;
-				// we only support 1 dimensional arrays for now
-				while (idx[last] <= a.GetUpperBound(last))
-				{
-					val = PqsqlBinaryFormat.pqbf_get_array_value(val, &itemlen);
-
-					if (itemlen < 0)
-					{
-						// nothing to do
-						a.SetValue(null, idx);
-					}
-					else
-					{
-						int ival = PqsqlBinaryFormat.pqbf_get_int4(val);
-						a.SetValue(ival, idx);
-						val += itemlen;
-					}
-
-					idx[last]++;
-				} 
-#endif
-
-#if false
-				int[] idx = new int[ndim];
-				for (int d = 0; d < ndim; d++) idx[d] = a.GetLowerBound(d);
-
-				int i = ndim - 2;
-				int j = ndim - 2;
-				int last = ndim - 1;
-
-				do
-				{
-					while (idx[last] <= a.GetUpperBound(last))
-					{
-						val = PqsqlBinaryFormat.pqbf_get_array_value(val, &itemlen);
-
-						if (itemlen < 0)
-						{
-							// nothing to do
-							a.SetValue(null, idx);
-						}
-						else
-						{
-							int ival = PqsqlBinaryFormat.pqbf_get_int4(val);
-							a.SetValue(ival, idx);
-							val += itemlen;
-						}
-
-						idx[last]++;
-					}
-
-					idx[last] = a.GetLowerBound(last); // reset
-
-					bool carryi;
-					bool carryj;
-					if (i >= 0 && j >= 0)
-					{
-						carryi = a.GetUpperBound(i) == idx[i];
-						carryj = a.GetUpperBound(j) == idx[j];
-					}
-					else
-						break;
-
-					if (carryi && carryj && i == 0 && j == 0)
-						break;
-					
-					if (carryi && i > 0)
-					{
-						for (int k = (j > 0 ? j : 1); k < last; k++)
-						{
-							idx[k] = a.GetLowerBound(k);
-						}
-
-						if (carryi && carryj)
-						{
-							// full reset
-							i = ndim - 2;
-							j--;
-							idx[j]++;
-						}
-						else // carryi
-						{
-							// intermediate reset
-							i--;
-							idx[i]++;
-						}
-					}
-					else
-					{
-						// increase
-						idx[i]++;
-					}
-				} while (i >= 0);
-#endif
 		}
 
 		//
@@ -1338,42 +1122,6 @@ namespace Pqsql
 			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
 			return PqsqlBinaryFormat.pqbf_get_int8(v);
 		}
-
-		internal static Array GetInt64Array(IntPtr res, int row, int ordinal)
-		{
-			int ndim;
-			int flags;
-			PqsqlDbType oid;
-			IntPtr val;
-			int[] dim;
-			int[] lbound;
-
-			GetArray(res, row, ordinal, out ndim, out flags, out oid, out dim, out lbound, out val);
-
-			if (oid != PqsqlDbType.Int8)
-			{
-				throw new InvalidCastException("Array has wrong datatype " + oid);
-			}
-
-			Type t;
-
-			if (flags > 0)
-			{
-				t = typeof(long?);
-			}
-			else
-			{
-				t = typeof(long);
-			}
-
-			Array a = Array.CreateInstance(t, dim, lbound);
-
-			FillArray(ref a, val, ndim, (x,len) => PqsqlBinaryFormat.pqbf_get_int8(x));
-
-			return a;
-		}
-
-
 
 		//
 		// Summary:
@@ -1536,29 +1284,6 @@ namespace Pqsql
 		{
 			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
 			return GetStringValue(v, 0); // 0...unknown strlen
-		}
-
-		internal static Array GetStringArray(IntPtr res, int row, int ordinal)
-		{
-			int ndim;
-			int flags;
-			PqsqlDbType oid;
-			IntPtr val;
-			int[] dim;
-			int[] lbound;
-
-			GetArray(res, row, ordinal, out ndim, out flags, out oid, out dim, out lbound, out val);
-
-			if (oid != PqsqlDbType.Text)
-			{
-				throw new InvalidCastException("Array has wrong datatype " + oid);
-			}
-
-			Array a = Array.CreateInstance(typeof(string), dim, lbound);
-
-			FillArray(ref a, val, ndim, GetStringValue);
-
-			return a;
 		}
 
 		//

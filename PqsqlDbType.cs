@@ -224,6 +224,7 @@ namespace Pqsql
 		/// <remarks>See http://www.postgresql.org/docs/current/static/arrays.html</remarks>
 		Array = int.MinValue,
 
+		BooleanArray = 1000,
 		Int2Array =	1005,
 		Int4Array =	1007,
 		TextArray = 1009,
