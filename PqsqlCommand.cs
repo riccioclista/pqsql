@@ -397,21 +397,22 @@ namespace Pqsql
 			// fill OUT and INOUT parameters with result tuple from the first row
 			if (CommandType == CommandType.StoredProcedure)
 			{
-				r.Read(); // read first row
-
-				int fc = r.FieldCount;
-				for (int i = 0; i < fc; i++) // set values for all output parameters
+				if (r.Read()) // try to read first row
 				{
-					string col = r.GetName(i);
+					int fc = r.FieldCount;
+					for (int i = 0; i < fc; i++) // set values for all output parameters
+					{
+						string col = r.GetName(i);
 
-					int j = mParams.IndexOf(col);
+						int j = mParams.IndexOf(col);
 
-					if (j < 0) // ignore column if we didn't find the corresponding parameter name
-						continue;
-					
-					// found parameter by row column name: set new Value
-					PqsqlParameter p = mParams[j];
-					p.Value = r.GetValue(i);
+						if (j < 0) // ignore column if we didn't find the corresponding parameter name
+							continue;
+
+						// found parameter by row column name: set new Value
+						PqsqlParameter p = mParams[j];
+						p.Value = r.GetValue(i);
+					}
 				}
 
 				r.Consume(); // sync protocol: consume remaining rows
