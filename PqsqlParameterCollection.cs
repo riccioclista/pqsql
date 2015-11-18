@@ -17,6 +17,9 @@ namespace Pqsql
 		// pqparam_buffer*
 		private IntPtr mPqPB;
 
+		// when mPqPB needs to be recreated from mParamList
+		bool mChanged;
+
 		// Summary:
 		//     Initializes a new instance of the System.Data.Common.DbParameterCollection
 		//     class.
@@ -63,42 +66,64 @@ namespace Pqsql
 
 		#region pqparam_buffer*
 
+		private void AddParameterValue(PqsqlTypeNames.PqsqlTypeName tn, PqsqlDbType oid, object v)
+		{
+			if (v == null || v == DBNull.Value)
+			{
+				// null arrays must have oid of element type
+				PqsqlBinaryFormat.pqbf_add_null(mPqPB, (uint) (oid & ~PqsqlDbType.Array));
+			}
+			else if ((oid & PqsqlDbType.Array) == PqsqlDbType.Array)
+			{
+				PqsqlTypeNames.SetArrayValue(oid, tn)(mPqPB, v);
+			}
+			else
+			{
+				tn.SetValue(mPqPB, v);
+			}
+		}
+
 		internal IntPtr PGParameters
 		{
 			get
 			{
-				if (PqsqlBinaryFormat.pqpb_get_num(mPqPB) != mParamList.Count)
+				if (mChanged)
 				{
 					PqsqlBinaryFormat.pqpb_reset(mPqPB);
 
 					foreach (PqsqlParameter p in mParamList)
 					{
 						PqsqlDbType oid = p.PqsqlDbType;
-						uint naoid = (uint) (oid & ~PqsqlDbType.Array);
 
 						object v = p.Value;
+						PqsqlTypeNames.PqsqlTypeName tn = PqsqlTypeNames.Get(oid & ~PqsqlDbType.Array);
 
-						try
+						if (v != null && v != DBNull.Value && (oid & PqsqlDbType.Array) != PqsqlDbType.Array)
 						{
-							if (v == null || v == DBNull.Value)
+							TypeCode tc = tn.TypeCode;
+							TypeCode vtc = Convert.GetTypeCode(v);
+
+							if (vtc != TypeCode.Empty && vtc != tc)
 							{
-								PqsqlBinaryFormat.pqbf_add_null(mPqPB, naoid);
-							}
-							else if ((oid & PqsqlDbType.Array) == PqsqlDbType.Array)
-							{
-								PqsqlTypeNames.SetArrayValue(oid)(mPqPB, v);
-							}
-							else
-							{
-								PqsqlTypeNames.SetValue(oid)(mPqPB, v);
+								if (vtc == TypeCode.String && string.IsNullOrEmpty(v as string))
+								{
+									// we got an empty string that does not match the target type: we simply
+									// ignore the value and set v to null, as the conversion wouldn't work
+									v = null;
+								}
+								else
+								{
+									// in case we would have an invalid cast from object to target type
+									// we try to convert v to the registered Type next
+									v = Convert.ChangeType(v, tc);
+								}
 							}
 						}
-						catch (InvalidCastException)
-						{
-							// ignore invalid casts, just set the parameter to NULL instead
-							PqsqlBinaryFormat.pqbf_add_null(mPqPB, naoid);
-						}
+
+						AddParameterValue(tn, oid, v);
 					}
+
+					mChanged = false;
 				}
 				
 				return mPqPB;
@@ -218,6 +243,8 @@ namespace Pqsql
 
 				lookup.Remove(old.ParameterName);
 				lookup.Add(value.ParameterName, index);
+
+				mChanged = true;
 			}
 		}
 		//
@@ -241,9 +268,7 @@ namespace Pqsql
 				int i = IndexOf(parameterName);
 
 				if (i == -1)
-				{
 					throw new IndexOutOfRangeException("Parameter not found");
-				}
 
 				return mParamList[i];
 			}
@@ -252,11 +277,10 @@ namespace Pqsql
 				int i = IndexOf(parameterName);
 
 				if (i == -1)
-				{
 					throw new IndexOutOfRangeException("Parameter not found");
-				}
 
 				mParamList[i] = value;
+				mChanged = true;
 			}
 		}
 
@@ -286,6 +310,7 @@ namespace Pqsql
 				mParamList.Add(p);
 				i = mParamList.Count - 1;
 				lookup.Add(s, i);
+				mChanged = true;
 			}
 
 			return i;
@@ -447,7 +472,7 @@ namespace Pqsql
 
 				if (f != ':')
 				{
-					sb.Append(':'); // assume :
+					sb.Append(':'); // always add :
 				}
 
 				if (f != '"')
@@ -492,6 +517,7 @@ namespace Pqsql
 
 			mParamList.Insert(index, val);
 			lookup.Add(val.ParameterName, index);
+			mChanged = true;
 		}
 		//
 		// Summary:
@@ -508,6 +534,7 @@ namespace Pqsql
 			}
 
 			RemoveAt(IndexOf(value));
+			mChanged = true;
 		}
 		//
 		// Summary:
@@ -530,6 +557,7 @@ namespace Pqsql
 			{
 				lookup.Remove(old.ParameterName);
 				mParamList.RemoveAt(index);
+				mChanged = true;
 			}
 		}
 		//
@@ -548,6 +576,7 @@ namespace Pqsql
 			{
 				lookup.Remove(parameterName);
 				mParamList.RemoveAt(i);
+				mChanged = true;
 			}
 			else
 			{
@@ -567,7 +596,7 @@ namespace Pqsql
 		//     The new System.Data.Common.DbParameter value.
 		protected override void SetParameter(int index, DbParameter value)
 		{
-			this[index] = (PqsqlParameter)value;
+			this[index] = (PqsqlParameter) value;
 		}
 		//
 		// Summary:

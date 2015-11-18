@@ -114,14 +114,7 @@ namespace Pqsql
 			set
 			{
 				mPqsqlDbType = value;
-				if ((value & PqsqlDbType.Array) == PqsqlDbType.Array)
-				{
-					mDbType = PqsqlTypeNames.GetDbType(value & ~PqsqlDbType.Array);
-				}
-				else
-				{
-					mDbType = PqsqlTypeNames.GetDbType(value);
-				}
+				mDbType = PqsqlTypeNames.GetDbType(value & ~PqsqlDbType.Array);
 			}
 		}
 		//
