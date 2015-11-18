@@ -404,7 +404,13 @@ namespace Pqsql
 				{
 					string col = r.GetName(i);
 
-					PqsqlParameter p = mParams[col];
+					int j = mParams.IndexOf(col);
+
+					if (j < 0) // ignore column if we didn't find the corresponding parameter name
+						continue;
+					
+					// found parameter by row column name: set new Value
+					PqsqlParameter p = mParams[j];
 					p.Value = r.GetValue(i);
 				}
 
