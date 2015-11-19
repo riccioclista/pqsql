@@ -1257,6 +1257,12 @@ namespace Pqsql
 
 		internal static string GetStringValue(IntPtr v, int itemlen)
 		{
+			if (itemlen == 0)
+			{
+				// TODO pqbf_get_unicode_text sometimes fails to retrieve proper strlen(v) when itemlen==0
+				return PqsqlUTF8Statement.CreateStringFromUTF8(v);
+			}
+
 			IntPtr utp;
 
 			unsafe
