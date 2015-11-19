@@ -406,10 +406,13 @@ namespace Pqsql
 
 						int j = mParams.IndexOf(col);
 
-						if (j < 0) // ignore column if we didn't find the corresponding parameter name
-							continue;
+						if (j < 0)
+						{
+							// throw error if we didn't find the corresponding parameter name in our parameter list
+							throw new PqsqlException("Could not find output parameter " + col);
+						}
 
-						// found parameter by row column name: set new Value
+						// set new Value for found parameter (this even works if parameter direction was wrong)
 						PqsqlParameter p = mParams[j];
 						p.Value = r.GetValue(i);
 					}
