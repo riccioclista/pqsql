@@ -3,18 +3,20 @@ using System.Collections.Generic;
 using System.Data.Common;
 using System.ComponentModel;
 using System.Collections;
+using System.Data;
 using System.Text;
 
 namespace Pqsql
 {
 	public sealed class PqsqlParameterCollection : DbParameterCollection, IDisposable
 	{
+		// input and output parameters
 		private readonly List<PqsqlParameter> mParamList = new List<PqsqlParameter>();
 
 		// Dictionary lookups for GetValue to improve performance
 		private Dictionary<string, int> lookup;
 
-		// pqparam_buffer*
+		// pqparam_buffer* for Input and InputOutput parameter
 		private IntPtr mPqPB;
 
 		// when mPqPB needs to be recreated from mParamList
@@ -93,6 +95,9 @@ namespace Pqsql
 
 					foreach (PqsqlParameter p in mParamList)
 					{
+						if (p.Direction == ParameterDirection.Output) // skip output parameters
+							continue;
+
 						PqsqlDbType oid = p.PqsqlDbType;
 
 						object v = p.Value;

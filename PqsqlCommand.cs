@@ -493,17 +493,16 @@ namespace Pqsql
 			bool comma = false;
 			foreach (PqsqlParameter p in Parameters)
 			{
-				if (p.Direction != ParameterDirection.Output)
+				if (p.Direction == ParameterDirection.Output) // skip output parameters
+					continue;
+				
+				if (comma)
 				{
-					if (comma)
-					{
-						spq.Append(',');
-					}
-					spq.Append('$');
-					spq.Append(i);
-					comma = true;
+					spq.Append(',');
 				}
-				i++;
+				spq.Append('$');
+				spq.Append(i++);
+				comma = true;			
 			}
 
 			spq.Append(')');
