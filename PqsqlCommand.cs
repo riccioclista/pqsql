@@ -414,11 +414,11 @@ namespace Pqsql
 						p.Value = r.GetValue(i);
 					}
 				}
-
-				r.Consume(); // sync protocol: consume remaining rows
 			}
 
-			return r.RecordsAffected;
+			int ra = r.RecordsAffected;
+			r.Consume(); // sync protocol: consume remaining rows
+			return ra;
 		}
 
 		//
