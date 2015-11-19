@@ -113,6 +113,9 @@ namespace Pqsql
 		// max rows in current result buffer mResult
 		int mMaxRows;
 
+		// stores the number of records touched after INSERT / UPDATE / DELETE / etc.
+		private int mRecordsAffected;
+
 		// statement index (-1: nothing executed yet)
 		int mStmtNum;
 
@@ -247,34 +250,7 @@ namespace Pqsql
 		//     0 if no rows were affected or the statement failed.
 		public override int RecordsAffected
 		{
-			get
-			{
-				if (mResult == IntPtr.Zero)
-					return 0;
-
-				ExecStatus s = (ExecStatus) PqsqlWrapper.PQresultStatus(mResult);
-
-				switch (s)
-				{
-					case ExecStatus.PGRES_SINGLE_TUPLE: // SELECT
-					case ExecStatus.PGRES_TUPLES_OK:
-						return -1;
-
-					case ExecStatus.PGRES_COMMAND_OK: // UPDATE / DELETE / INSERT / CREATE * / ...
-						unsafe
-						{
-							sbyte *tuples = PqsqlWrapper.PQcmdTuples(mResult);
-
-							if (tuples == null || *tuples == '\0') // NULL pointer or empty string
-								break;
-						
-							string t = new string(tuples);
-							return Convert.ToInt32(t);
-						}
-				}
-				
-				return 0;
-			}
+			get { return mRecordsAffected; }
 		}
 		//
 		// Summary:
@@ -1436,14 +1412,18 @@ namespace Pqsql
 			{
 				ExecStatus s = (ExecStatus) PqsqlWrapper.PQresultStatus(mResult);
 
+				// INSERT / UPDATE / DELETE / CREATE statement processing
 				if (s == ExecStatus.PGRES_COMMAND_OK)
 				{
-					// nothing to do, we just executed a command without result
-					Consume(); // consume remaining results, PqsqlDatareader.RecordsAffected will return 0
+					mRecordsAffected = GetCmdTuples(s);
+
+					// nothing to do, we just executed a command without result rows
+					Consume(); // consume remaining results
 					Reset();
 					return false;
 				}
 
+				// error
 				if (s != ExecStatus.PGRES_SINGLE_TUPLE && s != ExecStatus.PGRES_TUPLES_OK)
 				{
 					string err = mConn.GetErrorMessage();
@@ -1454,6 +1434,10 @@ namespace Pqsql
 					throw ex;
 				}
 
+				//
+				// SELECT statement processing
+				//
+
 				if (mMaxRows == -1) // get number of tuples in a fresh result buffer
 				{
 					mMaxRows = PqsqlWrapper.PQntuples(mResult);
@@ -1463,6 +1447,7 @@ namespace Pqsql
 				{
 					mPopulateRowInfo = false; // done populating row information
 
+					mRecordsAffected = -1; // reset for SELECT
 					PopulateRowInfo();
 
 					if ((mBehaviour & CommandBehavior.SchemaOnly) > 0)
@@ -1486,6 +1471,33 @@ namespace Pqsql
 			// result buffer exhausted, this was the last result of the current query
 			Reset();
 			return false;
+		}
+
+		// retrieve the number of touched rows
+		private int GetCmdTuples(ExecStatus s)
+		{
+			switch (s)
+			{
+				case ExecStatus.PGRES_SINGLE_TUPLE: // SELECT
+				case ExecStatus.PGRES_TUPLES_OK:
+					return -1;
+
+				case ExecStatus.PGRES_COMMAND_OK: // UPDATE / DELETE / INSERT / CREATE * / ...
+					unsafe
+					{
+						if (mResult == IntPtr.Zero)
+							break;
+
+						sbyte* tuples = PqsqlWrapper.PQcmdTuples(mResult);
+
+						if (tuples == null || *tuples == 0x0) // NULL pointer or empty string
+							break;
+
+						string t = new string(tuples);
+						return Convert.ToInt32(t);
+					}
+			}
+			return 0;
 		}
 
 		// setup mRowInfo for current statement mStatements[mStmtNum]
