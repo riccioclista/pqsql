@@ -218,16 +218,19 @@ namespace Pqsql
 
 		/// <summary>
 		/// Corresponds to the PostgreSQL "array" type, a variable-length multidimensional array of
-		/// another type. This value must be combined with another value from <see cref="NpgsqlDbType"/>
-		/// via a bit OR (e.g. NpgsqlDbType.Array | NpgsqlDbType.Integer)
+		/// another type. This value must be combined with another value from <see cref="PqsqlDbType"/>
+		/// via a bit OR (e.g. PqsqlDbType.Array | PqsqlDbType.Integer)
 		/// </summary>
 		/// <remarks>See http://www.postgresql.org/docs/current/static/arrays.html</remarks>
 		Array = int.MinValue,
 
 		BooleanArray = 1000,
+		ByteaArray = 1001,
+		NameArray = 1003,
 		Int2Array =	1005,
 		Int4Array =	1007,
 		TextArray = 1009,
+		VarcharArray = 1015,
 		Int8Array = 1016,
 		Float4Array = 1021,
 		Float8Array = 1022,

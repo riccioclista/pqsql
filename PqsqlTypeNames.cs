@@ -213,7 +213,7 @@ namespace Pqsql
 					TypeCode=TypeCode.String,
 					Type=typeof(string),
 					DbType=DbType.String,
-					ArrayDbType=PqsqlDbType.TextArray,
+					ArrayDbType=PqsqlDbType.VarcharArray,
 					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
 					SetValue = setText,
 					SetArrayItem = setTextArray
@@ -225,7 +225,7 @@ namespace Pqsql
 					TypeCode=TypeCode.String,
 					Type=typeof(string),
 					DbType=DbType.StringFixedLength,
-					ArrayDbType=PqsqlDbType.TextArray,
+					ArrayDbType=PqsqlDbType.NameArray,
 					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
 					SetValue = setText,
 					SetArrayItem = setTextArray
@@ -273,7 +273,7 @@ namespace Pqsql
 					TypeCode=TypeCode.DateTime,
 					Type=typeof(DateTime),
 					DbType=DbType.DateTime,
-					ArrayDbType=PqsqlDbType.TimestampArray, // TODO
+					ArrayDbType=PqsqlDbType.TimestampArray,
 					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetDateTime(res,row,ord),
 					SetValue=(pb, val) => {
 						DateTime dt = (DateTime) val;
@@ -282,7 +282,7 @@ namespace Pqsql
 						int usec = (int) (ticks % TimeSpan.TicksPerSecond / 10);
 						PqsqlBinaryFormat.pqbf_add_timestamp(pb, sec, usec);
 					},
-					SetArrayItem = null
+					SetArrayItem = null // TODO
 				}
 			},
 			{ PqsqlDbType.TimestampTZ,
@@ -344,7 +344,7 @@ namespace Pqsql
 					TypeCode=TypeCode.String,
 					Type=typeof(string),
 					DbType=DbType.String,
-					ArrayDbType=PqsqlDbType.TextArray,
+					ArrayDbType=PqsqlDbType.Array, // TODO
 					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
 					SetValue = setText,
 					SetArrayItem = setTextArray
@@ -372,10 +372,10 @@ namespace Pqsql
 					TypeCode=TypeCode.String,
 					Type=typeof(string),
 					DbType=DbType.String,
-					ArrayDbType=PqsqlDbType.TextArray,
+					ArrayDbType=PqsqlDbType.Array, // TODO
 					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
 					SetValue = setText,
-					SetArrayItem = setTextArray
+					SetArrayItem = null
 				}
 			},
 
@@ -425,6 +425,30 @@ namespace Pqsql
 					DbType=DbType.Object,
 					ArrayDbType=PqsqlDbType.TextArray,
 					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Text, typeof(string), typeof(string), PqsqlDataReader.GetStringValue),
+					SetValue = null,
+					SetArrayItem = setTextArray
+				}
+			},
+			{ PqsqlDbType.NameArray,
+				new PqsqlTypeName {
+					Name="_name",
+					TypeCode=TypeCode.Object,
+					Type=typeof(Array),
+					DbType=DbType.Object,
+					ArrayDbType=PqsqlDbType.NameArray,
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Name, typeof(string), typeof(string), PqsqlDataReader.GetStringValue),
+					SetValue = null,
+					SetArrayItem = setTextArray
+				}
+			},
+			{ PqsqlDbType.VarcharArray,
+				new PqsqlTypeName {
+					Name="_varchar",
+					TypeCode=TypeCode.Object,
+					Type=typeof(Array),
+					DbType=DbType.Object,
+					ArrayDbType=PqsqlDbType.VarcharArray,
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Varchar, typeof(string), typeof(string), PqsqlDataReader.GetStringValue),
 					SetValue = null,
 					SetArrayItem = setTextArray
 				}
