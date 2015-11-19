@@ -26,11 +26,27 @@ namespace Pqsql
 		// converts null-terminated sbyte* to string 
 		public static string CreateStringFromUTF8(IntPtr sp)
 		{
-			int len = 0;
-			while (Marshal.ReadByte(sp, len) != 0x0) len++; // strlen()
-			byte[] b = new byte[len];
-			Marshal.Copy(sp, b, 0, len);
-			return Encoding.UTF8.GetString(b);
+			int pos = 0;
+			int buflen = 64; // must be power of two
+			byte[] buf = new byte[buflen];
+
+			unsafe
+			{
+				byte* s = (byte*) sp.ToPointer();
+
+				while (*s != 0x0)
+				{
+					if (pos >= buflen)
+					{
+						buflen <<= 1; // exponential growth strategy
+						Array.Resize(ref buf, buflen);
+					}
+
+					buf[pos++] = *s++;
+				}
+			}
+
+			return Encoding.UTF8.GetString(buf, 0, pos);
 		}
 
 	}
