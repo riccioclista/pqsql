@@ -397,26 +397,7 @@ namespace Pqsql
 			// fill OUT and INOUT parameters with result tuple from the first row
 			if (CommandType == CommandType.StoredProcedure)
 			{
-				if (r.Read()) // try to read first row
-				{
-					int fc = r.FieldCount;
-					for (int i = 0; i < fc; i++) // set values for all output parameters
-					{
-						string col = r.GetName(i);
-
-						int j = mParams.IndexOf(col);
-
-						if (j < 0)
-						{
-							// throw error if we didn't find the corresponding parameter name in our parameter list
-							throw new PqsqlException("Could not find output parameter " + col);
-						}
-
-						// set new Value for found parameter (this even works if parameter direction was wrong)
-						PqsqlParameter p = mParams[j];
-						p.Value = r.GetValue(i);
-					}
-				}
+				r.Read(); // reading the first row will fill output parameters
 			}
 
 			int ra = r.RecordsAffected;

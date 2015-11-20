@@ -107,6 +107,11 @@ namespace Pqsql
 		PqsqlColInfo[] mRowInfo;
 		// after we execute a statement, we retrieve column information
 		bool mPopulateRowInfo;
+		// number of columns
+		int mColumns;
+
+		// after we finished reading the first valid result set we fill output parameters from mCmd
+		bool mFillOutputParameters;
 
 		// row index (-1: nothing read yet, 0: first row, ...)
 		int mRowNum;
@@ -114,7 +119,7 @@ namespace Pqsql
 		int mMaxRows;
 
 		// stores the number of records touched after INSERT / UPDATE / DELETE / etc.
-		private int mRecordsAffected;
+		int mRecordsAffected;
 
 		// statement index (-1: nothing executed yet)
 		int mStmtNum;
@@ -159,6 +164,7 @@ namespace Pqsql
 			if ((mBehaviour & CommandBehavior.SchemaOnly) == 0)
 			{
 				mRowInfo = null;
+				mColumns = 0;
 			}
 
 			mMaxRows = -1;
@@ -410,7 +416,7 @@ namespace Pqsql
 			if (mResult == IntPtr.Zero)
 				throw new IndexOutOfRangeException("No tuple available");
 
-			if (ordinal < 0 || ordinal >= FieldCount)
+			if (ordinal < 0 || ordinal >= mColumns)
 				throw new IndexOutOfRangeException("Column " + ordinal + " out of range");
 		}
 
@@ -1309,7 +1315,7 @@ namespace Pqsql
 			if (values == null)
 				throw new ArgumentNullException("values");
 
-			int count = Math.Min(FieldCount, values.Length);
+			int count = Math.Min(mColumns, values.Length);
 			for (int i = 0; i < count; i++)
 			{
 				values[i] = GetValue(i);
@@ -1348,7 +1354,8 @@ namespace Pqsql
 				return false;
 
 			mStmtNum++; // set next statement
-			mPopulateRowInfo = true; // next Read() will get fresh row information
+			mPopulateRowInfo = true; // next Read() below will get fresh row information
+			mFillOutputParameters = true; // when client calls first Read() we fill output parameters
 
 			if (Execute() == false)
 			{
@@ -1436,7 +1443,8 @@ namespace Pqsql
 					mMaxRows = PqsqlWrapper.PQntuples(mResult);
 				}
 
-				if (mPopulateRowInfo) // first row of current statement => just get column information
+				// first row of current statement => get column information
+				if (mPopulateRowInfo)
 				{
 					mPopulateRowInfo = false; // done populating row information
 
@@ -1451,6 +1459,15 @@ namespace Pqsql
 
 					// we retrieved the schema, next call to Read() will advance mRowNum and we can call GetXXX()
 					return mMaxRows > 0;
+				}
+
+				// client called Read() for the first time => fill output parameters
+				if (mFillOutputParameters)
+				{
+					mFillOutputParameters = false;
+
+					if (mCmd.CommandType == CommandType.StoredProcedure)
+						FillOutputParameters();
 				}
 
 				if (mRowNum < mMaxRows)
@@ -1496,10 +1513,10 @@ namespace Pqsql
 		// setup mRowInfo for current statement mStatements[mStmtNum]
 		private void PopulateRowInfo()
 		{
-			int n = PqsqlWrapper.PQnfields(mResult); // get number of columns
-			mRowInfo = new PqsqlColInfo[n];
+			mColumns = PqsqlWrapper.PQnfields(mResult); // get number of columns
+			mRowInfo = new PqsqlColInfo[mColumns];
 
-			for (int o = 0; o < n; o++)
+			for (int o = 0; o < mColumns; o++)
 			{
 				mRowInfo[o] = new PqsqlColInfo();
 
@@ -1524,9 +1541,36 @@ namespace Pqsql
 		}
 
 		/// <summary>
+		/// fill OUT and INOUT parameters from mCmd.Parameters with result tuple of the first row
+		/// </summary>
+		private void FillOutputParameters()
+		{
+			PqsqlParameterCollection parms = mCmd.Parameters;
+
+			if (parms == null || parms.Count == 0)
+				return;
+
+			for (int o = 0; o < mColumns; o++) // set values for all output parameters
+			{
+				string col = mRowInfo[o].Name;
+
+				int j = parms.IndexOf(col);
+
+				if (j < 0)
+				{
+					// throw error if we didn't find the corresponding parameter name in our parameter list
+					throw new PqsqlException("Could not find output parameter »" + col + "« in PqsqlCommand.Parameters");
+				}
+
+				// set new Value for found parameter (this even works if parameter direction was wrong)
+				parms[j].Value = GetValue(o);
+			}
+		}
+
+		/// <summary>
 		/// executes the next statement
 		/// </summary>
-		/// <returns></returns>
+		/// <returns>true if and only if current statement was successfully executed</returns>
 		private bool Execute()
 		{
 			// convert query string to utf8
