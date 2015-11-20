@@ -238,9 +238,29 @@ namespace Pqsql
 					Type=typeof(byte[]),
 					DbType=DbType.Object,
 					ArrayDbType=PqsqlDbType.Array, // TODO
-					GetValue=null, // TODO (res, row, ord, typmod) => PqsqlDataReader.GetDate(res,row,ord),
-					SetValue=null, // TODO (IntPtr pb,object val) => { PqsqlBinaryFormat.pqbf_add_date(pb, (DateTime) val); }
-					SetArrayItem = null
+					GetValue= (res, row, ord, typmod) => {
+						int n = (int) PqsqlDataReader.GetBytes(res, row, ord, 0, null, 0, 0);
+						byte[] bs = new byte[n];
+						n = (int) PqsqlDataReader.GetBytes(res, row, ord, 0, bs, 0, n);
+
+						if (n != bs.Length)
+							throw new IndexOutOfRangeException("Received wrong number of bytes for byte array");
+				
+						return bs;
+					},
+					SetValue= (pb, val) =>
+					{
+						byte[] buf = (byte[]) val;
+						ulong len = (ulong) buf.LongLength;
+						unsafe
+						{
+							fixed (byte* b = buf)
+							{
+								PqsqlBinaryFormat.pqbf_add_bytea(pb, (sbyte*) b, len);
+							}
+						}
+					},
+					SetArrayItem = null // TODO
 				}
 			},
 			{ PqsqlDbType.Date,

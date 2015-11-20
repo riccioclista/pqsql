@@ -607,12 +607,17 @@ namespace Pqsql
 		{
 			CheckOrdinalType(ordinal, PqsqlDbType.Bytea);
 
-			int blen = PqsqlWrapper.PQgetlength(mResult, mRowNum, ordinal);
+			return GetBytes(mResult, mRowNum, ordinal, dataOffset, buffer, bufferOffset, length);
+		}
+
+		internal static long GetBytes(IntPtr res, int row, int ordinal, long dataOffset, byte[] buffer, int bufferOffset, int length)
+		{
+			int blen = PqsqlWrapper.PQgetlength(res, row, ordinal);
 
 			// report length of bytea column when buffer is null 
 			if (buffer == null)
 				return blen;
-			
+
 			// check lower bounds
 			if (dataOffset < 0 || bufferOffset < 0 || length <= 0)
 				return 0;
@@ -624,7 +629,7 @@ namespace Pqsql
 			if (dataOffset >= blen || bufferOffset >= bufferLength || length > maxLength)
 				return 0;
 
-			IntPtr v = PqsqlWrapper.PQgetvalue(mResult, mRowNum, ordinal);
+			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
 			ulong n = (ulong) Math.Min(length, blen);
 
 			unsafe
@@ -638,6 +643,8 @@ namespace Pqsql
 
 			return (long) n;
 		}
+
+
 		//
 		// Summary:
 		//     Gets the value of the specified column as a single character.
@@ -1283,20 +1290,6 @@ namespace Pqsql
 			CheckOrdinal(ordinal);
 
 			PqsqlColInfo ci = mRowInfo[ordinal];
-
-			if (ci.Oid == PqsqlDbType.Bytea)
-			{
-				int n = (int) GetBytes(ordinal, 0, null, 0, 0);
-				byte[] bs = new byte[n];
-				n = (int) GetBytes(ordinal, 0, bs, 0, n);
-
-				if (n != bs.Length)
-				{
-					throw new IndexOutOfRangeException("Received wrong number of bytes for byte array");
-				}
-
-				return bs;
-			}
 
 			return ci.GetValue(mResult, mRowNum, ordinal, ci.Modifier);
 		}
