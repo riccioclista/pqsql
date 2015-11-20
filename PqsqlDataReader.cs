@@ -25,7 +25,7 @@ namespace Pqsql
 
 	internal sealed class PqsqlEnumerator : IEnumerator
 	{
-		private PqsqlDataReader mReader;
+		private readonly PqsqlDataReader mReader;
 
 		public PqsqlEnumerator(PqsqlDataReader reader)
 		{
@@ -46,8 +46,16 @@ namespace Pqsql
 		{
 			get
 			{
-				object[] vals = new object[mReader.FieldCount];
-				mReader.GetValues(vals);
+				object[] vals;
+
+				if (mReader != null)
+				{
+					vals = new object[mReader.FieldCount];
+					mReader.GetValues(vals);
+				}
+				else
+					vals = null;
+
 				return vals;
 			}
 		}
