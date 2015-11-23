@@ -113,13 +113,10 @@ namespace Pqsql
 
 		// row information of current result set
 		PqsqlColInfo[] mRowInfo;
-		// after we execute a statement, we retrieve column information
-		bool mPopulateRowInfo;
+		// after statement execution, we populate column information mRowInfo and fill output parameter mCmd.Parameters
+		bool mPopulateAndFill;
 		// number of columns
 		int mColumns;
-
-		// after we finished reading the first valid result set we fill output parameters from mCmd
-		bool mFillOutputParameters;
 
 		// row index (-1: nothing read yet, 0: first row, ...)
 		int mRowNum;
@@ -1362,8 +1359,7 @@ namespace Pqsql
 				return false;
 
 			mStmtNum++; // set next statement
-			mPopulateRowInfo = true; // next Read() below will get fresh row information
-			mFillOutputParameters = true; // when client calls first Read() we fill output parameters
+			mPopulateAndFill = true; // next Read() below will get fresh row information
 
 			if (Execute() == false)
 			{
@@ -1395,7 +1391,7 @@ namespace Pqsql
 			if (mMaxStmt == 0 || mStmtNum == -1) // no queries available or nothing executed yet
 				return false;
 
-			if (!mPopulateRowInfo) // increase row counter to the next row in mResult
+			if (!mPopulateAndFill) // increase row counter to the next row in mResult
 			{
 				mRowNum++;
 			}
@@ -1451,13 +1447,13 @@ namespace Pqsql
 					mMaxRows = PqsqlWrapper.PQntuples(mResult);
 				}
 
-				// first row of current statement => get column information
-				if (mPopulateRowInfo)
+				// first row of current statement => get column information and fill output parameters
+				if (mPopulateAndFill)
 				{
-					mPopulateRowInfo = false; // done populating row information
+					mPopulateAndFill = false; // done populating row information
 
 					mRecordsAffected = -1; // reset for SELECT
-					PopulateRowInfo();
+					PopulateRowInfoAndOutputParameters();
 
 					if ((mBehaviour & CommandBehavior.SchemaOnly) > 0)
 					{
@@ -1465,17 +1461,9 @@ namespace Pqsql
 						Reset();
 					}
 
-					// we retrieved the schema, next call to Read() will advance mRowNum and we can call GetXXX()
+					// we retrieved the schema and the output parameters
+					// next call to Read() will advance mRowNum and we can call GetXXX()
 					return mMaxRows > 0;
-				}
-
-				// client called Read() for the first time => fill output parameters
-				if (mFillOutputParameters)
-				{
-					mFillOutputParameters = false;
-
-					if (mCmd.CommandType == CommandType.StoredProcedure)
-						FillOutputParameters();
 				}
 
 				if (mRowNum < mMaxRows)
@@ -1491,7 +1479,14 @@ namespace Pqsql
 			return false;
 		}
 
-		// retrieve the number of touched rows
+		#endregion
+
+		#region query metadata retrieval
+
+		/// <summary>
+		/// retrieve the number of touched rows
+		/// </summary>
+		/// <returns>number of touched records for UPDATE / DELETE / INSERT / CREATE * / ... statements, otherwise -1</returns>
 		private int GetCmdTuples(ExecStatus s)
 		{
 			switch (s)
@@ -1518,11 +1513,25 @@ namespace Pqsql
 			return 0;
 		}
 
-		// setup mRowInfo for current statement mStatements[mStmtNum]
-		private void PopulateRowInfo()
+		/// <summary>
+		/// setup mRowInfo for current statement mStatements[mStmtNum] and fill OUT and INOUT
+		/// parameters from mCmd.Parameters with result tuple of the first row
+		/// </summary>
+		private void PopulateRowInfoAndOutputParameters()
 		{
 			mColumns = PqsqlWrapper.PQnfields(mResult); // get number of columns
 			mRowInfo = new PqsqlColInfo[mColumns];
+
+			// only set output parameters when we executed a stored procedure
+			PqsqlParameterCollection parms = null;
+			if (mMaxRows > 0 && mCmd.CommandType == CommandType.StoredProcedure)
+			{
+				parms = mCmd.Parameters;
+				if (parms == null || parms.Count <= 0)
+				{
+					parms = null;
+				}
+			}
 
 			for (int o = 0; o < mColumns; o++)
 			{
@@ -1531,59 +1540,53 @@ namespace Pqsql
 				PqsqlDbType oid = (PqsqlDbType) PqsqlWrapper.PQftype(mResult, o); // column type
 				mRowInfo[o].Oid = oid;
 
+				string colName;
 				unsafe
 				{
 					sbyte* name = PqsqlWrapper.PQfname(mResult, o); // column name
-					mRowInfo[o].Name = new string(name); // TODO UTF-8 encoding ignored here!
+					colName = new string(name); // TODO UTF-8 encoding ignored here!
 				}
 
-				mRowInfo[o].Size = PqsqlWrapper.PQfsize(mResult, o); // column datatype size
-				mRowInfo[o].Modifier = PqsqlWrapper.PQfmod(mResult, o); // column modifier (e.g., varchar(n))
-				mRowInfo[o].Format = PqsqlWrapper.PQfformat(mResult, o); // data format (1: binary, 0: text)
+				int size = PqsqlWrapper.PQfsize(mResult, o); // column datatype size
+				int modifier = PqsqlWrapper.PQfmod(mResult, o); // column modifier (e.g., varchar(n))
+				int format = PqsqlWrapper.PQfformat(mResult, o); // data format (1: binary, 0: text)
+
+				mRowInfo[o].Name = colName; // column name
+				mRowInfo[o].Size = size; // column size
+				mRowInfo[o].Modifier = modifier; // column modifier
+				mRowInfo[o].Format = format; // column format
 
 				PqsqlTypeNames.PqsqlTypeName tn = PqsqlTypeNames.Get(oid); // lookup OID
 				mRowInfo[o].DataTypeName = tn.Name; // cache PG datatype name
 				mRowInfo[o].Type = tn.Type; // cache corresponding Type
 				mRowInfo[o].GetValue = tn.GetValue; // cache GetValue function
-			}
-		}
 
-		/// <summary>
-		/// fill OUT and INOUT parameters from mCmd.Parameters with result tuple of the first row
-		/// </summary>
-		private void FillOutputParameters()
-		{
-			PqsqlParameterCollection parms = mCmd.Parameters;
-
-			if (parms == null || parms.Count == 0)
-				return;
-
-			for (int o = 0; o < mColumns; o++) // set values for all output parameters
-			{
-				string col = mRowInfo[o].Name;
-
-				int j = parms.IndexOf(col);
-
-				if (j < 0)
+				if (parms != null) // use first row to fill corresponding output parameter
 				{
-					// throw error if we didn't find the corresponding parameter name in our parameter list
-					throw new PqsqlException("Could not find output parameter »" + col + "« in PqsqlCommand.Parameters");
-				}
+					int j = parms.IndexOf(colName);
 
-				// set new Value for found parameter (this even works if parameter direction was wrong)
-				parms[j].Value = GetValue(o);
+					if (j < 0)
+					{
+						// throw error if we didn't find the corresponding parameter name in our parameter list
+						throw new PqsqlException("Could not find output parameter »" + colName + "« in PqsqlCommand.Parameters");
+					}
+
+					// set new Value for found parameter based on 1st row
+					// (this even works if parameter direction was wrong)
+					parms[j].Value = tn.GetValue(mResult, 0, o, modifier);
+				}
 			}
 		}
 
 		/// <summary>
-		/// executes the next statement
+		/// executes the next statement with PQsendQueryParams
 		/// </summary>
 		/// <returns>true if and only if current statement was successfully executed</returns>
 		private bool Execute()
 		{
 			// convert query string to utf8
 			byte[] utf8query = PqsqlUTF8Statement.CreateUTF8Statement(mStatements[mStmtNum]);
-			
+
 			if (utf8query == null || utf8query[0] == 0x0) // null or empty string
 				return false;
 
@@ -1612,7 +1615,7 @@ namespace Pqsql
 					if (PqsqlWrapper.PQsendQueryParams(mPGConn, pq, num_param, ptyps, pvals, plens, pfrms, 1) == 0)
 						return false;
 				}
-				
+
 				if (PqsqlWrapper.PQsetSingleRowMode(mPGConn) == 0)
 					return false;
 			}
