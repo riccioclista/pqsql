@@ -748,7 +748,7 @@ namespace Pqsql
 					// copy array items to buffer
 					foreach (object o in aparam)
 					{
-						if (o == null) // null values have itemlength -1 only
+						if (o == null || o == DBNull.Value) // null values have itemlength -1 only
 						{
 							PqsqlBinaryFormat.pqbf_set_array_itemlength(a, -1);
 						}
