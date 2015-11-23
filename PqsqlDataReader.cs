@@ -1091,6 +1091,18 @@ namespace Pqsql
 			return PqsqlBinaryFormat.pqbf_get_int4(v);
 		}
 
+		public uint GetOid(int ordinal)
+		{
+			CheckOrdinalType(ordinal, PqsqlDbType.Oid);
+			return GetOid(mResult, mRowNum, ordinal);
+		}
+
+		internal static uint GetOid(IntPtr res, int row, int ordinal)
+		{
+			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
+			return PqsqlBinaryFormat.pqbf_get_oid(v);
+		}
+
 		//
 		// Summary:
 		//     Gets the value of the specified column as a 64-bit signed integer.

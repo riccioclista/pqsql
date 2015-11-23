@@ -176,6 +176,9 @@ namespace Pqsql
 		public static extern int pqbf_get_int4(IntPtr p);
 
 		[DllImport("libpqbinfmt.dll")]
+		public static extern uint pqbf_get_oid(IntPtr p);
+
+		[DllImport("libpqbinfmt.dll")]
 		public static extern short pqbf_get_int2(IntPtr p);
 
 		[DllImport("libpqbinfmt.dll")]
