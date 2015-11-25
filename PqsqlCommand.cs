@@ -433,6 +433,10 @@ namespace Pqsql
 		{
 			string[] statements = new string[0];
 
+			// always set SingleRow mode for now,
+			// will be turned off for FETCH statements in PqsqlDataReader.Execute()
+			behavior |= CommandBehavior.SingleRow;
+
 			switch(CommandType)
 			{
 				case CommandType.Text:
@@ -441,12 +445,15 @@ namespace Pqsql
 
 				case CommandType.StoredProcedure:
 					BuildStoredProcStatement(ref statements);
-				break;
+					break;
 
 				case CommandType.TableDirect:
 					BuildTableStatement(ref statements);
-				break;
+					break;
 			}
+
+			if (statements.Length < 2)
+				behavior |= CommandBehavior.SingleResult;
 
 			CheckOpen();
 
@@ -664,7 +671,7 @@ namespace Pqsql
 						case ';':
 							Array.Resize(ref statements, stmLen + 1);
 							ReplaceParameterNames(ref sb);
-							statements[stmLen++] = sb.ToString();
+							statements[stmLen++] = sb.ToString().TrimStart();
 							sb.Clear();
 							continue;
 
@@ -681,7 +688,7 @@ namespace Pqsql
 			{
 				Array.Resize(ref statements, stmLen + 1);
 				ReplaceParameterNames(ref sb);
-				statements[stmLen] = sb.ToString();
+				statements[stmLen] = sb.ToString().TrimStart();
 				sb.Clear();
 			}
 		}

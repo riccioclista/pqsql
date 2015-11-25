@@ -3,6 +3,7 @@ using System.Data.Common;
 using System.Data;
 using System.ComponentModel;
 using System.Collections;
+using System.Globalization;
 using System.Runtime.InteropServices;
 
 namespace Pqsql
@@ -1669,38 +1670,51 @@ namespace Pqsql
 		/// <returns>true if and only if current statement was successfully executed</returns>
 		private bool Execute()
 		{
+			string stmt = mStatements[mStmtNum]; // current statement
+			CommandBehavior behave = mBehaviour; // result fetching behaviour
+
+			// libpq does not want PQsetSingleRowMode with cursors, just turn it off
+			if (stmt.StartsWith("fetch ", true, CultureInfo.InvariantCulture))
+			{
+				behave &= ~CommandBehavior.SingleRow;
+			}
+
 			// convert query string to utf8
 			byte[] utf8query = PqsqlUTF8Statement.CreateUTF8Statement(mStatements[mStmtNum]);
 
 			if (utf8query == null || utf8query[0] == 0x0) // null or empty string
 				return false;
 
+			int num_param = 0;
+			IntPtr ptyps = IntPtr.Zero; // oid*
+			IntPtr pvals = IntPtr.Zero; // char**
+			IntPtr plens = IntPtr.Zero; // int*
+			IntPtr pfrms = IntPtr.Zero; // int*
+
+			PqsqlParameterCollection pc = mCmd.Parameters;
+
+			if (pc != null)
+			{
+				IntPtr pb = pc.PGParameters; // pqparam_buffer*
+				num_param = PqsqlBinaryFormat.pqpb_get_num(pb);
+				ptyps = PqsqlBinaryFormat.pqpb_get_types(pb);
+				pvals = PqsqlBinaryFormat.pqpb_get_vals(pb);
+				plens = PqsqlBinaryFormat.pqpb_get_lens(pb);
+				pfrms = PqsqlBinaryFormat.pqpb_get_frms(pb);
+			}
+
 			unsafe
 			{
-				int num_param = 0;
-				IntPtr ptyps = IntPtr.Zero; // oid*
-				IntPtr pvals = IntPtr.Zero; // char**
-				IntPtr plens = IntPtr.Zero; // int*
-				IntPtr pfrms = IntPtr.Zero; // int*
-
-				PqsqlParameterCollection pc = mCmd.Parameters;
-
-				if (pc != null)
-				{
-					IntPtr pb = pc.PGParameters; // pqparam_buffer*
-					num_param = PqsqlBinaryFormat.pqpb_get_num(pb);
-					ptyps = PqsqlBinaryFormat.pqpb_get_types(pb);
-					pvals = PqsqlBinaryFormat.pqpb_get_vals(pb);
-					plens = PqsqlBinaryFormat.pqpb_get_lens(pb);
-					pfrms = PqsqlBinaryFormat.pqpb_get_frms(pb);
-				}
-
 				fixed (byte* pq = utf8query)
 				{
 					if (PqsqlWrapper.PQsendQueryParams(mPGConn, pq, num_param, ptyps, pvals, plens, pfrms, 1) == 0)
 						return false;
 				}
+			}
 
+			// only set single row mode for non-FETCH statements
+			if ((behave & CommandBehavior.SingleRow) > 0)
+			{
 				if (PqsqlWrapper.PQsetSingleRowMode(mPGConn) == 0)
 					return false;
 			}
