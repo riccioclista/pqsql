@@ -1534,14 +1534,16 @@ namespace Pqsql
 			mColumns = PqsqlWrapper.PQnfields(mResult); // get number of columns
 			mRowInfo = new PqsqlColInfo[mColumns];
 
-			// only set output parameters when we executed a stored procedure
+			// only set output parameters when we had executed a stored procedure returning at least one row
+			bool populateOutputParameters = mMaxRows > 0 && mCmd.CommandType == CommandType.StoredProcedure;
 			PqsqlParameterCollection parms = null;
-			if (mMaxRows > 0 && mCmd.CommandType == CommandType.StoredProcedure)
+
+			if (populateOutputParameters)
 			{
 				parms = mCmd.Parameters;
 				if (parms == null || parms.Count <= 0)
 				{
-					parms = null;
+					populateOutputParameters = false;
 				}
 			}
 
@@ -1573,7 +1575,7 @@ namespace Pqsql
 				mRowInfo[o].Type = tn.Type; // cache corresponding Type
 				mRowInfo[o].GetValue = tn.GetValue; // cache GetValue function
 
-				if (parms != null) // use first row to fill corresponding output parameter
+				if (populateOutputParameters) // use first row to fill corresponding output parameter
 				{
 					int j = parms.IndexOf(colName);
 
