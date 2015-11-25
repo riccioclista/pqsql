@@ -1225,10 +1225,70 @@ namespace Pqsql
 		//     The System.Data.SqlClient.SqlDataReader is closed.
 		public override DataTable GetSchemaTable()
 		{
-			if ((mBehaviour & CommandBehavior.KeyInfo) == 0)
-				throw new InvalidOperationException("Cannot call GetSchemaTable without KeyInfo");
+			if (mPopulateAndFill)
+				throw new InvalidOperationException("PqsqlDataReader did not populate schema information yet");
 
-			throw new NotImplementedException("GetSchemaTable not implemented");
+			DataTable result = new DataTable("SchemaTable");
+
+			result.Columns.Add("ColumnName", typeof(string));
+			result.Columns.Add("ColumnOrdinal", typeof(int));
+			result.Columns.Add("ColumnSize", typeof(int));
+
+			result.Columns.Add("NumericPrecision", typeof(int));
+			result.Columns.Add("NumericScale", typeof(int));
+
+			result.Columns.Add("ProviderType", typeof(Type));
+
+			// TODO add more column information
+
+			PopulateSchemaTable(ref result);
+
+			return result;
+		}
+
+		// retrieve schema information from mRowInfo to populate schema DataTable
+		private void PopulateSchemaTable(ref DataTable schema)
+		{
+			for (int i = 0; i < mColumns; i++)
+			{
+				PqsqlColInfo ci = mRowInfo[i];
+				DataRow row = schema.NewRow();
+
+				row["ProviderType"] = ci.ProviderType;
+				row["ColumnName"] = ci.ColumnName;
+				row["ColumnOrdinal"] = i + 1;
+
+				int modifier = ci.Modifier;
+				int size = ci.Size;
+
+				switch (ci.Oid)
+				{
+					case PqsqlDbType.Name:
+					case PqsqlDbType.Text:
+					case PqsqlDbType.Varchar:
+					case PqsqlDbType.Unknown:
+					case PqsqlDbType.Refcursor:
+						row["ColumnSize"] = modifier > -1 ? modifier - 4 : size;
+						row["NumericPrecision"] = 0;
+						row["NumericScale"] = 0;
+						break;
+
+					case PqsqlDbType.Numeric:
+						row["ColumnSize"] = size;
+						modifier -= 4;
+						row["NumericPrecision"] = (modifier >> 16) & ushort.MaxValue;
+						row["NumericScale"] = modifier & ushort.MaxValue;
+						break;
+
+					default:
+						row["ColumnSize"] = size;
+						row["NumericPrecision"] = 0;
+						row["NumericScale"] = 0;
+						break;
+				}
+
+				schema.Rows.Add(row);
+			}
 		}
 
 		//
