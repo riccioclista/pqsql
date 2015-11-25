@@ -13,12 +13,11 @@ namespace Pqsql
 	internal sealed class PqsqlColInfo
 	{
 		public PqsqlDbType Oid { get; set; }
-		public int Format { get; set; }
 		public int Modifier { get; set; }
 		public int Size { get; set; }
-		public string Name { get; set; }
+		public string ColumnName { get; set; }
 		public string DataTypeName { get; set; }
-		public Type Type  { get; set; }
+		public Type ProviderType  { get; set; }
 		public Func<IntPtr, int, int, int, object> GetValue { get; set; }
 	};
 
@@ -968,6 +967,7 @@ namespace Pqsql
 		{
 			return new PqsqlEnumerator(this);
 		}
+
 		//
 		// Summary:
 		//     Gets the data type of the specified column.
@@ -985,8 +985,9 @@ namespace Pqsql
 		public override Type GetFieldType(int ordinal)
 		{
 			CheckOrdinal(ordinal);
-			return mRowInfo[ordinal].Type;
+			return mRowInfo[ordinal].ProviderType;
 		}
+
 		//
 		// Summary:
 		//     Gets the value of the specified column as a single-precision floating point
@@ -1039,6 +1040,7 @@ namespace Pqsql
 			// TODO IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
 			return new Guid(); // TODO PqsqlBinaryFormat.pqbf_get_uuid(v);
 		}
+
 		//
 		// Summary:
 		//     Gets the value of the specified column as a 16-bit signed integer.
@@ -1142,8 +1144,9 @@ namespace Pqsql
 		public override string GetName(int ordinal)
 		{
 			CheckOrdinal(ordinal);
-			return mRowInfo[ordinal].Name;
+			return mRowInfo[ordinal].ColumnName;
 		}
+
 		//
 		// Summary:
 		//     Gets the column ordinal given the name of the column.
@@ -1563,12 +1566,10 @@ namespace Pqsql
 
 				int size = PqsqlWrapper.PQfsize(mResult, o); // column datatype size
 				int modifier = PqsqlWrapper.PQfmod(mResult, o); // column modifier (e.g., varchar(n))
-				int format = PqsqlWrapper.PQfformat(mResult, o); // data format (1: binary, 0: text)
 
-				mRowInfo[o].Name = colName; // column name
+				mRowInfo[o].ColumnName = colName; // column name
 				mRowInfo[o].Size = size; // column size
 				mRowInfo[o].Modifier = modifier; // column modifier
-				mRowInfo[o].Format = format; // column format
 
 				PqsqlTypeRegistry.PqsqlTypeName tn = PqsqlTypeRegistry.Get(oid); // lookup OID
 				mRowInfo[o].DataTypeName = tn.DataTypeName; // cache PG datatype name
