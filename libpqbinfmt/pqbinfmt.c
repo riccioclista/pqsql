@@ -229,6 +229,7 @@ pqbf_add_int4(pqparam_buffer *pb, int32_t i)
 }
 
 /*
+ * oid 19:   name
  * oid 25:   text
  * oid 705:  unknown
  * oid 1043: varchar
@@ -250,6 +251,41 @@ pqbf_get_text(const char *p, size_t *len)
 
 	return p;
 }
+
+/*
+ * standard utf-8 string
+ */
+
+#define pqbf_encode_text(s,t) do { appendPQExpBufferStr(s, t); } while(0)
+
+DECLSPEC void __fastcall
+pqbf_set_text(PQExpBuffer s, const char *t)
+{
+	BAILIFNULL(s);
+	pqbf_encode_text(s, t);
+}
+
+DECLSPEC void __fastcall
+pqbf_add_text(pqparam_buffer *pb, const char *t)
+{
+	size_t len;
+
+	if (pb == NULL || t == NULL) /* use pqbf_set_null for NULL parameters */
+		return;
+
+	len = pb->payload->len; /* save current length of payload */
+
+	pqbf_encode_text(pb->payload, t);
+
+	pqpb_add(pb, TEXTOID, pb->payload->len - len);
+}
+
+
+/*
+ * https://msdn.microsoft.com/en-us/library/dd374081.aspx
+ * windows utf-16 strings
+ */
+#ifdef _WIN32
 
 DECLSPEC wchar_t* __fastcall
 pqbf_get_unicode_text(const char *p, size_t *utf16_len)
@@ -332,39 +368,6 @@ pqbf_free_unicode_text(wchar_t *p)
 }
 
 
-/*
- * standard utf-8 string
- */
-
-#define pqbf_encode_text(s,t) do { appendPQExpBufferStr(s, t); } while(0)
-
-DECLSPEC void __fastcall
-pqbf_set_text(PQExpBuffer s, const char *t)
-{
-	BAILIFNULL(s);
-	pqbf_encode_text(s, t);
-}
-
-DECLSPEC void __fastcall
-pqbf_add_text(pqparam_buffer *pb, const char *t)
-{
-	size_t len;
-
-	if (pb == NULL || t == NULL) /* use pqbf_set_null for NULL parameters */
-		return;
-
-	len = pb->payload->len; /* save current length of payload */
-
-	pqbf_encode_text(pb->payload, t);
-
-	pqpb_add(pb, TEXTOID, pb->payload->len - len);
-}
-
-/*
- * https://msdn.microsoft.com/en-us/library/dd374081.aspx
- * windows utf-16 strings
- */
-
 #define pqbf_encode_unicode_text(s,t) \
 	do {               \
 		int utf16_len;   \
@@ -411,11 +414,15 @@ pqbf_add_unicode_text(pqparam_buffer *pb, const wchar_t *t)
 	pqpb_add(pb, TEXTOID, pb->payload->len - len);
 }
 
+#endif /* _WIN32 */
+
+
 /*
  * oid 26: oid
  *
  * see pq_sendint(StringInfo buf, int i, int b) from src/backend/libpq/pqformat.c
  */
+
 DECLSPEC uint32_t __fastcall
 pqbf_get_oid(const char *p)
 {
@@ -552,6 +559,8 @@ pqbf_add_float8(pqparam_buffer *pb, double f)
 
 /*
  * oid 1082: date
+ *
+ * TODO check
  */
 DECLSPEC int32_t __fastcall
 pqbf_get_date(const char *p)

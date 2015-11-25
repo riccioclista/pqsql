@@ -18,9 +18,11 @@ extern "C" {
 #define BAILWITHVALUEIFNULL(p,val) do { if (p == NULL) return val; } while(0)
 
 /* BYTESWAP for network byte order */
+#ifdef _WIN32
 #define BYTESWAP2(x) _byteswap_ushort(x)
 #define BYTESWAP4(x) _byteswap_ulong(x)
 #define BYTESWAP8(x) _byteswap_uint64(x)
+#endif /* _WIN32 */
 
 extern DECLSPEC size_t __fastcall pqbf_get_buflen(PQExpBuffer s);
 extern DECLSPEC char * __fastcall pqbf_get_bufval(PQExpBuffer s);
@@ -51,10 +53,12 @@ extern DECLSPEC const char* __fastcall pqbf_get_text(const char *ptr, size_t *le
 extern DECLSPEC void __fastcall pqbf_set_text(PQExpBuffer s, const char *t);
 extern DECLSPEC void __fastcall pqbf_add_text(pqparam_buffer *pb, const char *t);
 
+#ifdef WIN32
 extern DECLSPEC wchar_t* __fastcall pqbf_get_unicode_text(const char *ptr, size_t *utf16_len);
 extern DECLSPEC void __fastcall pqbf_free_unicode_text(wchar_t *p);
 extern DECLSPEC void __fastcall pqbf_set_unicode_text(PQExpBuffer s, const wchar_t *t);
 extern DECLSPEC void __fastcall pqbf_add_unicode_text(pqparam_buffer *pb, const wchar_t *t);
+#endif /* WIN32 */
 
 extern DECLSPEC uint32_t __fastcall pqbf_get_oid(const char *ptr);
 extern DECLSPEC void __fastcall pqbf_set_oid(PQExpBuffer s, uint32_t i);
