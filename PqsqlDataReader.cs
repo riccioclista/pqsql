@@ -1570,9 +1570,9 @@ namespace Pqsql
 				mRowInfo[o].Modifier = modifier; // column modifier
 				mRowInfo[o].Format = format; // column format
 
-				PqsqlTypeNames.PqsqlTypeName tn = PqsqlTypeNames.Get(oid); // lookup OID
-				mRowInfo[o].DataTypeName = tn.Name; // cache PG datatype name
-				mRowInfo[o].Type = tn.Type; // cache corresponding Type
+				PqsqlTypeRegistry.PqsqlTypeName tn = PqsqlTypeRegistry.Get(oid); // lookup OID
+				mRowInfo[o].DataTypeName = tn.DataTypeName; // cache PG datatype name
+				mRowInfo[o].ProviderType = tn.ProviderType; // cache corresponding ProviderType
 				mRowInfo[o].GetValue = tn.GetValue; // cache GetValue function
 
 				if (populateOutputParameters) // use first row to fill corresponding output parameter

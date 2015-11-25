@@ -48,6 +48,7 @@
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
+    <Reference Include="System.Data.Linq" />
     <Reference Include="System.XML" />
   </ItemGroup>
   <ItemGroup>
@@ -74,7 +75,7 @@
     <Compile Include="PqsqlParameterCollection.cs" />
     <Compile Include="PqsqlProviderFactory.cs" />
     <Compile Include="PqsqlTransaction.cs" />
-    <Compile Include="PqsqlTypeNames.cs" />
+    <Compile Include="PqsqlTypeRegistry.cs" />
     <Compile Include="PqsqlUTF8Statement.cs" />
     <Compile Include="PqsqlWrapper.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

@@ -97,7 +97,7 @@ namespace Pqsql
 			set
 			{
 				mDbType = value;
-				mPqsqlDbType = PqsqlTypeNames.GetPqsqlDbType(value);
+				mPqsqlDbType = PqsqlTypeRegistry.GetPqsqlDbType(value);
 			}
 		}
 
@@ -114,7 +114,7 @@ namespace Pqsql
 			set
 			{
 				mPqsqlDbType = value;
-				mDbType = PqsqlTypeNames.GetDbType(value & ~PqsqlDbType.Array);
+				mDbType = PqsqlTypeRegistry.GetDbType(value & ~PqsqlDbType.Array);
 			}
 		}
 		//

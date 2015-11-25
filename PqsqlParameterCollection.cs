@@ -68,7 +68,7 @@ namespace Pqsql
 
 		#region pqparam_buffer*
 
-		private void AddParameterValue(PqsqlTypeNames.PqsqlTypeName tn, PqsqlDbType oid, object v)
+		private void AddParameterValue(PqsqlTypeRegistry.PqsqlTypeName tn, PqsqlDbType oid, object v)
 		{
 			if (v == null || v == DBNull.Value)
 			{
@@ -77,7 +77,7 @@ namespace Pqsql
 			}
 			else if ((oid & PqsqlDbType.Array) == PqsqlDbType.Array)
 			{
-				PqsqlTypeNames.SetArrayValue(oid, tn)(mPqPB, v);
+				PqsqlTypeRegistry.SetArrayValue(oid, tn)(mPqPB, v);
 			}
 			else
 			{
@@ -101,7 +101,7 @@ namespace Pqsql
 						PqsqlDbType oid = p.PqsqlDbType;
 
 						object v = p.Value;
-						PqsqlTypeNames.PqsqlTypeName tn = PqsqlTypeNames.Get(oid & ~PqsqlDbType.Array);
+						PqsqlTypeRegistry.PqsqlTypeName tn = PqsqlTypeRegistry.Get(oid & ~PqsqlDbType.Array);
 
 						if (v != null && v != DBNull.Value && (oid & PqsqlDbType.Array) != PqsqlDbType.Array)
 						{
@@ -119,7 +119,7 @@ namespace Pqsql
 								else
 								{
 									// in case we would have an invalid cast from object to target type
-									// we try to convert v to the registered Type next
+									// we try to convert v to the registered ProviderType next
 									v = Convert.ChangeType(v, tc);
 								}
 							}
