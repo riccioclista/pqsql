@@ -1654,7 +1654,8 @@ namespace Pqsql
 					if (j < 0)
 					{
 						// throw error if we didn't find the corresponding parameter name in our parameter list
-						throw new PqsqlException("Could not find output parameter »" + colName + "« in PqsqlCommand.Parameters");
+						throw new PqsqlException("Received unexpected output parameter »" + colName + "« when calling function »" +
+							mCmd.CommandText + "«. Please adjust parameter names in PqsqlCommand.Parameters.");
 					}
 
 					// set new Value for found parameter based on 1st row
