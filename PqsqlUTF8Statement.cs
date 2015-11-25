@@ -1,14 +1,13 @@
 using System;
-using System.Runtime.InteropServices;
 using System.Text;
 
 namespace Pqsql
 {
-	public static class PqsqlUTF8Statement
+	internal static class PqsqlUTF8Statement
 	{
 
 		// return static UTF8-encoded statement including trailing 0 byte
-		public static byte[] CreateUTF8Statement(string s)
+		internal static byte[] CreateUTF8Statement(string s)
 		{
 			byte[] b = Encoding.UTF8.GetBytes(s); // not null terminated
 			int blen = b.Length;
@@ -18,13 +17,13 @@ namespace Pqsql
 		}
 
 		// return static UTF8-encoded statement including trailing 0 byte
-		public static byte[] CreateUTF8Statement(StringBuilder sb)
+		internal static byte[] CreateUTF8Statement(StringBuilder sb)
 		{
 			return CreateUTF8Statement(sb.ToString());
 		}
 
 		// converts null-terminated sbyte* to string 
-		public static string CreateStringFromUTF8(IntPtr sp)
+		internal static string CreateStringFromUTF8(IntPtr sp)
 		{
 			int pos = 0;
 			int buflen = 64; // must be power of two
