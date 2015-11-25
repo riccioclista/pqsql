@@ -21,7 +21,9 @@ namespace Pqsql
 		public Func<IntPtr, int, int, int, object> GetValue { get; set; }
 	};
 
-
+	/// <summary>
+	/// implements IEnumerator for PqsqlDataReader.GetEnumerator()
+	/// </summary>
 	internal sealed class PqsqlEnumerator : IEnumerator
 	{
 		private readonly PqsqlDataReader mReader;
@@ -908,6 +910,7 @@ namespace Pqsql
 			return (decimal) GetNumeric(mResult, mRowNum, ordinal, mRowInfo[ordinal].Modifier);
 		}
 
+		// TODO double loses precision, should we get the string representation of the numeric here?
 		internal static double GetNumeric(IntPtr res, int row, int ordinal, int typmod)
 		{
 			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
@@ -1491,7 +1494,10 @@ namespace Pqsql
 			{
 				ExecStatus s = (ExecStatus) PqsqlWrapper.PQresultStatus(mResult);
 
+				//
 				// INSERT / UPDATE / DELETE / CREATE statement processing
+				//
+
 				if (s == ExecStatus.PGRES_COMMAND_OK)
 				{
 					mRecordsAffected = GetCmdTuples(s);
@@ -1502,7 +1508,10 @@ namespace Pqsql
 					return false;
 				}
 
-				// error
+				//
+				// error handling
+				//
+
 				if (s != ExecStatus.PGRES_SINGLE_TUPLE && s != ExecStatus.PGRES_TUPLES_OK)
 				{
 					string err = mConn.GetErrorMessage();
@@ -1514,7 +1523,7 @@ namespace Pqsql
 				}
 
 				//
-				// SELECT statement processing
+				// SELECT / FETCH statement processing
 				//
 
 				if (mMaxRows == -1) // get number of tuples in a fresh result buffer
@@ -1541,6 +1550,7 @@ namespace Pqsql
 					return mMaxRows > 0;
 				}
 
+				// mResult not completely processed?
 				if (mRowNum < mMaxRows)
 					return true;
 
