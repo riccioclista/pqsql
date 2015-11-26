@@ -266,7 +266,7 @@ pqbf_set_text(PQExpBuffer s, const char *t)
 }
 
 DECLSPEC void __fastcall
-pqbf_add_text(pqparam_buffer *pb, const char *t)
+pqbf_add_text(pqparam_buffer *pb, const char *t, uint32_t oid)
 {
 	size_t len;
 
@@ -277,7 +277,7 @@ pqbf_add_text(pqparam_buffer *pb, const char *t)
 
 	pqbf_encode_text(pb->payload, t);
 
-	pqpb_add(pb, TEXTOID, pb->payload->len - len);
+	pqpb_add(pb, oid, pb->payload->len - len);
 }
 
 
@@ -400,7 +400,7 @@ pqbf_set_unicode_text(PQExpBuffer s, const wchar_t *t)
 }
 
 DECLSPEC void __fastcall
-pqbf_add_unicode_text(pqparam_buffer *pb, const wchar_t *t)
+pqbf_add_unicode_text(pqparam_buffer *pb, const wchar_t *t, uint32_t oid)
 {
 	size_t len;
 	
@@ -411,7 +411,7 @@ pqbf_add_unicode_text(pqparam_buffer *pb, const wchar_t *t)
 
 	pqbf_encode_unicode_text(pb->payload, t);
 
-	pqpb_add(pb, TEXTOID, pb->payload->len - len);
+	pqpb_add(pb, oid, pb->payload->len - len);
 }
 
 #endif /* _WIN32 */

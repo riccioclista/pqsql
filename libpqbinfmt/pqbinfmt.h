@@ -51,14 +51,14 @@ extern DECLSPEC void __fastcall pqbf_add_int2(pqparam_buffer *pb, int16_t i);
 
 extern DECLSPEC const char* __fastcall pqbf_get_text(const char *ptr, size_t *len);
 extern DECLSPEC void __fastcall pqbf_set_text(PQExpBuffer s, const char *t);
-extern DECLSPEC void __fastcall pqbf_add_text(pqparam_buffer *pb, const char *t);
+extern DECLSPEC void __fastcall pqbf_add_text(pqparam_buffer *pb, const char *t, uint32_t oid);
 
-#ifdef WIN32
+#ifdef _WIN32
 extern DECLSPEC wchar_t* __fastcall pqbf_get_unicode_text(const char *ptr, size_t *utf16_len);
 extern DECLSPEC void __fastcall pqbf_free_unicode_text(wchar_t *p);
 extern DECLSPEC void __fastcall pqbf_set_unicode_text(PQExpBuffer s, const wchar_t *t);
-extern DECLSPEC void __fastcall pqbf_add_unicode_text(pqparam_buffer *pb, const wchar_t *t);
-#endif /* WIN32 */
+extern DECLSPEC void __fastcall pqbf_add_unicode_text(pqparam_buffer *pb, const wchar_t *t, uint32_t oid);
+#endif /* _WIN32 */
 
 extern DECLSPEC uint32_t __fastcall pqbf_get_oid(const char *ptr);
 extern DECLSPEC void __fastcall pqbf_set_oid(PQExpBuffer s, uint32_t i);
