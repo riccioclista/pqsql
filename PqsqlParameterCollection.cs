@@ -81,7 +81,7 @@ namespace Pqsql
 			}
 			else
 			{
-				tn.SetValue(mPqPB, v);
+				tn.SetValue(mPqPB, v, oid);
 			}
 		}
 

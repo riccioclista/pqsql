@@ -17,7 +17,7 @@ namespace Pqsql
 			public DbType DbType { get; set; }
 			public PqsqlDbType ArrayDbType { get; set; }
 			public Func<IntPtr, int, int, int, object> GetValue { get; set; }
-			public Action<IntPtr, object> SetValue { get; set; }
+			public Action<IntPtr, object, PqsqlDbType> SetValue { get; set; }
 			public Action<IntPtr, object> SetArrayItem { get; set; }
 		}
 
@@ -35,13 +35,13 @@ namespace Pqsql
 			PqsqlBinaryFormat.pqbf_update_array_itemlength(a, -len, len - 4);
 		};
 
-		private static Action<IntPtr, object> setText = (pb, val) =>
+		private static Action<IntPtr, object, PqsqlDbType> setText = (pb, val, oid) =>
 		{
 			unsafe
 			{
 				fixed (char* t = (string) val)
 				{
-					PqsqlBinaryFormat.pqbf_add_unicode_text(pb, t);
+					PqsqlBinaryFormat.pqbf_add_unicode_text(pb, t, (uint) oid);
 				}
 			}
 		}; 
@@ -79,7 +79,7 @@ namespace Pqsql
 					DbType=DbType.Boolean,
 					ArrayDbType=PqsqlDbType.BooleanArray,
 					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetBoolean(res,row,ord),
-					SetValue=(pb, val) => PqsqlBinaryFormat.pqbf_add_bool(pb, (bool) val ? 1 : 0),
+					SetValue=(pb, val, oid) => PqsqlBinaryFormat.pqbf_add_bool(pb, (bool) val ? 1 : 0),
 					SetArrayItem = (a, o) =>
 					{
 						bool v = (bool) o;
@@ -96,7 +96,7 @@ namespace Pqsql
 					DbType=DbType.Double,
 					ArrayDbType=PqsqlDbType.Float8Array,
 					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetDouble(res,row,ord),
-					SetValue=(pb, val) => PqsqlBinaryFormat.pqbf_add_float8(pb, (double) val),
+					SetValue=(pb, val, oid) => PqsqlBinaryFormat.pqbf_add_float8(pb, (double) val),
 					SetArrayItem = (a, o) => {
 						double v = (double) o;
 						PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 8);
@@ -112,7 +112,7 @@ namespace Pqsql
 					DbType=DbType.Int32,
 					ArrayDbType=PqsqlDbType.Int4Array,
 					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetInt32(res,row,ord),
-					SetValue=(pb, val) => PqsqlBinaryFormat.pqbf_add_int4(pb, (int) val),
+					SetValue=(pb, val, oid) => PqsqlBinaryFormat.pqbf_add_int4(pb, (int) val),
 					SetArrayItem = (a, o) => {
 						int v = (int) o;
 						PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 4);
@@ -128,7 +128,7 @@ namespace Pqsql
 					DbType=DbType.Int64,
 					ArrayDbType=PqsqlDbType.Int8Array,
 					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetInt64(res,row,ord),
-					SetValue=(pb, val) => PqsqlBinaryFormat.pqbf_add_int8(pb, (long) val),
+					SetValue=(pb, val, oid) => PqsqlBinaryFormat.pqbf_add_int8(pb, (long) val),
 					SetArrayItem = (a, o) => {
 						long v = (long) o;
 						PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 8);
@@ -144,7 +144,7 @@ namespace Pqsql
 					DbType=DbType.VarNumeric,
 					ArrayDbType=PqsqlDbType.NumericArray,
 					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetNumeric(res,row,ord,typmod),
-					SetValue=(pb, val) => {
+					SetValue=(pb, val, oid) => {
 						double d = Convert.ToDouble(val);
 						PqsqlBinaryFormat.pqbf_add_numeric(pb, d);
 					},
@@ -159,7 +159,7 @@ namespace Pqsql
 					DbType=DbType.Single,
 					ArrayDbType=PqsqlDbType.Float4Array,
 					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetFloat(res,row,ord),
-					SetValue=(pb, val) => PqsqlBinaryFormat.pqbf_add_float4(pb, (float) val),
+					SetValue=(pb, val, oid) => PqsqlBinaryFormat.pqbf_add_float4(pb, (float) val),
 					SetArrayItem = (a, o) => {
 						float v = (float) o;
 						PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 4);
@@ -175,7 +175,7 @@ namespace Pqsql
 					DbType=DbType.Int16,
 					ArrayDbType=PqsqlDbType.Int2Array,
 					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetInt16(res,row,ord),
-					SetValue=(pb, val) => PqsqlBinaryFormat.pqbf_add_int2(pb, (short) val),
+					SetValue=(pb, val, oid) => PqsqlBinaryFormat.pqbf_add_int2(pb, (short) val),
 					SetArrayItem = (a, o) => {
 						short v = (short) o;
 						PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 2);
@@ -248,7 +248,7 @@ namespace Pqsql
 				
 						return bs;
 					},
-					SetValue= (pb, val) =>
+					SetValue= (pb, val, oid) =>
 					{
 						byte[] buf = (byte[]) val;
 						ulong len = (ulong) buf.LongLength;
@@ -295,7 +295,7 @@ namespace Pqsql
 					DbType=DbType.DateTime,
 					ArrayDbType=PqsqlDbType.TimestampArray,
 					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetDateTime(res,row,ord),
-					SetValue=(pb, val) => {
+					SetValue=(pb, val, oid) => {
 						DateTime dt = (DateTime) val;
 						long ticks = dt.Ticks - PqsqlBinaryFormat.UnixEpochTicks;
 						long sec = ticks / TimeSpan.TicksPerSecond;
@@ -320,7 +320,7 @@ namespace Pqsql
 					DbType=DbType.DateTimeOffset,
 					ArrayDbType=PqsqlDbType.TimestampTZArray, // TODO timezone?
 					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetDateTime(res,row,ord),
-					SetValue=(pb, val) => { // TODO timezone?
+					SetValue=(pb, val, oid) => { // TODO timezone?
 						DateTime dt = (DateTime) val;
 
             if (dt.Kind == DateTimeKind.Local)
@@ -404,7 +404,7 @@ namespace Pqsql
 					DbType=DbType.UInt32,
 					ArrayDbType=PqsqlDbType.OidArray,
 					GetValue=(res, row, ord, typmod) => (uint) PqsqlDataReader.GetInt32(res,row,ord),
-					SetValue=(pb, val) => PqsqlBinaryFormat.pqbf_add_oid(pb, (uint) val),
+					SetValue=(pb, val, oid) => PqsqlBinaryFormat.pqbf_add_oid(pb, (uint) val),
 					SetArrayItem = (a, o) => {
 						uint v = (uint) o;
 						PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 4);

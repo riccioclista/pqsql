@@ -61,7 +61,7 @@ namespace Pqsql
 		public static extern void pqbf_add_null(IntPtr pb, uint oid);
 
 		[DllImport("libpqbinfmt.dll")]
-		public static extern int pqbf_add_unicode_text(IntPtr pb, char* t);
+		public static extern int pqbf_add_unicode_text(IntPtr pb, char* t, uint oid);
 
 		[DllImport("libpqbinfmt.dll")]
 		public static extern void pqbf_add_bool(IntPtr pb, int b);
