@@ -583,6 +583,7 @@ namespace Pqsql
 		const int ESCAPE = (1 << 6);
 
 		delegate void ResizeAndSetStatements(ref StringBuilder sb, ref string[] st, int i);
+		delegate void ReplaceParameter(ref StringBuilder sb);
 
 		/// <summary>
 		/// split PqsqlCommand.CommandText into an array of sub-statements
@@ -600,11 +601,26 @@ namespace Pqsql
 			StringBuilder paramIndex = new StringBuilder(); // $i
 			paramIndex.Append('$');
 
-
+			// resize statements to i+1, and set i to sb
 			ResizeAndSetStatements resizeAndSet = (ref StringBuilder sb, ref string[] st, int i) => {
 				Array.Resize(ref st, i + 1);
 				st[i] = sb.ToString().TrimStart();
 				sb.Clear();
+			};
+
+			// replace parameter name with $ index
+			ReplaceParameter replaceParameter = (ref StringBuilder sb) => {
+				string p = paramName.ToString();
+				int j = mParams.IndexOf(p);
+
+				if (j < 0)
+					throw new PqsqlException("Could not find parameter »" + p + "« in PqsqlCommand.Parameters");
+
+				paramIndex.Append(j + 1);
+				sb.Append(paramIndex);
+
+				paramIndex.Length = 1;
+				paramName.Length = 1;
 			};
 
 			//
@@ -660,17 +676,7 @@ namespace Pqsql
 					}
 
 					// replace parameter name with $ index
-					string pname = paramName.ToString();
-					int j = mParams.IndexOf(pname);
-
-					if (j < 0)
-						throw new PqsqlException("Could not find parameter »" + pname + "« in PqsqlCommand.Parameters");
-
-					paramIndex.Append(j + 1);
-					stmt.Append(paramIndex);
-						
-					paramIndex.Length = 1;
-					paramName.Length = 1;
+					replaceParameter(ref stmt);
 
 					// now continue with parsing statement(s)
 					parsingState &= ~(PARAM0 | PARAM1);
@@ -727,6 +733,9 @@ namespace Pqsql
 
 			if (stmt.Length > 0) // add last statement not terminated by ';'
 			{
+				if (paramName.Length > 1) // did not finish replacing parameter name
+					replaceParameter(ref stmt);
+
 				resizeAndSet(ref stmt, ref statements, stmtNum);
 			}
 		}
