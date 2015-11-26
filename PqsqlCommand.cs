@@ -573,28 +573,16 @@ namespace Pqsql
 			return o;
 		}
 
+		// statement parser states
+		const int QUOTE = (1 << 0);
+		const int DOLLARQUOTE = (1 << 1);
+		const int DOLLARQUOTE0 = (1 << 2);
+		const int DOLLARQUOTE1 = (1 << 3);
+		const int PARAM0 = (1 << 4);
+		const int PARAM1 = (1 << 5);
+		const int ESCAPE = (1 << 6);
 
-		// replace parameter names :ParameterName with parameter index $j
-		private void ReplaceParameterNames(ref StringBuilder sb)
-		{
-			if (mParams == null)
-				return;
-
-			StringBuilder paramName = new StringBuilder();
-			StringBuilder paramIndex = new StringBuilder();
-
-			paramIndex.Append('$');
-
-			int n = mParams.Count;
-			for (int i = 0; i < n; i++)
-			{
-				paramName.Append(mParams[i].ParameterName);
-				paramIndex.Append(i + 1);
-				sb.Replace(paramName.ToString(), paramIndex.ToString());
-				paramName.Length = 0;
-				paramIndex.Length = 1;
-			}
-		}
+		delegate void ResizeAndSetStatements(ref StringBuilder sb, ref string[] st, int i);
 
 		/// <summary>
 		/// split PqsqlCommand.CommandText into an array of sub-statements
@@ -602,94 +590,144 @@ namespace Pqsql
 		/// <returns></returns>
 		private void ParseStatements(ref string[] statements)
 		{
-			StringBuilder sb = new StringBuilder();
-			bool quote = false;
-			bool dollarQuote = false;
-			bool dollarQuote0 = false;
-			bool dollarQuote1 = false;
-			int stmLen = 0; // length of statement
+			int parsingState = 0; // 1...quote, 2...dollarQuote, ...
 
-			// parse multiple statements separated by ;
+			StringBuilder stmt = new StringBuilder(); // buffer for current statement
+			int stmtNum = 0; // index in statements
+			
+			StringBuilder paramName = new StringBuilder();  // :param
+			paramName.Append(':');
+			StringBuilder paramIndex = new StringBuilder(); // $i
+			paramIndex.Append('$');
+
+
+			ResizeAndSetStatements resizeAndSet = (ref StringBuilder sb, ref string[] st, int i) => {
+				Array.Resize(ref st, i + 1);
+				st[i] = sb.ToString().TrimStart();
+				sb.Clear();
+			};
+
+			//
+			// parse multiple statements separated by ';'
+			// - ignore ', ", and $$ quotation
+			// - escape character \ during quotation
+			// - replace :[a-zA-Z0-9_]+ parameter names with $ index
+			//
 			foreach (char c in CommandText.Trim())
 			{
-				if (quote) // eat input until next quote symbol (ignoring ';')
+				if ((parsingState & (QUOTE | ESCAPE)) == (QUOTE | ESCAPE)) // eat next character, continue without ESCAPE
+				{
+					parsingState &= ~ESCAPE;
+				}
+				else if ((parsingState & QUOTE) == QUOTE) // eat input until next quote symbol
 				{
 					switch (c)
 					{
+						case '\\':
+							parsingState |= ESCAPE;
+							break;
+
 						case '\'':
 						case '"':
-							quote = false;
-							break;
+							stmt.Append(c);
+							parsingState &= ~QUOTE;
+							continue;
 					}
-					sb.Append(c);
 				}
-				else if (dollarQuote0 && dollarQuote1) // found $$ previously, ignore everything except $
+				else if ((parsingState & PARAM0) == PARAM0) // did we really ran into :param ?
 				{
-					switch (c)
+					if (c == ':') // we ran into ::
 					{
-						case '$':
-							dollarQuote1 = false;
-							break;
-					}
-					sb.Append(c);
-				}
-				else if (dollarQuote0) // found $ before
-				{
-					if (char.IsDigit(c))
-					{
-						if (dollarQuote) dollarQuote1 = true; // back to $$ mode
-						else dollarQuote0 = false; // back to standard mode
+						stmt.Append(':'); // take first : and put it back
+						stmt.Append(':'); // take current : and put it back
+						paramName.Length = 1;
+						parsingState &= ~(PARAM0 | PARAM1);
 					}
 					else
 					{
-						switch (c)
-						{
-						case '$':
-							if (dollarQuote)
-							{
-								dollarQuote = false; // closing $$
-								dollarQuote0 = false;
-							}
-							else
-							{
-								dollarQuote = true; // beginning $$
-								dollarQuote1 = true;
-							}
-							break;
-						}
+						paramName.Append(c); // start eating first character of parameter names
+						parsingState |= PARAM1;
+						parsingState &= ~PARAM0;
 					}
-					sb.Append(c);
+					continue;
 				}
-				else
+				else if ((parsingState & PARAM1) == PARAM1) // save parameter name to paramName; replace with $ index
 				{
-					switch (c) // eat input until ;
+					if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_')
+					{
+						paramName.Append(c); // eat parameter name of form [a-zA-Z0-9_]
+						continue;
+					}
+
+					// replace parameter name with $ index
+					string pname = paramName.ToString();
+					int j = mParams.IndexOf(pname);
+
+					if (j < 0)
+						throw new PqsqlException("Could not find parameter »" + pname + "« in PqsqlCommand.Parameters");
+
+					paramIndex.Append(j + 1);
+					stmt.Append(paramIndex);
+						
+					paramIndex.Length = 1;
+					paramName.Length = 1;
+
+					// now continue with parsing statement(s)
+					parsingState &= ~(PARAM0 | PARAM1);
+				}
+				else if ((parsingState & (DOLLARQUOTE0 | DOLLARQUOTE1)) == (DOLLARQUOTE0 | DOLLARQUOTE1)) // found $$ previously, ignore everything except $
+				{
+					if (c == '$') parsingState &= ~DOLLARQUOTE1;
+				}
+				else if ((parsingState & DOLLARQUOTE0) == DOLLARQUOTE0) // found $ before
+				{
+					if (char.IsDigit(c)) // we might parse $[0-9]
+					{
+						if ((parsingState & DOLLARQUOTE) == DOLLARQUOTE)
+							parsingState |= DOLLARQUOTE1; // back to $$ mode
+						else
+							parsingState &= ~DOLLARQUOTE0; // found $[0-9] outside of $$, back to standard mode
+					}
+					else if (c == '$') // no digit after $, check for closing/beginning $
+					{
+						if ((parsingState & DOLLARQUOTE) == DOLLARQUOTE)
+							parsingState &= ~(DOLLARQUOTE | DOLLARQUOTE0); // closing $$
+						else
+							parsingState |= (DOLLARQUOTE | DOLLARQUOTE0); // beginning $$
+					}
+				}
+
+				// before we save, check whether we need to update the parsingState
+				if (parsingState == 0) 
+				{
+					switch (c) // eat input until ; with quotation and parameter dispatching
 					{
 						case '$':
-							dollarQuote0 = true;
+							parsingState |= (DOLLARQUOTE | DOLLARQUOTE0);
 							break;
-
-						case ';':
-							Array.Resize(ref statements, stmLen + 1);
-							ReplaceParameterNames(ref sb);
-							statements[stmLen++] = sb.ToString().TrimStart();
-							sb.Clear();
-							continue;
 
 						case '\'':
 						case '"':
-							quote = true;
+							parsingState |= QUOTE;
 							break;
+
+						case ':':
+							parsingState |= PARAM0;
+						  continue;
+
+						case ';':
+							resizeAndSet(ref stmt, ref statements, stmtNum++);
+							continue;
 					}
-					sb.Append(c);
 				}
+
+				// save character into next statement
+				stmt.Append(c);
 			}
 
-			if (sb.Length > 0) // add last statement not terminated by ';'
+			if (stmt.Length > 0) // add last statement not terminated by ';'
 			{
-				Array.Resize(ref statements, stmLen + 1);
-				ReplaceParameterNames(ref sb);
-				statements[stmLen] = sb.ToString().TrimStart();
-				sb.Clear();
+				resizeAndSet(ref stmt, ref statements, stmtNum);
 			}
 		}
 

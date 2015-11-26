@@ -473,14 +473,9 @@ namespace Pqsql
 			{
 				StringBuilder sb = new StringBuilder();
 
-				char f = param[0];
+				sb.Append(':'); // always prefix with :
 
-				if (f != ':')
-				{
-					sb.Append(':'); // always add :
-				}
-
-				if (f != '"')
+				if (param[0] != '"')
 					sb.Append(param.TrimStart(PqsqlParameter.TrimStart).TrimEnd().ToLowerInvariant());
 				else
 					sb.Append(param);
