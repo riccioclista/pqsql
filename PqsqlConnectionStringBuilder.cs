@@ -1,4 +1,5 @@
-﻿using System.Data.Common;
+﻿using System;
+using System.Data.Common;
 
 namespace Pqsql
 {
@@ -121,15 +122,42 @@ namespace Pqsql
 		public const string options = "options";
 		public const string application_name = "application_name";
 
+		// .NET connection string aliases will be replaced with their libpq equivalents
+		static readonly string[] hostAlias = { "server", "data source", "datasource", "address", "addr", "network address" };
+		static readonly string[] dbnameAlias = { "database", "initial catalog" };
+		static readonly string[] connect_timeoutAlias = { "connect timeout", "timeout" };
+		static readonly string[] userAlias = { "user id", "uid", "username", "user name" };
+		static readonly string[] passwordAlias = { "pwd" };
+
 		public PqsqlConnectionStringBuilder()
 		{
 		}
+
+
+		delegate void RemoveAliasAddKey(string alias, string key);
 
 		// E.g.
 		// host=localhost; port=5432; user=postgres; password=P4$$word; dbname=postgres; connect_timeout=10
 		public PqsqlConnectionStringBuilder(string s)
 		{
 			ConnectionString = s;
+
+			// now clean up connection string and use libpq keywords
+			RemoveAliasAddKey remAdd = delegate(string a, string k)
+			{
+				object o;
+				if (TryGetValue(a, out o))
+				{
+					Remove(a);
+					Add(k, o);
+				}
+			};
+
+			Array.ForEach(hostAlias, a => remAdd(a, host));
+			Array.ForEach(dbnameAlias, a => remAdd(a, dbname));
+			Array.ForEach(userAlias, a => remAdd(a, user));
+			Array.ForEach(passwordAlias, a => remAdd(a, password));
+			Array.ForEach(connect_timeoutAlias, a => remAdd(a, connect_timeout));
 		}
 	}
 }
