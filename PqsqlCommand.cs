@@ -433,9 +433,11 @@ namespace Pqsql
 		{
 			string[] statements = new string[0];
 
+#if false
 			// always set SingleRow mode for now,
 			// will be turned off for FETCH statements in PqsqlDataReader.Execute()
 			behavior |= CommandBehavior.SingleRow;
+#endif
 
 			switch(CommandType)
 			{
