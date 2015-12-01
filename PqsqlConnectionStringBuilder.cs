@@ -153,7 +153,29 @@ namespace Pqsql
 				}
 			};
 
-			Array.ForEach(hostAlias, a => remAdd(a, host));
+			RemoveAliasAddKey remAddHostPort = delegate(string a, string k)
+			{
+				object o;
+				if (TryGetValue(a, out o))
+				{
+					Remove(a);
+
+					string dataSource = (string) o;
+					int i = dataSource.IndexOf(','); // Data Source=IP,PORT
+
+					if (i == -1)
+					{
+						Add(k, o);
+					}
+					else
+					{
+						Add(host, dataSource.Substring(0, i));
+						Add(port, dataSource.Substring(i + 1));
+					}
+				}
+			};
+
+			Array.ForEach(hostAlias, a => remAddHostPort(a, host));
 			Array.ForEach(dbnameAlias, a => remAdd(a, dbname));
 			Array.ForEach(userAlias, a => remAdd(a, user));
 			Array.ForEach(passwordAlias, a => remAdd(a, password));
