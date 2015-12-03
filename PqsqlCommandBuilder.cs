@@ -366,6 +366,8 @@ namespace Pqsql
 		// Summary:
 		//     Clears the commands associated with this System.Data.Common.DbCommandBuilder.
 		//public virtual void RefreshSchema();
+
+
 		//
 		// Summary:
 		//     Adds an event handler for the System.Data.OleDb.OleDbDataAdapter.RowUpdating
@@ -376,6 +378,8 @@ namespace Pqsql
 		//     A System.Data.Common.RowUpdatingEventArgs instance containing information
 		//     about the event.
 		//protected void RowUpdatingHandler(RowUpdatingEventArgs rowUpdatingEvent);
+
+
 		//
 		// Summary:
 		//     Registers the System.Data.Common.DbCommandBuilder to handle the System.Data.OleDb.OleDbDataAdapter.RowUpdating
@@ -386,8 +390,19 @@ namespace Pqsql
 		//     The System.Data.Common.DbDataAdapter to be used for the update.
 		protected override void SetRowUpdatingHandler(DbDataAdapter adapter)
 		{
-			throw new NotImplementedException("SetRowUpdatingHandler");
+			PqsqlDataAdapter pa = adapter as PqsqlDataAdapter;
+			if (pa == null)
+				throw new ArgumentException("adapter needs to be a PqsqlDataAdapter");
+
+			PqsqlRowUpdatingEventHandler handler = (s, e) => RowUpdatingHandler(e);
+
+			// unregister if we had registered adapter before
+			if (adapter == DataAdapter)
+				pa.RowUpdating -= handler;
+			else
+				pa.RowUpdating += handler;
 		}
+
 		//
 		// Summary:
 		//     Given a quoted identifier, returns the correct unquoted form of that identifier,
