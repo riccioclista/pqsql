@@ -331,11 +331,7 @@ namespace Pqsql
 			if (mConn == null || mConn.State == ConnectionState.Closed)
 				return;
 
-			if (mCmd != null)
-			{
-				mCmd.Cancel(); // cancel currently running command
-				Consume();
-			}
+			Consume(); // consume remaining results
 
 			if ((mBehaviour & CommandBehavior.CloseConnection) > 0)
 			{
