@@ -3,6 +3,7 @@ using System.Data.Common;
 using System.Data;
 using System.ComponentModel;
 using System.Collections;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Runtime.InteropServices;
 
@@ -115,6 +116,9 @@ namespace Pqsql
 
 		// row information of current result set
 		PqsqlColInfo[] mRowInfo;
+		// for GetSchemaTable()
+		DataTable mSchemaTable;
+
 		// the oid of the referenced table
 		private uint mTableOid;
 		// after statement execution, we populate column information mRowInfo and fill output parameter mCmd.Parameters
@@ -173,6 +177,11 @@ namespace Pqsql
 			if ((mBehaviour & CommandBehavior.SchemaOnly) == 0)
 			{
 				mTableOid = 0; // InvalidOid
+				if (mSchemaTable != null)
+				{
+					mSchemaTable.Dispose();
+					mSchemaTable = null;
+				}
 				mRowInfo = null;
 				mColumns = 0;
 			}
@@ -1231,66 +1240,194 @@ namespace Pqsql
 			if (mPopulateAndFill)
 				throw new InvalidOperationException("PqsqlDataReader did not populate schema information yet");
 
-			DataTable result = new DataTable("SchemaTable");
+			if (mSchemaTable != null)
+				return mSchemaTable;
 
-			result.Columns.Add("ColumnName", typeof(string));
-			result.Columns.Add("ColumnOrdinal", typeof(int));
-			result.Columns.Add("ColumnSize", typeof(int));
-
-			result.Columns.Add("NumericPrecision", typeof(int));
-			result.Columns.Add("NumericScale", typeof(int));
-
-			result.Columns.Add("ProviderType", typeof(Type));
-
-			// TODO add more column information
-
-			PopulateSchemaTable(ref result);
-
-			return result;
+			// populates mSchemaTable
+			return PopulateSchemaTable();
 		}
 
 		// retrieve schema information from mRowInfo to populate schema DataTable
-		private void PopulateSchemaTable(ref DataTable schema)
+		private DataTable PopulateSchemaTable()
 		{
+			mSchemaTable = new DataTable("SchemaTable");
+
+			DataColumnCollection coll = mSchemaTable.Columns;
+
+			// populate columns in this order
+
+			coll.Add("AllowDBNull", typeof(bool));
+			coll.Add("BaseColumnName", typeof(string));
+			coll.Add("BaseCatalogName", typeof(string));
+			coll.Add("BaseSchemaName", typeof(string));
+			coll.Add("BaseTableName", typeof(string));
+
+			coll.Add("ColumnName", typeof(string));
+			coll.Add("ColumnOrdinal", typeof(int));
+			coll.Add("ColumnSize", typeof(int));
+
+			coll.Add("NumericPrecision", typeof(int));
+			coll.Add("NumericScale", typeof(int));
+
+			coll.Add("ProviderType", typeof(Type));
+
+			// only set IsKey when the user asked for it
+			if ((mBehaviour & CommandBehavior.KeyInfo) == CommandBehavior.KeyInfo)
+			{
+				coll.Add("IsKey", typeof(bool));
+				coll.Add("IsUnique", typeof(bool));
+				coll.Add("IsAliased", typeof(bool));
+				coll.Add("IsExpression", typeof(bool));
+				coll.Add("IsIdentity", typeof(bool));
+				coll.Add("IsAutoIncrement", typeof(bool));
+				coll.Add("IsRowVersion", typeof(bool));
+				coll.Add("IsHidden", typeof(bool));
+				coll.Add("IsLong", typeof(bool));
+				coll.Add("IsReadOnly", typeof(bool));
+			}
+
+
+			string catalogName = string.Empty;
+			string schemaName = string.Empty;
+			string tableName = string.Empty;
+
+			// column dictionary: maps columnname to (1=colPos, 2=defVal, 3=isKey, 4=notNull, 5=isUnique, 6=isUpdateable)
+			Dictionary<string, Tuple<short, object, bool, bool, bool, bool>> colDic = new Dictionary<string, Tuple<short, object, bool, bool, bool, bool>>();
+
+			GetSchemaTableInfo(ref catalogName, ref schemaName, ref tableName, ref colDic);
+
+			DataRowCollection srows = mSchemaTable.Rows;
+
 			for (int i = 0; i < mColumns; i++)
 			{
 				PqsqlColInfo ci = mRowInfo[i];
-				DataRow row = schema.NewRow();
 
-				row["ProviderType"] = ci.ProviderType;
-				row["ColumnName"] = ci.ColumnName;
-				row["ColumnOrdinal"] = i + 1;
-
+				string name = ci.ColumnName;
 				int modifier = ci.Modifier;
 				int size = ci.Size;
 
-				switch (ci.Oid)
+				DataRow row = mSchemaTable.NewRow();
+				int j = 0; // set fields by index
+
+				// 1=colPos, 2=defVal, 3=isKey, 4=notNull, 5=isUnique, 6=isUpdateable
+				Tuple<short, object, bool, bool, bool, bool> colInfo;
+
+				if (!colDic.TryGetValue(name, out colInfo))
 				{
-					case PqsqlDbType.Name:
-					case PqsqlDbType.Text:
-					case PqsqlDbType.Varchar:
-					case PqsqlDbType.Unknown:
-					case PqsqlDbType.Refcursor:
-						row["ColumnSize"] = modifier > -1 ? modifier - 4 : size;
-						row["NumericPrecision"] = 0;
-						row["NumericScale"] = 0;
-						break;
-
-					case PqsqlDbType.Numeric:
-						row["ColumnSize"] = size;
-						modifier -= 4;
-						row["NumericPrecision"] = (modifier >> 16) & ushort.MaxValue;
-						row["NumericScale"] = modifier & ushort.MaxValue;
-						break;
-
-					default:
-						row["ColumnSize"] = size;
-						row["NumericPrecision"] = 0;
-						row["NumericScale"] = 0;
-						break;
+					colInfo = new Tuple<short, object, bool, bool, bool, bool>(-1, null, false, false, false, false);
 				}
 
-				schema.Rows.Add(row);
+				row.SetField(j++, !colInfo.Item4); // AllowDBNull
+				row.SetField(j++, name); // BaseColumnName
+				row.SetField(j++, catalogName); // BaseCatalogName
+				row.SetField(j++, schemaName); // BaseSchemaName
+				row.SetField(j++, tableName); // BaseTableName
+
+				row.SetField(j++, name); // ColumnName
+				row.SetField(j++, i + 1); // ColumnOrdinal
+
+				switch (ci.Oid)
+				{
+				case PqsqlDbType.Name:
+				case PqsqlDbType.Text:
+				case PqsqlDbType.Varchar:
+				case PqsqlDbType.Unknown:
+				case PqsqlDbType.Refcursor:
+					row.SetField(j++, modifier > -1 ? modifier - 4 : size); // ColumnSize
+					row.SetField(j++, 0); // NumericPrecision
+					row.SetField(j++, 0); // NumericScale
+					break;
+
+				case PqsqlDbType.Numeric:
+					row.SetField(j++, size); // ColumnSize
+					modifier -= 4;
+					row.SetField(j++, (modifier >> 16) & ushort.MaxValue); // NumericPrecision
+					row.SetField(j++, modifier & ushort.MaxValue); // NumericScale
+					break;
+
+				default:
+					row.SetField(j++, size); // ColumnSize
+					row.SetField(j++, 0); // NumericPrecision
+					row.SetField(j++, 0); // NumericScale
+					break;
+				}
+
+				row.SetField(j++, ci.ProviderType); // ProviderType
+
+				if ((mBehaviour & CommandBehavior.KeyInfo) == CommandBehavior.KeyInfo)
+				{
+					row.SetField(j++, colInfo.Item3); // IsKey
+					row.SetField(j++, colInfo.Item5); // IsUnique
+					row.SetField(j++, false); // IsAliased TODO
+					row.SetField(j++, false); // IsExpression
+					row.SetField(j++, false); // IsAutoIncrement TODO
+					row.SetField(j++, false); // IsIdentity TODO
+					row.SetField(j++, false); // IsRowVersion
+					row.SetField(j++, false); // IsHidden
+					row.SetField(j++, false); // IsLong TODO blob?
+					row.SetField(j, colInfo.Item6); // IsReadOnly
+				}
+				
+				srows.Add(row);
+			}
+
+			return mSchemaTable;
+		}
+
+		// create fresh connection to retrieve table and column/key information
+		void GetSchemaTableInfo(ref string catalogName, ref string schemaName, ref string tableName, ref Dictionary<string, Tuple<short, object, bool, bool, bool, bool>> colDic)
+		{
+			const string tableInfo = "SELECT current_catalog, nc.nspname, c.relname FROM pg_namespace nc, pg_class c WHERE c.relnamespace = nc.oid AND c.relkind IN ('r','v') AND c.oid=:oid";
+
+			const string columnInfo = "SELECT ca.attname, ca.attnotnull, ca.attnum, ad.adsrc, pg_column_is_updatable(c.oid, ca.attnum, false), ind.indisunique, ind.indisprimary FROM ((pg_attribute ca LEFT JOIN pg_attrdef ad ON (attrelid = adrelid AND attnum = adnum)) JOIN (pg_class c JOIN pg_namespace nc ON (c.relnamespace = nc.oid)) ON (ca.attrelid = c.oid)) LEFT OUTER JOIN (SELECT a.attname, i.indisunique, i.indisprimary, i.indexrelid, i.indrelid FROM pg_catalog.pg_class ct, pg_catalog.pg_class ci, pg_catalog.pg_attribute a, pg_catalog.pg_index i WHERE ct.oid=i.indrelid AND ci.oid=i.indexrelid AND a.attrelid=ci.oid AND ct.oid=:oid) ind ON (ind.attname = ca.attname) WHERE ca.attnum > 0 and c.oid=:oid";
+
+			// we are already active in an executing connection
+			using (PqsqlConnection schemaconn = new PqsqlConnection(mConn.ConnectionString))
+			{
+				schemaconn.Open();
+
+				string query = string.Format("{0};{1}", tableInfo, columnInfo);
+
+				using (PqsqlCommand c = new PqsqlCommand(query, schemaconn))
+				{
+					PqsqlParameter parTableOid = new PqsqlParameter
+					{
+						ParameterName = "oid",
+						PqsqlDbType = PqsqlDbType.Oid,
+						Value = mTableOid
+					};
+
+					c.Parameters.Add(parTableOid);
+
+					using (PqsqlDataReader dr = c.ExecuteReader())
+					{
+						// get catalog and table information
+						while (dr.Read())
+						{
+							catalogName = dr.GetString(0);
+							schemaName = dr.GetString(1);
+							tableName = dr.GetString(2);
+						}
+
+						// issue next query
+						dr.NextResult();
+
+						// get column information
+						while (dr.Read())
+						{
+							string colName = dr.GetString(0);
+							bool notNull = dr.GetBoolean(1);
+							short colPos = dr.GetInt16(2);
+							object defVal = dr.GetValue(3);
+							bool isUpdateable = dr.GetBoolean(4);
+							bool isUnique = dr.GetBoolean(5);
+							bool isKey = dr.GetBoolean(6);
+
+							// add column info to dictionary
+							colDic.Add(colName, new Tuple<short, object, bool, bool, bool, bool>(colPos, defVal, isKey, notNull, isUnique, isUpdateable));
+						}
+					}
+				}
 			}
 		}
 
