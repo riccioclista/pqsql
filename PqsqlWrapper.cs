@@ -350,6 +350,10 @@ namespace Pqsql
 		public static extern unsafe sbyte* PQfname(IntPtr res, int column_number);
 		// char *PQfname(const PGresult *res, int column_number);
 
+		[DllImport("libpq.dll")]
+		public static extern uint PQftable(IntPtr res, int column_number);
+		// Oid PQftable(const PGresult *res, int column_number);
+
 		#endregion
 
 

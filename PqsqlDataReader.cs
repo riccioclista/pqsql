@@ -115,6 +115,8 @@ namespace Pqsql
 
 		// row information of current result set
 		PqsqlColInfo[] mRowInfo;
+		// the oid of the referenced table
+		private uint mTableOid;
 		// after statement execution, we populate column information mRowInfo and fill output parameter mCmd.Parameters
 		bool mPopulateAndFill;
 		// number of columns
@@ -170,6 +172,7 @@ namespace Pqsql
 			// clear mRowInfo only if CommandBehavior.SchemaOnly is off
 			if ((mBehaviour & CommandBehavior.SchemaOnly) == 0)
 			{
+				mTableOid = 0; // InvalidOid
 				mRowInfo = null;
 				mColumns = 0;
 			}
@@ -1623,6 +1626,9 @@ namespace Pqsql
 
 			for (int o = 0; o < mColumns; o++)
 			{
+				if (mTableOid == 0) // try to get table oid until we find a column that is simple reference to a table column
+					mTableOid = PqsqlWrapper.PQftable(mResult, o); // try to get table oid for column o 
+
 				mRowInfo[o] = new PqsqlColInfo();
 
 				PqsqlDbType oid = (PqsqlDbType) PqsqlWrapper.PQftype(mResult, o); // column type
