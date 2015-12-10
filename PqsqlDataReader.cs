@@ -1375,57 +1375,49 @@ namespace Pqsql
 		}
 
 		// create fresh connection to retrieve table and column/key information
-		void GetSchemaTableInfo(ref string catalogName, ref string schemaName, ref string tableName, ref Dictionary<string, Tuple<short, object, bool, bool, bool, bool>> colDic)
+		private void GetSchemaTableInfo(ref string catalogName, ref string schemaName, ref string tableName, ref Dictionary<string, Tuple<short, object, bool, bool, bool, bool>> colDic)
 		{
-			const string tableInfo = "SELECT current_catalog, nc.nspname, c.relname FROM pg_namespace nc, pg_class c WHERE c.relnamespace = nc.oid AND c.relkind IN ('r','v') AND c.oid=:oid";
+			const string query = "SELECT current_catalog, nc.nspname, c.relname FROM pg_namespace nc, pg_class c WHERE c.relnamespace = nc.oid AND c.relkind IN ('r','v') AND c.oid=:o;SELECT ca.attname, ca.attnotnull, ca.attnum, ad.adsrc, pg_column_is_updatable(c.oid, ca.attnum, false), ind.indisunique, ind.indisprimary FROM ((pg_attribute ca LEFT JOIN pg_attrdef ad ON (attrelid = adrelid AND attnum = adnum)) JOIN (pg_class c JOIN pg_namespace nc ON (c.relnamespace = nc.oid)) ON (ca.attrelid = c.oid)) LEFT OUTER JOIN (SELECT a.attname, i.indisunique, i.indisprimary, i.indexrelid, i.indrelid FROM pg_catalog.pg_class ct, pg_catalog.pg_class ci, pg_catalog.pg_attribute a, pg_catalog.pg_index i WHERE ct.oid=i.indrelid AND ci.oid=i.indexrelid AND a.attrelid=ci.oid AND ct.oid=:o) ind ON (ind.attname = ca.attname) WHERE ca.attnum > 0 and c.oid=:o";
 
-			const string columnInfo = "SELECT ca.attname, ca.attnotnull, ca.attnum, ad.adsrc, pg_column_is_updatable(c.oid, ca.attnum, false), ind.indisunique, ind.indisprimary FROM ((pg_attribute ca LEFT JOIN pg_attrdef ad ON (attrelid = adrelid AND attnum = adnum)) JOIN (pg_class c JOIN pg_namespace nc ON (c.relnamespace = nc.oid)) ON (ca.attrelid = c.oid)) LEFT OUTER JOIN (SELECT a.attname, i.indisunique, i.indisprimary, i.indexrelid, i.indrelid FROM pg_catalog.pg_class ct, pg_catalog.pg_class ci, pg_catalog.pg_attribute a, pg_catalog.pg_index i WHERE ct.oid=i.indrelid AND ci.oid=i.indexrelid AND a.attrelid=ci.oid AND ct.oid=:oid) ind ON (ind.attname = ca.attname) WHERE ca.attnum > 0 and c.oid=:oid";
-
-			// we are already active in an executing connection
+			// create fresh connection, we are already active in an executing connection
 			using (PqsqlConnection schemaconn = new PqsqlConnection(mConn.ConnectionString))
+			using (PqsqlCommand c = new PqsqlCommand(query, schemaconn))
 			{
-				schemaconn.Open();
-
-				string query = string.Format("{0};{1}", tableInfo, columnInfo);
-
-				using (PqsqlCommand c = new PqsqlCommand(query, schemaconn))
+				PqsqlParameter parTableOid = new PqsqlParameter
 				{
-					PqsqlParameter parTableOid = new PqsqlParameter
+					ParameterName = "o",
+					PqsqlDbType = PqsqlDbType.Oid,
+					Value = mTableOid
+				};
+
+				c.Parameters.Add(parTableOid);
+
+				using (PqsqlDataReader dr = c.ExecuteReader())
+				{
+					// get catalog and table information
+					while (dr.Read())
 					{
-						ParameterName = "oid",
-						PqsqlDbType = PqsqlDbType.Oid,
-						Value = mTableOid
-					};
+						catalogName = dr.GetString(0);
+						schemaName = dr.GetString(1);
+						tableName = dr.GetString(2);
+					}
 
-					c.Parameters.Add(parTableOid);
+					// issue next query
+					dr.NextResult();
 
-					using (PqsqlDataReader dr = c.ExecuteReader())
+					// get column information
+					while (dr.Read())
 					{
-						// get catalog and table information
-						while (dr.Read())
-						{
-							catalogName = dr.GetString(0);
-							schemaName = dr.GetString(1);
-							tableName = dr.GetString(2);
-						}
+						string colName = dr.GetString(0);
+						bool notNull = dr.GetBoolean(1);
+						short colPos = dr.GetInt16(2);
+						object defVal = dr.GetValue(3);
+						bool isUpdateable = dr.GetBoolean(4);
+						bool isUnique = dr.GetBoolean(5);
+						bool isKey = dr.GetBoolean(6);
 
-						// issue next query
-						dr.NextResult();
-
-						// get column information
-						while (dr.Read())
-						{
-							string colName = dr.GetString(0);
-							bool notNull = dr.GetBoolean(1);
-							short colPos = dr.GetInt16(2);
-							object defVal = dr.GetValue(3);
-							bool isUpdateable = dr.GetBoolean(4);
-							bool isUnique = dr.GetBoolean(5);
-							bool isKey = dr.GetBoolean(6);
-
-							// add column info to dictionary
-							colDic.Add(colName, new Tuple<short, object, bool, bool, bool, bool>(colPos, defVal, isKey, notNull, isUnique, isUpdateable));
-						}
+						// add column info to dictionary
+						colDic.Add(colName, new Tuple<short, object, bool, bool, bool, bool>(colPos, defVal, isKey, notNull, isUnique, isUpdateable));
 					}
 				}
 			}
