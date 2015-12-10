@@ -1781,7 +1781,9 @@ namespace Pqsql
 				mRowInfo[o].Size = size; // column size
 				mRowInfo[o].Modifier = modifier; // column modifier
 
-				PqsqlTypeRegistry.PqsqlTypeName tn = PqsqlTypeRegistry.Get(oid); // lookup OID
+				// try to lookup OID, otherwise try to guess type and fetch type specs from DB
+				PqsqlTypeRegistry.PqsqlTypeName tn = PqsqlTypeRegistry.Get(oid) ?? PqsqlTypeRegistry.FetchType(oid, mConn.ConnectionString);
+
 				mRowInfo[o].DataTypeName = tn.DataTypeName; // cache PG datatype name
 				mRowInfo[o].ProviderType = tn.ProviderType; // cache corresponding ProviderType
 				mRowInfo[o].GetValue = tn.GetValue; // cache GetValue function

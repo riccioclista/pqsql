@@ -100,8 +100,14 @@ namespace Pqsql
 
 						PqsqlDbType oid = p.PqsqlDbType;
 
-						object v = p.Value;
 						PqsqlTypeRegistry.PqsqlTypeName tn = PqsqlTypeRegistry.Get(oid & ~PqsqlDbType.Array);
+						if (tn == null)
+						{
+							// do not try to fetch datatype specs with PqsqlTypeRegistry.FetchType() here, just bail out
+							throw new NotSupportedException("Datatype " + (oid & ~PqsqlDbType.Array) + " not supported");
+						}
+
+						object v = p.Value;
 
 						if (v != null && v != DBNull.Value && (oid & PqsqlDbType.Array) != PqsqlDbType.Array)
 						{

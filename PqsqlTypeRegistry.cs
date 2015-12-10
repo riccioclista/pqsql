@@ -183,16 +183,16 @@ namespace Pqsql
 					}
 				}
 			},
-			{ PqsqlDbType.Char,
+			{ PqsqlDbType.BPChar,
 				new PqsqlTypeName {
-					DataTypeName="char",
+					DataTypeName="bpchar",
 					TypeCode=TypeCode.String,
-					ProviderType=typeof(char[]),
+					ProviderType=typeof(string),
 					DbType=DbType.StringFixedLength,
 					ArrayDbType=PqsqlDbType.Array, // TODO
-					GetValue=null,
-					SetValue=null,
-					SetArrayItem = null
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
+					SetValue=setText,
+					SetArrayItem=setTextArray
 				}
 			},
 			{ PqsqlDbType.Text,
@@ -229,6 +229,18 @@ namespace Pqsql
 					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
 					SetValue = setText,
 					SetArrayItem = setTextArray
+				}
+			},
+			{ PqsqlDbType.Char,
+				new PqsqlTypeName {
+					DataTypeName="char",
+					TypeCode=TypeCode.SByte,
+					ProviderType=typeof(sbyte),
+					DbType=DbType.SByte,
+					ArrayDbType=PqsqlDbType.Array, // TODO
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetByte(res,row,ord),
+					SetValue=null, // TODO
+					SetArrayItem = null // TODO
 				}
 			},
 			{ PqsqlDbType.Bytea,
@@ -694,11 +706,59 @@ namespace Pqsql
 		public static PqsqlTypeName Get(PqsqlDbType oid)
 		{
 			PqsqlTypeName result;
-			if (mPqsqlDbTypeDict.TryGetValue(oid, out result))
+			return mPqsqlDbTypeDict.TryGetValue(oid, out result) ? result : null;
+		}
+
+		// for PqsqlDataReader
+		public static PqsqlTypeName FetchType(PqsqlDbType oid, string connstring)
+		{
+			using (PqsqlConnection conn = new PqsqlConnection(connstring))
+			using (PqsqlCommand cmd = conn.CreateCommand())
 			{
-				return result;
+				// try to guess the type mapping
+				cmd.CommandText = "select typcategory,typname from pg_type where oid=:o";
+
+				PqsqlParameter p_oid = cmd.CreateParameter();
+				p_oid.PqsqlDbType = PqsqlDbType.Oid;
+				p_oid.Value = oid;
+				p_oid.ParameterName = "o";
+
+				cmd.Parameters.Add(p_oid);
+
+				using (PqsqlDataReader reader = cmd.ExecuteReader())
+				{
+					if (reader.Read())
+					{
+						byte typcategory = reader.GetByte(0);
+
+						// see http://www.postgresql.org/docs/current/static/catalog-pg-type.html#CATALOG-TYPCATEGORY-TABLE
+						if (typcategory == 'S')
+						{
+							string typname = reader.GetString(1);
+
+							// assume that we can use this type just like PqsqlDbType.Text (e.g., citext)
+							PqsqlTypeName tn = new PqsqlTypeName
+							{
+								DataTypeName = typname,
+								TypeCode = TypeCode.String,
+								ProviderType = typeof (string),
+								DbType = DbType.String,
+								ArrayDbType = PqsqlDbType.Array,
+								GetValue = (res, row, ord, typmod) => PqsqlDataReader.GetString(res, row, ord),
+								SetValue = setText,
+								SetArrayItem = setTextArray
+							};
+
+							// TODO cache maintainance not implemented here! what about different databases?
+							mPqsqlDbTypeDict.Add(oid, tn);
+
+							return tn;
+						}
+					}
+				}
 			}
-			throw new NotSupportedException("Datatype not supported");
+
+			throw new NotSupportedException("Datatype " + oid + " not supported");
 		}
 
 		// for PqsqlParameter

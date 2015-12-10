@@ -85,9 +85,9 @@ namespace Pqsql
 		#region Character Types
 
 		/// <summary>
-		/// Corresponds to the PostgreSQL "char(n)"type.
+		/// Corresponds to the PostgreSQL "char(n)" a.k.a. blank-padded character type.
 		/// </summary>
-		Char = 18,
+		BPChar = 1042,
 
 		/// <summary>
 		/// Corresponds to the PostgreSQL "text" type.
@@ -103,6 +103,11 @@ namespace Pqsql
 		/// Corresponds to the PostgreSQL internal "name" type.
 		/// </summary>
 		Name = 19,
+
+		/// <summary>
+		/// Corresponds to the PostgreSQL internal "char" type.
+		/// </summary>
+		Char = 18,
 
 		#endregion
 
