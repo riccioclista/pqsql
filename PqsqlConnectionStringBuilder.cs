@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Data.Common;
 
 namespace Pqsql
@@ -136,50 +137,77 @@ namespace Pqsql
 
 		delegate void RemoveAliasAddKey(string alias, string key);
 
+		//
+		// Summary:
+		//     Gets or sets the connection string associated with the System.Data.Common.DbConnectionStringBuilder.
+		//
+		// Returns:
+		//     The current connection string, created from the key/value pairs that are
+		//     contained within the System.Data.Common.DbConnectionStringBuilder. The default
+		//     value is an empty string.
+		//
+		// Exceptions:
+		//   System.ArgumentException:
+		//     An invalid connection string argument has been supplied.
+		[RefreshProperties(RefreshProperties.All)]
+		public new string ConnectionString
+		{
+			get { return base.ConnectionString; }
+
+			set
+			{
+				if (string.IsNullOrEmpty(value) || base.ConnectionString.Equals(value))
+					return;
+
+				base.ConnectionString = value;
+
+				// now clean up connection string and use libpq keywords
+				RemoveAliasAddKey remAdd = delegate(string a, string k)
+				{
+					object o;
+					if (TryGetValue(a, out o))
+					{
+						Remove(a);
+						Add(k, o);
+					}
+				};
+
+				RemoveAliasAddKey remAddHostPort = delegate(string a, string k)
+				{
+					object o;
+					if (TryGetValue(a, out o))
+					{
+						Remove(a);
+
+						string dataSource = (string) o;
+						int i = dataSource.IndexOf(','); // Data Source=IP,PORT
+
+						if (i == -1)
+						{
+							Add(k, o);
+						}
+						else
+						{
+							Add(host, dataSource.Substring(0, i));
+							Add(port, dataSource.Substring(i + 1));
+						}
+					}
+				};
+
+				Array.ForEach(hostAlias, a => remAddHostPort(a, host));
+				Array.ForEach(dbnameAlias, a => remAdd(a, dbname));
+				Array.ForEach(userAlias, a => remAdd(a, user));
+				Array.ForEach(passwordAlias, a => remAdd(a, password));
+				Array.ForEach(connect_timeoutAlias, a => remAdd(a, connect_timeout));
+			}
+		}
+
+
 		// E.g.
 		// host=localhost; port=5432; user=postgres; password=P4$$word; dbname=postgres; connect_timeout=10
 		public PqsqlConnectionStringBuilder(string s)
 		{
 			ConnectionString = s;
-
-			// now clean up connection string and use libpq keywords
-			RemoveAliasAddKey remAdd = delegate(string a, string k)
-			{
-				object o;
-				if (TryGetValue(a, out o))
-				{
-					Remove(a);
-					Add(k, o);
-				}
-			};
-
-			RemoveAliasAddKey remAddHostPort = delegate(string a, string k)
-			{
-				object o;
-				if (TryGetValue(a, out o))
-				{
-					Remove(a);
-
-					string dataSource = (string) o;
-					int i = dataSource.IndexOf(','); // Data Source=IP,PORT
-
-					if (i == -1)
-					{
-						Add(k, o);
-					}
-					else
-					{
-						Add(host, dataSource.Substring(0, i));
-						Add(port, dataSource.Substring(i + 1));
-					}
-				}
-			};
-
-			Array.ForEach(hostAlias, a => remAddHostPort(a, host));
-			Array.ForEach(dbnameAlias, a => remAdd(a, dbname));
-			Array.ForEach(userAlias, a => remAdd(a, user));
-			Array.ForEach(passwordAlias, a => remAdd(a, password));
-			Array.ForEach(connect_timeoutAlias, a => remAdd(a, connect_timeout));
 		}
 	}
 }
