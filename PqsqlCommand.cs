@@ -333,8 +333,8 @@ namespace Pqsql
 						err = PqsqlUTF8Statement.CreateStringFromUTF8(new IntPtr(b));
 					}
 				}
-				
-				throw new PqsqlException("Could not cancel command: " + err);
+
+				throw new PqsqlException("Could not cancel command «" + mCmdText + "»: " + err);
 			}
 		}
 
@@ -550,7 +550,7 @@ namespace Pqsql
 				}
 
 				string err = mConn.GetErrorMessage();
-				throw new PqsqlException(err);
+				throw new PqsqlException("Could not set statement timeout to «" + CommandTimeout + "»: " + err);
 			}
 		}
 
@@ -616,7 +616,7 @@ namespace Pqsql
 				int j = mParams.IndexOf(p);
 
 				if (j < 0)
-					throw new PqsqlException("Could not find parameter »" + p + "« in PqsqlCommand.Parameters");
+					throw new PqsqlException("Could not find parameter «" + p + "» in PqsqlCommand.Parameters");
 
 				paramIndex.Append(j + 1);
 				sb.Append(paramIndex);

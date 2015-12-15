@@ -431,7 +431,7 @@ namespace Pqsql
 				{
 					string err = GetErrorMessage();
 					Close(); // force release of mConnection memory
-					throw new PqsqlException(err);
+					throw new PqsqlException("Could not reset connection with connection string «" + mConnectionStringBuilder.ConnectionString + "»: " + err);
 				}
 
 				// successfully reestablished connection
@@ -463,7 +463,7 @@ namespace Pqsql
 				{
 					string err = GetErrorMessage();
 					Close(); // force release of mConnection memory
-					throw new PqsqlException(err);
+					throw new PqsqlException("Could not create connection with connection string «" + mConnectionStringBuilder.ConnectionString + "»: " + err);
 				}
 
 				mNewConnectionString = false;

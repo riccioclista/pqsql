@@ -88,6 +88,25 @@ namespace Pqsql
 		}
 
 
+		internal string GetErrorMessage()
+		{
+			string msg = string.Empty;
+
+			if (mConn != IntPtr.Zero)
+			{
+				unsafe
+				{
+					IntPtr err = new IntPtr(PqsqlWrapper.PQerrorMessage(mConn));
+
+					if (err != IntPtr.Zero)
+					{
+						msg = PqsqlUTF8Statement.CreateStringFromUTF8(err);
+					}
+				}
+			}
+
+			return msg;
+		}
 
 
 		public override void Close()
@@ -127,7 +146,7 @@ namespace Pqsql
 
 			if (ret < 0)
 			{
-				throw new PqsqlException("lo_truncate64 failed");
+				throw new PqsqlException("Could not truncate large object to " + value + " bytes: " + GetErrorMessage());
 			}
 		}
 
@@ -138,7 +157,7 @@ namespace Pqsql
 				throw new ArgumentNullException("buffer");
 
 			if (!CanRead)
-				throw new NotSupportedException("Cannot read from large object");
+				throw new NotSupportedException("Reading from large object is turned off");
 
 			int blen = buffer.Length;
 
@@ -169,7 +188,7 @@ namespace Pqsql
 				throw new ArgumentNullException("buffer");
 
 			if (!CanWrite)
-				throw new NotSupportedException("Cannot write from large object");
+				throw new NotSupportedException("Writing to large object is turned off");
 
 			int blen = buffer.Length;
 
@@ -204,7 +223,7 @@ namespace Pqsql
 	
 			if (ret < 0)
 			{
-				throw new PqsqlException("lo_write failed");
+				throw new PqsqlException("Could not write to large object: " + GetErrorMessage());
 			}
 		}
 

@@ -1571,7 +1571,7 @@ namespace Pqsql
 			if (Execute() == false)
 			{
 				string err = mConn.GetErrorMessage();
-				throw new PqsqlException(err);
+				throw new PqsqlException("Could not execute statement «" + mStatements[mStmtNum] + "»: " + err);
 			}
 
 			// start with a new result set
@@ -1787,8 +1787,9 @@ namespace Pqsql
 					if (j < 0)
 					{
 						// throw error if we didn't find the corresponding parameter name in our parameter list
-						throw new PqsqlException("Received unexpected output parameter »" + colName + "« when calling function »" +
-							mCmd.CommandText + "«. Please adjust parameter names in PqsqlCommand.Parameters.");
+						PqsqlException e = new PqsqlException("Received unrecognized output parameter «" + colName + "» when calling function «" + mCmd.CommandText + "»");
+						e.Hint = "Please adjust parameter names in PqsqlCommand.Parameters";
+						throw e;
 					}
 
 					// set new Value for found parameter based on 1st row

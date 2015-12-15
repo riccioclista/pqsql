@@ -77,6 +77,7 @@ namespace Pqsql
 		public string Hint
 		{
 			get { return mHint; }
+			set { if (value != null && value != mHint) mHint = value; }
 		}
 
 	}

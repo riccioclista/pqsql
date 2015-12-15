@@ -172,11 +172,11 @@ namespace Pqsql
 					return;
 
 				case ExecStatus.PGRES_EMPTY_QUERY:
-					throw new PqsqlException("Cannot commit: no transaction open");
+					throw new PqsqlException("Cannot commit: connection or transaction is closed");
 
 				default:
 					string err = mConn.GetErrorMessage();
-					throw new PqsqlException(err);
+					throw new PqsqlException("Could not commit transaction: " + err);
 			}
 		}
 
@@ -193,11 +193,11 @@ namespace Pqsql
 					return;
 
 				case ExecStatus.PGRES_EMPTY_QUERY:
-					throw new PqsqlException("Cannot rollback: no transaction open");
+					throw new PqsqlException("Cannot rollback: connection or transaction is closed");
 
 				default:
 					string err = mConn.GetErrorMessage();
-					throw new PqsqlException(err);
+					throw new PqsqlException("Could not rollback transaction: " + err);
 			}
 		}
 

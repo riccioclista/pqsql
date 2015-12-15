@@ -110,7 +110,7 @@ namespace Pqsql
 
 			bailout:
 			string err = mConn.GetErrorMessage();
-			throw new PqsqlException(err);
+			throw new PqsqlException("Could not execute statement «" + copy_query + "»: " + err);
 		}
 
 
@@ -127,7 +127,7 @@ namespace Pqsql
 
 			if (ret != 1)
 			{
-				err = err.Insert(0, "END failed: ");
+				err = err.Insert(0, "Could not send end-of-data indication: ");
 				goto bailout;
 			}
 
@@ -160,14 +160,14 @@ namespace Pqsql
 						PqsqlWrapper.PQclear(res);
 					}
 
-					err = err.Insert(0, "COPY FROM failed(" + s + "," + ret + "): ");
+					err = err.Insert(0, "Cancelled COPY FROM while still in COPY_IN mode (" + s + "," + ret + "): ");
 
 					goto bailout;
 				}
 				
 				if (s != ExecStatus.PGRES_COMMAND_OK)
 				{
-					err = err.Insert(0, "COPY FROM failed(" + s + "): ");
+					err = err.Insert(0, "COPY FROM failed (" + s + "): ");
 
 					goto bailout;
 				}
@@ -245,7 +245,7 @@ namespace Pqsql
 
 				if (s != ExecStatus.PGRES_COMMAND_OK)
 				{
-					err = err.Insert(0, "COPY FROM failed(" + s + "): ");
+					err = err.Insert(0, "COPY FROM failed (" + s + "): ");
 
 					goto bailout;
 				}
