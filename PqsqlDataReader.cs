@@ -1429,6 +1429,8 @@ namespace Pqsql
 				case PqsqlDbType.Unknown:
 				case PqsqlDbType.Name:
 				case PqsqlDbType.Refcursor:
+				case PqsqlDbType.BPChar:
+				case PqsqlDbType.Char:
 					return GetString(mResult, mRowNum, ordinal);
 			}
 
