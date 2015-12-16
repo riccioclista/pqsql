@@ -19,7 +19,7 @@ namespace Pqsql
 
 		object mValue;
 
-		internal static readonly char[] TrimStart = { ' ', ':', '@', '\t', '\n' };
+		internal static readonly char[] TrimStart = { ' ', ':', '\t', '\n' };
 
 		// Summary:
 		//     Initializes a new instance of the System.Data.Common.DbParameter class.
@@ -55,26 +55,6 @@ namespace Pqsql
 			mSize = size;
 			SourceColumn = sourceColumn;
 		}
-
-#if false
-		public PqsqlParameter(string parameterName, DbType parameterType, int size, string sourceColumn, ParameterDirection direction, bool isNullable, byte precision, byte scale, DataRowVersion sourceVersion, object value)
-			: this()
-		{
-			ParameterName = parameterName;
-			Size = size;
-			SourceColumn = sourceColumn;
-			Direction = direction;
-			IsNullable = isNullable;
-			Precision = precision;
-			Scale = scale;
-			SourceVersion = sourceVersion;
-			Value = value;
-
-			DbType = parameterType;
-		}
-#endif
-
-
 
 		// Summary:
 		//     Gets or sets the System.Data.DbType of the parameter.
@@ -117,6 +97,7 @@ namespace Pqsql
 				mDbType = PqsqlTypeRegistry.GetDbType(value & ~PqsqlDbType.Array);
 			}
 		}
+
 		//
 		// Summary:
 		//     Gets or sets a value that indicates whether the parameter is input-only,
@@ -135,6 +116,7 @@ namespace Pqsql
 			get;
 			set;
 		}
+
 		//
 		// Summary:
 		//     Gets or sets a value that indicates whether the parameter accepts null values.
@@ -149,6 +131,7 @@ namespace Pqsql
 			get;
 			set;
 		}
+
 		//
 		// Summary:
 		//     Gets or sets the name of the System.Data.Common.DbParameter.
