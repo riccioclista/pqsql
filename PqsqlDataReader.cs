@@ -7,6 +7,16 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Runtime.InteropServices;
 
+// declare SchemaTable column information
+//
+// Item1: column position
+// Item2: default value
+// Item3: isKey
+// Item4: notNull
+// Item5: isUnique
+// Item6: isUpdateable
+using SchemaTableColumnInfo = System.Tuple<short, object, bool, bool, bool, bool>;
+
 namespace Pqsql
 {
 	/// <summary>
@@ -23,73 +33,13 @@ namespace Pqsql
 		public Func<IntPtr, int, int, int, object> GetValue { get; set; }
 	};
 
+
 	/// <summary>
-	/// implements IEnumerator for PqsqlDataReader.GetEnumerator()
+	/// Specific row names used in PqsqlDataReader.GetSchemaTable()
 	/// </summary>
-	internal sealed class PqsqlEnumerator : IEnumerator
+	internal struct PqsqlSchemaTableColumn
 	{
-		private readonly PqsqlDataReader mReader;
-
-		public PqsqlEnumerator(PqsqlDataReader reader)
-		{
-			mReader = reader;
-		}
-
-		// Summary:
-		//     Gets the current element in the collection.
-		//
-		// Returns:
-		//     The current element in the collection.
-		//
-		// Exceptions:
-		//   System.InvalidOperationException:
-		//     The enumerator is positioned before the first element of the collection or
-		//     after the last element.
-		public object Current
-		{
-			get
-			{
-				object[] vals;
-
-				if (mReader != null)
-				{
-					vals = new object[mReader.FieldCount];
-					mReader.GetValues(vals);
-				}
-				else
-					vals = null;
-
-				return vals;
-			}
-		}
-
-		// Summary:
-		//     Advances the enumerator to the next element of the collection.
-		//
-		// Returns:
-		//     true if the enumerator was successfully advanced to the next element; false
-		//     if the enumerator has passed the end of the collection.
-		//
-		// Exceptions:
-		//   System.InvalidOperationException:
-		//     The collection was modified after the enumerator was created.
-		public bool MoveNext()
-		{
-			return mReader != null && (mReader.Read() || mReader.NextResult());
-		}
-
-		//
-		// Summary:
-		//     Sets the enumerator to its initial position, which is before the first element
-		//     in the collection.
-		//
-		// Exceptions:
-		//   System.InvalidOperationException:
-		//     The collection was modified after the enumerator was created.
-		public void Reset()
-		{
-			throw new InvalidOperationException("Cannot reset PqsqlDataReader");
-		}
+		internal const string TypeOid = "TypeOid";
 	};
 
 
@@ -98,7 +48,14 @@ namespace Pqsql
 	/// </summary>
 	public sealed class PqsqlDataReader : DbDataReader
 	{
-		// the current PGresult* buffer
+#region PqsqlDataReader statements
+			// two queries: retrieve first catalog and table information and then column information
+			// parameter :o is table oid
+			const string CatalogColumnByTableOid = "SELECT current_catalog, n.nspname, c.relname FROM pg_namespace n, pg_class c WHERE c.relnamespace=n.oid AND c.relkind IN ('r','v') AND c.oid=:o;SELECT ca.attname, ca.attnotnull, ca.attnum, ad.adsrc, pg_column_is_updatable(c.oid, ca.attnum, false), ind.indisunique, ind.indisprimary FROM ((pg_attribute ca LEFT JOIN pg_attrdef ad ON (attrelid = adrelid AND attnum = adnum)) JOIN (pg_class c JOIN pg_namespace nc ON (c.relnamespace = nc.oid)) ON (ca.attrelid = c.oid)) LEFT OUTER JOIN (SELECT a.attname, i.indisunique, i.indisprimary, i.indexrelid, i.indrelid FROM pg_catalog.pg_class ct, pg_catalog.pg_class ci, pg_catalog.pg_attribute a, pg_catalog.pg_index i WHERE ct.oid=i.indrelid AND ci.oid=i.indexrelid AND a.attrelid=ci.oid AND ct.oid=:o) ind ON (ind.attname = ca.attname) WHERE ca.attnum > 0 and c.oid=:o";
+#endregion
+
+
+			// the current PGresult* buffer
 		IntPtr mResult;
 
 		/// <summary>
@@ -977,7 +934,7 @@ namespace Pqsql
 		[EditorBrowsable(EditorBrowsableState.Never)]
 		public override IEnumerator GetEnumerator()
 		{
-			return new PqsqlEnumerator(this);
+			return new DbEnumerator(this);
 		}
 
 		//
@@ -1256,43 +1213,65 @@ namespace Pqsql
 
 			// populate columns in this order
 
-			coll.Add("AllowDBNull", typeof(bool));
-			coll.Add("BaseColumnName", typeof(string));
-			coll.Add("BaseCatalogName", typeof(string));
-			coll.Add("BaseSchemaName", typeof(string));
-			coll.Add("BaseTableName", typeof(string));
+			coll.Add(PqsqlSchemaTableColumn.TypeOid, typeof(PqsqlDbType)); // type oid used in PqsqlCommandBuilder.ApplyParameterInfo
+			coll.Add(SchemaTableColumn.AllowDBNull, typeof(bool)); // whether value DBNull is allowed.
+			coll.Add(SchemaTableColumn.BaseColumnName, typeof(string)); // name of the column in the schema table.
+			coll.Add(SchemaTableOptionalColumn.BaseCatalogName, typeof(string)); // name of the catalog associated with the results of the latest query.
+			coll.Add(SchemaTableColumn.BaseSchemaName, typeof(string)); // name of the schema in the schema table.
+			coll.Add(SchemaTableColumn.BaseTableName, typeof(string)); // name of the table in the schema table.
 
-			coll.Add("ColumnName", typeof(string));
-			coll.Add("ColumnOrdinal", typeof(int));
-			coll.Add("ColumnSize", typeof(int));
+			coll.Add(SchemaTableColumn.ColumnName, typeof(string)); // name of the column in the schema table.
+			coll.Add(SchemaTableColumn.ColumnOrdinal, typeof(int)); // ordinal of the column.
+			coll.Add(SchemaTableColumn.ColumnSize, typeof(int)); // size of the column.
 
-			coll.Add("NumericPrecision", typeof(int));
-			coll.Add("NumericScale", typeof(int));
+			coll.Add(SchemaTableColumn.NumericPrecision, typeof(int)); // precision of the column data, if the data is numeric.
+			coll.Add(SchemaTableColumn.NumericScale, typeof(int)); // scale of the column data, if the data is numeric.
 
-			coll.Add("ProviderType", typeof(Type));
-
-			// only set IsKey when the user asked for it
+			coll.Add(SchemaTableColumn.ProviderType, typeof(string)); // provider-specific data type of the column.
+			coll.Add(SchemaTableColumn.DataType, typeof(Type)); // type of data in the column.
+			
+			// only set key information when the user asked for it
 			if ((mBehaviour & CommandBehavior.KeyInfo) == CommandBehavior.KeyInfo)
 			{
-				coll.Add("IsKey", typeof(bool));
-				coll.Add("IsUnique", typeof(bool));
-				coll.Add("IsAliased", typeof(bool));
-				coll.Add("IsExpression", typeof(bool));
-				coll.Add("IsIdentity", typeof(bool));
-				coll.Add("IsAutoIncrement", typeof(bool));
-				coll.Add("IsRowVersion", typeof(bool));
-				coll.Add("IsHidden", typeof(bool));
-				coll.Add("IsLong", typeof(bool));
-				coll.Add("IsReadOnly", typeof(bool));
+				coll.Add(SchemaTableColumn.IsKey, typeof(bool)); // whether this column is a key for the table.
+				coll.Add(SchemaTableColumn.IsUnique, typeof(bool)); // whether a unique constraint applies to this column.
+				coll.Add(SchemaTableColumn.IsAliased, typeof(bool)); // whether this column is aliased.
+				coll.Add(SchemaTableColumn.IsExpression, typeof(bool)); // whether this column is an expression.
+				coll.Add(SchemaTableOptionalColumn.IsAutoIncrement, typeof(bool)); // whether the column values in the column are automatically incremented.
+				coll.Add(SchemaTableOptionalColumn.IsRowVersion, typeof(bool)); // whether this column contains row version information.
+				coll.Add(SchemaTableOptionalColumn.IsHidden, typeof(bool)); // whether this column is hidden.
+				coll.Add(SchemaTableColumn.IsLong, typeof(bool)); // whether this column contains long data.
+				coll.Add(SchemaTableOptionalColumn.IsReadOnly, typeof(bool)); // whether this column is read-only.
+				coll.Add(SchemaTableOptionalColumn.DefaultValue, typeof(object)); // default value for the column.
 			}
+		
+#if false
+		SchemaTableColumn.NonVersionedProviderType // non-versioned provider-specific data type of the column.
+		SchemaTableOptionalColumn.ProviderSpecificDataType // provider-specific data type of the column.
+		SchemaTableOptionalColumn.AutoIncrementSeed; //     Specifies the value at which the series for new identity columns is assigned.		
+		SchemaTableOptionalColumn.AutoIncrementStep; //     Specifies the increment between values in the identity column.
+		SchemaTableOptionalColumn.BaseColumnNamespace; //     The namespace of the column.
+		SchemaTableOptionalColumn.BaseServerName; //     The server name of the column.
+		SchemaTableOptionalColumn.BaseTableNamespace; //     The namespace for the table that contains the column.
+		SchemaTableOptionalColumn.ColumnMapping; //     Specifies the mapping for the column.
+		SchemaTableOptionalColumn.Expression; //     The expression used to compute the column.
+#endif
+
+			FillSchemaTableColumns();
+
+			return mSchemaTable;
+		}
 
 
+		// 
+		private void FillSchemaTableColumns()
+		{
 			string catalogName = string.Empty;
 			string schemaName = string.Empty;
 			string tableName = string.Empty;
 
 			// column dictionary: maps columnname to (1=colPos, 2=defVal, 3=isKey, 4=notNull, 5=isUnique, 6=isUpdateable)
-			Dictionary<string, Tuple<short, object, bool, bool, bool, bool>> colDic = new Dictionary<string, Tuple<short, object, bool, bool, bool, bool>>();
+			Dictionary<string, SchemaTableColumnInfo> colDic = new Dictionary<string, SchemaTableColumnInfo>();
 
 			GetSchemaTableInfo(ref catalogName, ref schemaName, ref tableName, ref colDic);
 
@@ -1310,13 +1289,14 @@ namespace Pqsql
 				int j = 0; // set fields by index
 
 				// 1=colPos, 2=defVal, 3=isKey, 4=notNull, 5=isUnique, 6=isUpdateable
-				Tuple<short, object, bool, bool, bool, bool> colInfo;
+				SchemaTableColumnInfo colInfo;
 
 				if (!colDic.TryGetValue(name, out colInfo))
 				{
-					colInfo = new Tuple<short, object, bool, bool, bool, bool>(-1, null, false, false, false, false);
+					colInfo = new SchemaTableColumnInfo(-1, null, false, false, false, false);
 				}
 
+				row.SetField(j++, ci.Oid); // TypeOid
 				row.SetField(j++, !colInfo.Item4); // AllowDBNull
 				row.SetField(j++, name); // BaseColumnName
 				row.SetField(j++, catalogName); // BaseCatalogName
@@ -1333,6 +1313,8 @@ namespace Pqsql
 				case PqsqlDbType.Varchar:
 				case PqsqlDbType.Unknown:
 				case PqsqlDbType.Refcursor:
+				case PqsqlDbType.BPChar:
+				case PqsqlDbType.Char:
 					row.SetField(j++, modifier > -1 ? modifier - 4 : size); // ColumnSize
 					row.SetField(j++, 0); // NumericPrecision
 					row.SetField(j++, 0); // NumericScale
@@ -1352,7 +1334,8 @@ namespace Pqsql
 					break;
 				}
 
-				row.SetField(j++, ci.ProviderType); // ProviderType
+				row.SetField(j++, ci.DataTypeName); // ProviderType
+				row.SetField(j++, ci.ProviderType); // DataType
 
 				if ((mBehaviour & CommandBehavior.KeyInfo) == CommandBehavior.KeyInfo)
 				{
@@ -1361,27 +1344,23 @@ namespace Pqsql
 					row.SetField(j++, false); // IsAliased TODO
 					row.SetField(j++, false); // IsExpression
 					row.SetField(j++, false); // IsAutoIncrement TODO
-					row.SetField(j++, false); // IsIdentity TODO
 					row.SetField(j++, false); // IsRowVersion
 					row.SetField(j++, false); // IsHidden
 					row.SetField(j++, false); // IsLong TODO blob?
-					row.SetField(j, colInfo.Item6); // IsReadOnly
+					row.SetField(j++, !colInfo.Item6); // IsReadOnly
+					row.SetField(j, colInfo.Item2); // DefaultValue
 				}
-				
+
 				srows.Add(row);
 			}
-
-			return mSchemaTable;
 		}
 
 		// create fresh connection to retrieve table and column/key information
 		private void GetSchemaTableInfo(ref string catalogName, ref string schemaName, ref string tableName, ref Dictionary<string, Tuple<short, object, bool, bool, bool, bool>> colDic)
 		{
-			const string query = "SELECT current_catalog, nc.nspname, c.relname FROM pg_namespace nc, pg_class c WHERE c.relnamespace = nc.oid AND c.relkind IN ('r','v') AND c.oid=:o;SELECT ca.attname, ca.attnotnull, ca.attnum, ad.adsrc, pg_column_is_updatable(c.oid, ca.attnum, false), ind.indisunique, ind.indisprimary FROM ((pg_attribute ca LEFT JOIN pg_attrdef ad ON (attrelid = adrelid AND attnum = adnum)) JOIN (pg_class c JOIN pg_namespace nc ON (c.relnamespace = nc.oid)) ON (ca.attrelid = c.oid)) LEFT OUTER JOIN (SELECT a.attname, i.indisunique, i.indisprimary, i.indexrelid, i.indrelid FROM pg_catalog.pg_class ct, pg_catalog.pg_class ci, pg_catalog.pg_attribute a, pg_catalog.pg_index i WHERE ct.oid=i.indrelid AND ci.oid=i.indexrelid AND a.attrelid=ci.oid AND ct.oid=:o) ind ON (ind.attname = ca.attname) WHERE ca.attnum > 0 and c.oid=:o";
-
 			// create fresh connection, we are already active in an executing connection
 			using (PqsqlConnection schemaconn = new PqsqlConnection(mConn.ConnectionString))
-			using (PqsqlCommand c = new PqsqlCommand(query, schemaconn))
+			using (PqsqlCommand c = new PqsqlCommand(CatalogColumnByTableOid, schemaconn))
 			{
 				PqsqlParameter parTableOid = new PqsqlParameter
 				{
@@ -1417,7 +1396,7 @@ namespace Pqsql
 						bool isKey = dr.GetBoolean(6);
 
 						// add column info to dictionary
-						colDic.Add(colName, new Tuple<short, object, bool, bool, bool, bool>(colPos, defVal, isKey, notNull, isUnique, isUpdateable));
+						colDic.Add(colName, new SchemaTableColumnInfo(colPos, defVal, isKey, notNull, isUnique, isUpdateable));
 					}
 				}
 			}
