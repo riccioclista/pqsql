@@ -9,6 +9,14 @@ namespace Pqsql
 	/// </summary>
 	internal static class PqsqlTypeRegistry
 	{
+#region PqsqlTypeRegistry statements
+			
+			// retrieve type category and name from type oid
+			// parameter :o is type oid
+			const string TypeCategoryByTypeOid = "select typcategory,typname from pg_type where oid=:o";
+
+#endregion
+
 		public sealed class PqsqlTypeName
 		{
 			public string DataTypeName { get; set; }
@@ -712,16 +720,16 @@ namespace Pqsql
 		// for PqsqlDataReader
 		public static PqsqlTypeName FetchType(PqsqlDbType oid, string connstring)
 		{
+			// try to guess the type mapping
 			using (PqsqlConnection conn = new PqsqlConnection(connstring))
-			using (PqsqlCommand cmd = conn.CreateCommand())
+			using (PqsqlCommand cmd = new PqsqlCommand(TypeCategoryByTypeOid, conn))
 			{
-				// try to guess the type mapping
-				cmd.CommandText = "select typcategory,typname from pg_type where oid=:o";
-
-				PqsqlParameter p_oid = cmd.CreateParameter();
-				p_oid.PqsqlDbType = PqsqlDbType.Oid;
-				p_oid.Value = oid;
-				p_oid.ParameterName = "o";
+				PqsqlParameter p_oid = new PqsqlParameter
+				{
+					ParameterName = "o",
+					PqsqlDbType = PqsqlDbType.Oid,
+					Value = oid
+				};
 
 				cmd.Parameters.Add(p_oid);
 
