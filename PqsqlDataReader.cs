@@ -1784,8 +1784,10 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 					if (j < 0)
 					{
 						// throw error if we didn't find the corresponding parameter name in our parameter list
-						PqsqlException e = new PqsqlException("Received unrecognized output parameter «" + colName + "» when calling function «" + mCmd.CommandText + "»");
-						e.Hint = "Please adjust parameter names in PqsqlCommand.Parameters";
+						PqsqlException e = new PqsqlException(string.Format("Received unrecognized output parameter «{0}» when calling function «{1}»", colName, mCmd.CommandText))
+						{
+							Hint = "Please adjust parameter names in PqsqlCommand.Parameters"
+						};
 						throw e;
 					}
 
