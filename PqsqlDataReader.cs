@@ -1488,6 +1488,9 @@ namespace Pqsql
 		{
 			CheckOrdinal(ordinal);
 
+			if (PqsqlWrapper.PQgetisnull(mResult, mRowNum, ordinal) == 1)
+				return DBNull.Value;
+
 			PqsqlColInfo ci = mRowInfo[ordinal];
 
 			return ci.GetValue(mResult, mRowNum, ordinal, ci.Modifier);
