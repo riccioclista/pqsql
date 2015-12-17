@@ -1814,7 +1814,7 @@ namespace Pqsql
 
 			if (pc != null)
 			{
-				IntPtr pb = pc.PGParameters; // pqparam_buffer*
+				IntPtr pb = pc.CreateParameterBuffer(); // pqparam_buffer*
 				num_param = PqsqlBinaryFormat.pqpb_get_num(pb);
 				ptyps = PqsqlBinaryFormat.pqpb_get_types(pb);
 				pvals = PqsqlBinaryFormat.pqpb_get_vals(pb);

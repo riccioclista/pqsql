@@ -66,8 +66,65 @@ namespace Pqsql
 
 
 
-		#region pqparam_buffer*
+		#region pqparam_buffer* setup
 
+		/// <summary>
+		/// create parameter buffer for statement input parameters.
+		/// we convert and infer the right data type in case the user supplied inconsistent type information.
+		/// </summary>
+		/// <returns>pqparam_buffer as IntPtr</returns>
+		internal IntPtr CreateParameterBuffer()
+		{
+			if (mChanged)
+			{
+				PqsqlBinaryFormat.pqpb_reset(mPqPB);
+
+				foreach (PqsqlParameter p in mParamList)
+				{
+					if (p.Direction == ParameterDirection.Output) // skip output parameters
+						continue;
+
+					PqsqlDbType oid = p.PqsqlDbType;
+					object v = p.Value;
+					TypeCode vtc = Convert.GetTypeCode(v);
+
+					if (oid == PqsqlDbType.Unknown) // no PqsqlDbType set, try to infer datatype from Value and set new oid
+					{
+						oid = InferValueType(vtc);
+
+						if (oid == PqsqlDbType.Unknown)
+							throw new PqsqlException(string.Format("Could not infer datatype for PqsqlParameter {0} (TypeCode={1})", p.ParameterName, vtc));
+					}
+
+					PqsqlTypeRegistry.PqsqlTypeName tn = PqsqlTypeRegistry.Get(oid & ~PqsqlDbType.Array);
+					if (tn == null)
+					{
+						// do not try to fetch datatype specs with PqsqlTypeRegistry.FetchType() here, just bail out
+						throw new NotSupportedException(string.Format("Datatype {0} is not supported", oid & ~PqsqlDbType.Array));
+					}
+
+					// try to convert to the proper datatype in case the user supplied a wrong PqsqlDbType
+					if (v != null && v != DBNull.Value && (oid & PqsqlDbType.Array) != PqsqlDbType.Array)
+					{
+						TypeCode tc = tn.TypeCode;
+
+						if (vtc != TypeCode.Empty && vtc != tc)
+						{
+							v = ConvertParameterValue(v, vtc, tc);
+						}
+					}
+
+					// add parameter to the parameter buffer
+					AddParameterValue(tn, oid, v);
+				}
+
+				mChanged = false;
+			}
+
+			return mPqPB;
+		}
+
+		// dispatch parameter type and add it to parameter buffer mPqPB
 		private void AddParameterValue(PqsqlTypeRegistry.PqsqlTypeName tn, PqsqlDbType oid, object v)
 		{
 			if (v == null || v == DBNull.Value)
@@ -85,60 +142,64 @@ namespace Pqsql
 			}
 		}
 
-		internal IntPtr PGParameters
+		// convert v of typecode vtc to typecode tc
+		private object ConvertParameterValue(object v, TypeCode vtc, TypeCode tc)
 		{
-			get
+			if (vtc == TypeCode.String && string.IsNullOrEmpty(v as string))
 			{
-				if (mChanged)
-				{
-					PqsqlBinaryFormat.pqpb_reset(mPqPB);
-
-					foreach (PqsqlParameter p in mParamList)
-					{
-						if (p.Direction == ParameterDirection.Output) // skip output parameters
-							continue;
-
-						PqsqlDbType oid = p.PqsqlDbType;
-
-						PqsqlTypeRegistry.PqsqlTypeName tn = PqsqlTypeRegistry.Get(oid & ~PqsqlDbType.Array);
-						if (tn == null)
-						{
-							// do not try to fetch datatype specs with PqsqlTypeRegistry.FetchType() here, just bail out
-							throw new NotSupportedException("Datatype " + (oid & ~PqsqlDbType.Array) + " not supported");
-						}
-
-						object v = p.Value;
-
-						if (v != null && v != DBNull.Value && (oid & PqsqlDbType.Array) != PqsqlDbType.Array)
-						{
-							TypeCode tc = tn.TypeCode;
-							TypeCode vtc = Convert.GetTypeCode(v);
-
-							if (vtc != TypeCode.Empty && vtc != tc)
-							{
-								if (vtc == TypeCode.String && string.IsNullOrEmpty(v as string))
-								{
-									// we got an empty string that does not match the target type: we simply
-									// ignore the value and set v to null, as the conversion wouldn't work
-									v = null;
-								}
-								else
-								{
-									// in case we would have an invalid cast from object to target type
-									// we try to convert v to the registered ProviderType next
-									v = Convert.ChangeType(v, tc);
-								}
-							}
-						}
-
-						AddParameterValue(tn, oid, v);
-					}
-
-					mChanged = false;
-				}
-				
-				return mPqPB;
+				// we got an empty string that does not match the target type: we simply
+				// ignore the value and return null, as the conversion wouldn't work
+				return null;
 			}
+
+			// in case we would have an invalid cast from object to target type
+			// we try to convert v to the registered ProviderType next
+			return Convert.ChangeType(v, tc);
+		}
+
+		// try to infer PqsqlDbType from TypeCode
+		private PqsqlDbType InferValueType(TypeCode vtc)
+		{
+			PqsqlDbType oid;
+
+			switch (vtc)
+			{
+			case TypeCode.String:
+				oid = PqsqlDbType.Text;
+				break;
+			case TypeCode.Boolean:
+				oid = PqsqlDbType.Boolean;
+				break;
+			case TypeCode.DateTime:
+				oid = PqsqlDbType.Timestamp;
+				break;
+			case TypeCode.Decimal:
+				oid = PqsqlDbType.Numeric;
+				break;
+			case TypeCode.SByte:
+				oid = PqsqlDbType.Char;
+				break;
+			case TypeCode.Single:
+				oid = PqsqlDbType.Float4;
+				break;
+			case TypeCode.Double:
+				oid = PqsqlDbType.Float8;
+				break;
+			case TypeCode.Int16:
+				oid = PqsqlDbType.Int2;
+				break;
+			case TypeCode.Int32:
+				oid = PqsqlDbType.Int4;
+				break;
+			case TypeCode.Int64:
+				oid = PqsqlDbType.Int8;
+				break;
+			default:
+				oid = PqsqlDbType.Unknown;
+				break;
+			}
+
+			return oid;
 		}
 
 		#endregion
