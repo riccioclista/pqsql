@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Text;
 
 namespace Pqsql
@@ -19,12 +20,16 @@ namespace Pqsql
 		// return static UTF8-encoded statement including trailing 0 byte
 		internal static byte[] CreateUTF8Statement(StringBuilder sb)
 		{
+			Debug.Assert(sb != null, "sb != null");
 			return CreateUTF8Statement(sb.ToString());
 		}
 
 		// converts null-terminated sbyte* to string 
 		internal static string CreateStringFromUTF8(IntPtr sp)
 		{
+			if (sp == IntPtr.Zero)
+				return null;
+
 			int pos = 0;
 			int buflen = 64; // must be power of two
 			byte[] buf = new byte[buflen];
