@@ -49,9 +49,22 @@ namespace Pqsql
 	public sealed class PqsqlDataReader : DbDataReader
 	{
 #region PqsqlDataReader statements
-			// two queries: retrieve first catalog and table information and then column information
-			// parameter :o is table oid
-			const string CatalogColumnByTableOid = "SELECT current_catalog, n.nspname, c.relname FROM pg_namespace n, pg_class c WHERE c.relnamespace=n.oid AND c.relkind IN ('r','v') AND c.oid=:o;SELECT ca.attname, ca.attnotnull, ca.attnum, ad.adsrc, pg_column_is_updatable(c.oid, ca.attnum, false), ind.indisunique, ind.indisprimary FROM ((pg_attribute ca LEFT JOIN pg_attrdef ad ON (attrelid = adrelid AND attnum = adnum)) JOIN (pg_class c JOIN pg_namespace nc ON (c.relnamespace = nc.oid)) ON (ca.attrelid = c.oid)) LEFT OUTER JOIN (SELECT a.attname, i.indisunique, i.indisprimary, i.indexrelid, i.indrelid FROM pg_catalog.pg_class ct, pg_catalog.pg_class ci, pg_catalog.pg_attribute a, pg_catalog.pg_index i WHERE ct.oid=i.indrelid AND ci.oid=i.indexrelid AND a.attrelid=ci.oid AND ct.oid=:o) ind ON (ind.attname = ca.attname) WHERE ca.attnum > 0 and c.oid=:o";
+
+		// two queries: retrieve first catalog and table information and then column information
+		// parameter :o is table oid
+		const string CatalogColumnByTableOid = @"SELECT current_catalog, n.nspname, c.relname
+FROM pg_namespace n, pg_class c
+WHERE c.relnamespace=n.oid AND c.relkind IN ('r','v') AND c.oid=:o;
+SELECT ca.attname, ca.attnotnull, ca.attnum, ad.adsrc, pg_column_is_updatable(:o, ca.attnum, false), ind.indisunique, ind.indisprimary
+FROM (pg_attribute ca LEFT JOIN pg_attrdef ad ON (attrelid = adrelid AND attnum = adnum))
+     LEFT OUTER JOIN
+     (SELECT a.attname, bool_or(i.indisunique) as indisunique, bool_or(i.indisprimary) as indisprimary
+      FROM pg_class ct, pg_class ci, pg_attribute a, pg_index i
+      WHERE NOT a.attisdropped AND ct.oid=i.indrelid AND ci.oid=i.indexrelid AND a.attrelid=ci.oid AND ct.oid=:o
+      GROUP BY a.attname) ind
+     ON (ind.attname = ca.attname)
+WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
+
 #endregion
 
 
