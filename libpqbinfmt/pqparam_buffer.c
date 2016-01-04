@@ -143,7 +143,7 @@ pqpb_get_vals(pqparam_buffer *b)
 {
 	if (b)
 	{
-		if (b->param_vals == NULL)
+		if (b->param_vals == NULL && b->num_param > 0)
 		{
 			int i;
 			b->param_vals = (char**) malloc(b->num_param * sizeof(char*));
