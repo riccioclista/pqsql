@@ -321,7 +321,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 			Reset();
 		}
 
-		// consume remaining input, see http://www.postgresql.org/docs/9.4/static/libpq-async.html
+		// consume remaining input, see http://www.postgresql.org/docs/current/static/libpq-async.html
 		internal void Consume()
 		{
 			if (mResult != IntPtr.Zero)
@@ -1565,8 +1565,8 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 		//     true if there are more result sets; otherwise false.
 		public override bool NextResult()
 		{
-			// finished with all query statements
-			if (mStmtNum >= mMaxStmt - 1)
+			// finished with all query statements or no connection open yet
+			if (mStmtNum >= mMaxStmt - 1 || mPGConn == IntPtr.Zero)
 				return false;
 
 			mStmtNum++; // set next statement
@@ -1599,7 +1599,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 		//     true if there are more rows; otherwise false.
 		public override bool Read()
 		{
-			if (mMaxStmt == 0 || mStmtNum == -1) // no queries available or nothing executed yet
+			if (mMaxStmt == 0 || mStmtNum == -1 || mPGConn == IntPtr.Zero) // no queries available or nothing executed yet
 				return false;
 
 			if (!mPopulateAndFill) // increase row counter to the next row in mResult
@@ -1821,7 +1821,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 			}
 
 			// convert query string to utf8
-			byte[] utf8query = PqsqlUTF8Statement.CreateUTF8Statement(mStatements[mStmtNum]);
+			byte[] utf8query = PqsqlUTF8Statement.CreateUTF8Statement(stmt);
 
 			if (utf8query == null || utf8query[0] == 0x0) // null or empty string
 				return false;
