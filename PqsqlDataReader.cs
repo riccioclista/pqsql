@@ -1207,8 +1207,15 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 		//     The System.Data.SqlClient.SqlDataReader is closed.
 		public override DataTable GetSchemaTable()
 		{
-			if (mPopulateAndFill)
-				throw new InvalidOperationException("PqsqlDataReader did not populate schema information yet");
+			if (mPGConn == IntPtr.Zero) // connection closed
+			{
+				throw new InvalidOperationException("PqsqlDataReader.GetSchemaTable failed, connection closed");
+			}
+
+			if (mStmtNum == -1) // nothing executed yet, retrieve column information before we can continue
+			{
+				NextResult();
+			}
 
 			if (mSchemaTable != null)
 				return mSchemaTable;
