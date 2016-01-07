@@ -1,4 +1,4 @@
-Compiling Pqsql
+﻿Compiling Pqsql
 ===============
 
 libpqbinfmt
@@ -55,3 +55,40 @@ Installation:
 - setup pgbouncer.ini and userlist.txt in  C:\Program Files\pgBouncer
 - register pgBouncer as Windows service:
   $ pgbouncer -regservice config.ini
+
+
+
+TODO
+====
+
+- see README Section "Unsupported datatypes" of libpqbinfmt
+
+- Textual I/O format not supported: some datatypes (aclitem, ...) do not support binary I/O, cf. also
+  http://www.postgresql.org/message-id/flat/201102222230.41081.rsmogura@softperience.eu
+
+	corresponding error is
+	ERROR:  42883: no binary output function available for type aclitem
+
+  select oid,typname,typarray,typinput,typoutput,typreceive,typsend from pg_type where typreceive=0 or typsend=0;
+  ┌──────┬──────────────────┬──────────┬─────────────────────┬──────────────────────┬────────────┬─────────┐
+  │ oid  │     typname      │ typarray │      typinput       │      typoutput       │ typreceive │ typsend │
+  ├──────┼──────────────────┼──────────┼─────────────────────┼──────────────────────┼────────────┼─────────┤
+  │  210 │ smgr             │        0 │ smgrin              │ smgrout              │ -          │ -       │
+  │ 1033 │ aclitem          │     1034 │ aclitemin           │ aclitemout           │ -          │ -       │
+  │ 3642 │ gtsvector        │     3644 │ gtsvectorin         │ gtsvectorout         │ -          │ -       │
+  │ 2276 │ any              │        0 │ any_in              │ any_out              │ -          │ -       │
+  │ 2279 │ trigger          │        0 │ trigger_in          │ trigger_out          │ -          │ -       │
+  │ 3838 │ event_trigger    │        0 │ event_trigger_in    │ event_trigger_out    │ -          │ -       │
+  │ 2280 │ language_handler │        0 │ language_handler_in │ language_handler_out │ -          │ -       │
+  │ 2281 │ internal         │        0 │ internal_in         │ internal_out         │ -          │ -       │
+  │ 2282 │ opaque           │        0 │ opaque_in           │ opaque_out           │ -          │ -       │
+  │ 2283 │ anyelement       │        0 │ anyelement_in       │ anyelement_out       │ -          │ -       │
+  │ 2776 │ anynonarray      │        0 │ anynonarray_in      │ anynonarray_out      │ -          │ -       │
+  │ 3500 │ anyenum          │        0 │ anyenum_in          │ anyenum_out          │ -          │ -       │
+  │ 3115 │ fdw_handler      │        0 │ fdw_handler_in      │ fdw_handler_out      │ -          │ -       │
+  │ 3831 │ anyrange         │        0 │ anyrange_in         │ anyrange_out         │ -          │ -       │
+  └──────┴──────────────────┴──────────┴─────────────────────┴──────────────────────┴────────────┴─────────┘
+
+- PqsqlConnection.GetSchema() and friends
+- PqsqlConnection.EnlistTransaction()
+- PqsqlConnection.StateChange
