@@ -191,10 +191,12 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 		{
 			get
 			{
-				if (mResult == IntPtr.Zero)
-					return -1;
+				if (mResult == IntPtr.Zero || mRowInfo == null)
+				{
+					return 0;
+				}
 
-				return mRowInfo == null ? -1 : mRowInfo.Length;
+				return mRowInfo.Length;
 			}
 		}
 		//
