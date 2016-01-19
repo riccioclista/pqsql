@@ -652,26 +652,26 @@ namespace Pqsql
 							continue;
 					}
 				}
-				else if ((parsingState & PARAM0) == PARAM0) // did we really ran into :param ?
+				else if ((parsingState & PARAM0) == PARAM0) // did we really ran into :[a-zA-Z0-9_]+ ?
 				{
-					if (c == ':') // we ran into ::
+					if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_') // :[a-zA-Z0-9_]+
 					{
-						stmt.Append(':'); // take first : and put it back
-						stmt.Append(':'); // take current : and put it back
-						paramName.Length = 1;
-						parsingState &= ~(PARAM0 | PARAM1);
-					}
-					else
-					{
-						paramName.Append(c); // start eating first character of parameter names
+						paramName.Append(c); // start eating first character of form [a-zA-Z0-9_]
 						parsingState |= PARAM1;
 						parsingState &= ~PARAM0;
+					}
+					else // we probably ran into :: or :=
+					{
+						stmt.Append(':'); // take first : and put it back
+						stmt.Append(c); // take current character and put it back
+						paramName.Length = 1;
+						parsingState &= ~(PARAM0 | PARAM1);
 					}
 					continue;
 				}
 				else if ((parsingState & PARAM1) == PARAM1) // save parameter name to paramName; replace with $ index
 				{
-					if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_')
+					if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_') // :[a-zA-Z0-9_]+
 					{
 						paramName.Append(c); // eat parameter name of form [a-zA-Z0-9_]
 						continue;
