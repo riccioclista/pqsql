@@ -209,5 +209,26 @@ namespace Pqsql
 		{
 			ConnectionString = s;
 		}
+
+		public bool Equals(PqsqlConnectionStringBuilder o)
+		{
+			if (ReferenceEquals(null, o))
+				return false;
+			if (ReferenceEquals(this, o))
+				return true;
+			return o.ConnectionString == ConnectionString;
+		}
+
+		public override bool Equals(object o)
+		{
+			if (o.GetType() != typeof(PqsqlConnectionStringBuilder))
+				return false;
+			return Equals((PqsqlConnectionStringBuilder) o);
+		}
+
+		public override int GetHashCode()
+		{
+			return ConnectionString.GetHashCode();
+		}
 	}
 }
