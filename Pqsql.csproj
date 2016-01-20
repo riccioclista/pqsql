@@ -87,6 +87,7 @@
     <Compile Include="PqsqlConnection.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="PqsqlConnectionPool.cs" />
     <Compile Include="PqsqlConnectionStringBuilder.cs" />
     <Compile Include="PqsqlCopyFrom.cs" />
     <Compile Include="PqsqlDataAdapter.cs">
