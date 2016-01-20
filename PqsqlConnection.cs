@@ -374,7 +374,9 @@ namespace Pqsql
 			if (mConnection == IntPtr.Zero)
 				return;
 
-			PqsqlWrapper.PQfinish(mConnection); // close connection and release memory
+			// release connection to the pool for mConnectionStringBuilder
+			PqsqlConnectionPool.ReleasePGConn(mConnectionStringBuilder, mConnection);
+
 			Init(); // reset state, next Open() call might end up at a different server / db
 		}
 
@@ -430,7 +432,8 @@ namespace Pqsql
 				if (mStatus == ConnectionStatus.CONNECTION_BAD)
 				{
 					string err = GetErrorMessage();
-					Close(); // force release of mConnection memory
+					PqsqlWrapper.PQfinish(mConnection); // force release of mConnection memory
+					Init();
 					throw new PqsqlException("Could not reset connection with connection string «" + mConnectionStringBuilder.ConnectionString + "»: " + err);
 				}
 
@@ -443,16 +446,8 @@ namespace Pqsql
 				Close(); // force release of mConnection memory
 			}
 
-			// setup null-terminated key-value arrays for the connection
-			string[] keys = new string[mConnectionStringBuilder.Keys.Count + 1];
-			string[] vals = new string[mConnectionStringBuilder.Values.Count + 1];
-
-			// get keys and values from PqsqlConnectionStringBuilder
-			mConnectionStringBuilder.Keys.CopyTo(keys, 0);
-			mConnectionStringBuilder.Values.CopyTo(vals, 0);
-
-			// now create connection
-			mConnection = PqsqlWrapper.PQconnectdbParams(keys, vals, 0);
+			// check connection pool for a connection
+			mConnection = PqsqlConnectionPool.GetPGConn(mConnectionStringBuilder);
 
 			if (mConnection != IntPtr.Zero)
 			{
@@ -462,7 +457,8 @@ namespace Pqsql
 				if (mStatus == ConnectionStatus.CONNECTION_BAD)
 				{
 					string err = GetErrorMessage();
-					Close(); // force release of mConnection memory
+					PqsqlWrapper.PQfinish(mConnection); // force release of mConnection memory
+					Init();
 					throw new PqsqlException("Could not create connection with connection string «" + mConnectionStringBuilder.ConnectionString + "»: " + err);
 				}
 
