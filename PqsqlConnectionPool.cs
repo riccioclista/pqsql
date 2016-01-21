@@ -28,10 +28,7 @@ namespace Pqsql
 
 		private static void RestartTimer()
 		{
-			lock (mPooledConnsLock)
-			{
-				mTimer.Change(IdleTimeout.Seconds * 1000, Timeout.Infinite);
-			}
+			mTimer.Change(IdleTimeout.Seconds * 1000, Timeout.Infinite);
 		}
 
 
