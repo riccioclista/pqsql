@@ -12,8 +12,9 @@ namespace Pqsql
 {
 	internal static class PqsqlConnectionPool
 	{
-		// global timer for cleaning connections
-		private static readonly Timer mTimer = new Timer(PoolService, null, Timeout.Infinite, Timeout.Infinite);
+		// to send when releasing a connection
+		private static byte[] DiscardAllStatement = PqsqlUTF8Statement.CreateUTF8Statement("DISCARD ALL");
+
 
 		// maps connection strings to connection queues
 		private static readonly Dictionary<PqsqlConnectionStringBuilder, Queue<ConnectionInfo>> mPooledConns = new Dictionary<PqsqlConnectionStringBuilder, Queue<ConnectionInfo>>();
@@ -25,6 +26,8 @@ namespace Pqsql
 		// only pool connections if we have <= 50 connections in the pool
 		const int MaxQueue = 50;
 
+		// global timer for cleaning connections
+		private static readonly Timer mTimer = new Timer(PoolService, null, Timeout.Infinite, Timeout.Infinite);
 
 		private static void RestartTimer()
 		{
@@ -36,6 +39,7 @@ namespace Pqsql
 		{
 			DateTime now = DateTime.Now;
 			bool haveConnections = false;
+			List<IntPtr> closeConnections = new List<IntPtr>();
 
 			lock (mPooledConnsLock)
 			{
@@ -48,6 +52,7 @@ namespace Pqsql
 
 						haveConnections = true;
 						int maxRelease = count / 2 + 1;
+
 						while (maxRelease > 0)
 						{
 							ConnectionInfo i = queue.Peek();
@@ -55,7 +60,7 @@ namespace Pqsql
 							if (now - i.Item2 > IdleTimeout)
 							{
 								i = queue.Dequeue();
-								PqsqlWrapper.PQfinish(i.Item1); // close connection and release memory
+								closeConnections.Add(i.Item1); // close connections outside of queue lock
 								maxRelease--;
 							}
 							else
@@ -65,6 +70,12 @@ namespace Pqsql
 						}
 					}
 				}
+			}
+
+			// now close old connections
+			foreach (IntPtr conn in closeConnections)
+			{
+				PqsqlWrapper.PQfinish(conn); // close connection and release memory
 			}
 
 			if (haveConnections)
@@ -92,7 +103,7 @@ namespace Pqsql
 		public static IntPtr GetPGConn(PqsqlConnectionStringBuilder connStringBuilder)
 		{
 			Queue<ConnectionInfo> queue;
-			IntPtr pgConn;
+			IntPtr pgConn = IntPtr.Zero;
 
 			lock (mPooledConnsLock)
 			{
@@ -110,10 +121,11 @@ namespace Pqsql
 					ConnectionInfo i = queue.Dequeue();
 					pgConn = i.Item1;
 				}
-				else
-				{
-					pgConn = SetupPGConn(connStringBuilder);
-				}
+			}
+
+			if (pgConn == IntPtr.Zero)
+			{
+				pgConn = SetupPGConn(connStringBuilder);
 			}
 
 			RestartTimer();
@@ -134,27 +146,102 @@ namespace Pqsql
 				mPooledConns.TryGetValue(connStringBuilder, out queue);
 			}
 
-			if (queue == null)
+			if (queue == null || !DiscardConnection(pgConnHandle))
 			{
 				PqsqlWrapper.PQfinish(pgConnHandle); // close connection and release memory
-				return; // Queue may be emptied by connection problems. See ClearPool below.
+				return;
 			}
 
+			bool closeConnection = true;
 			lock (queue)
 			{
 				if (queue.Count < MaxQueue)
 				{
 					queue.Enqueue(new ConnectionInfo(pgConnHandle, DateTime.Now));
+					closeConnection = false;
 				}
-				else
-				{
-					PqsqlWrapper.PQfinish(pgConnHandle); // close connection and release memory
-				}
+			}
+
+			if (closeConnection)
+			{
+				PqsqlWrapper.PQfinish(pgConnHandle); // close connection and release memory
 			}
 
 			RestartTimer();
 		}
 
+
+		private static bool DiscardConnection(IntPtr conn)
+		{
+			bool rollback = false;
+
+			switch ((PGTransactionStatus) PqsqlWrapper.PQtransactionStatus(conn))
+			{
+				case PGTransactionStatus.PQTRANS_INERROR: /* idle, within failed transaction */
+				case PGTransactionStatus.PQTRANS_INTRANS: /* idle, within transaction block */
+					rollback = true;
+					break;
+
+				case PGTransactionStatus.PQTRANS_IDLE: /* connection idle */
+					// nothing to do
+					break;
+
+			  // PGTransactionStatus.PQTRANS_ACTIVE: /* command in progress */
+				// PGTransactionStatus.PQTRANS_UNKNOWN: /* cannot determine status */
+				default:
+					return false; // connection broken
+			}
+
+			IntPtr res;
+			ExecStatus s = ExecStatus.PGRES_FATAL_ERROR;
+			
+			// we need to rollback before we can discard the connection
+			if (rollback)
+			{
+				unsafe
+				{
+					fixed (byte* st = PqsqlTransaction.RollbackStatement)
+					{
+						res = PqsqlWrapper.PQexec(conn, st);
+
+						if (res != IntPtr.Zero)
+						{
+							s = (ExecStatus) PqsqlWrapper.PQresultStatus(res);
+							PqsqlWrapper.PQclear(res);
+						}
+					}
+				}
+
+				if (s != ExecStatus.PGRES_COMMAND_OK)
+				{
+					return false; // connection broken
+				}
+
+				s = ExecStatus.PGRES_FATAL_ERROR;
+			}
+
+			// discard connection
+			unsafe
+			{
+				fixed (byte* st = DiscardAllStatement)
+				{
+					res = PqsqlWrapper.PQexec(conn, st);
+
+					if (res != IntPtr.Zero)
+					{
+						s = (ExecStatus) PqsqlWrapper.PQresultStatus(res);
+						PqsqlWrapper.PQclear(res);
+					}
+				}
+			}
+
+			if (s != ExecStatus.PGRES_COMMAND_OK)
+			{
+				return false; // connection broken
+			}
+
+			return true; // connection successfully resetted
+		}
 
 	}
 }

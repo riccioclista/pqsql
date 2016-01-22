@@ -18,7 +18,7 @@ namespace Pqsql
 		private static readonly byte[] mBeginReadUncommitted = PqsqlUTF8Statement.CreateUTF8Statement("BEGIN ISOLATION LEVEL READ UNCOMMITTED");
 
 		private static readonly byte[] mCommit = PqsqlUTF8Statement.CreateUTF8Statement("COMMIT");
-		private static readonly byte[] mRollback = PqsqlUTF8Statement.CreateUTF8Statement("ROLLBACK");
+		internal static readonly byte[] RollbackStatement = PqsqlUTF8Statement.CreateUTF8Statement("ROLLBACK");
 
 
 		// Summary:
@@ -139,7 +139,7 @@ namespace Pqsql
 					return ExecStatus.PGRES_EMPTY_QUERY;
 
 				// commit or rollback
-				byte[] txnString = commit ? mCommit : mRollback;
+				byte[] txnString = commit ? mCommit : RollbackStatement;
 
 				unsafe
 				{
