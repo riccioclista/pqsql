@@ -161,17 +161,11 @@ namespace Pqsql
 
 				base.ConnectionString = value;
 
+				//
 				// now clean up connection string and use libpq keywords
-				RemoveAliasAddKey remAdd = delegate(string a, string k)
-				{
-					object o;
-					if (TryGetValue(a, out o))
-					{
-						Remove(a);
-						Add(k, o);
-					}
-				};
+				//
 
+				// host aliases
 				RemoveAliasAddKey remAddHostPort = delegate(string a, string k)
 				{
 					object o;
@@ -193,12 +187,39 @@ namespace Pqsql
 						}
 					}
 				};
-
 				Array.ForEach(hostAlias, a => remAddHostPort(a, host));
+
+				// dbname, user, password, connect_timeout
+				RemoveAliasAddKey remAdd = delegate(string a, string k)
+				{
+					object o;
+					if (TryGetValue(a, out o))
+					{
+						Remove(a);
+						Add(k, o);
+					}
+				};
 				Array.ForEach(dbnameAlias, a => remAdd(a, dbname));
 				Array.ForEach(userAlias, a => remAdd(a, user));
 				Array.ForEach(passwordAlias, a => remAdd(a, password));
 				Array.ForEach(connect_timeoutAlias, a => remAdd(a, connect_timeout));
+
+				//
+				// always set default timeout of at least 2 seconds
+				//
+
+				object timeout;
+				if (TryGetValue(connect_timeout, out timeout))
+				{
+					int it = Convert.ToInt32(timeout);
+
+					if (it >= 2)
+						return;
+
+					Remove(connect_timeout);
+				}
+
+				Add(connect_timeout, "2");
 			}
 		}
 
@@ -228,7 +249,7 @@ namespace Pqsql
 
 		public override int GetHashCode()
 		{
-			return ConnectionString.GetHashCode();
+			return base.ConnectionString.GetHashCode();
 		}
 	}
 }
