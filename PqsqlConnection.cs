@@ -193,6 +193,28 @@ namespace Pqsql
 
 		//
 		// Summary:
+		//     Gets the application name of the connection
+		//
+		// Returns:
+		//     The application name stored in PqsqlConnectionStringBuilder. The default value is
+		//     an empty string.
+		public string ApplicationName
+		{
+			get
+			{
+				object appname;
+
+				if (mConnectionStringBuilder.TryGetValue(PqsqlConnectionStringBuilder.application_name, out appname))
+				{
+					return (string) appname;
+				}
+
+				return string.Empty;
+			}
+		}
+
+		//
+		// Summary:
 		//     Gets a string that represents the version of the server to which the object
 		//     is connected.
 		//

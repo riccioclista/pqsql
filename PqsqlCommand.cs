@@ -8,7 +8,8 @@ namespace Pqsql
 {
 	public sealed class PqsqlCommand : DbCommand
 	{
-		const string mStatementTimeoutString = "set statement_timeout=";
+		const string mStatementTimeoutString = "statement_timeout";
+		const string mApplicationNameString = "application_name";
 		const string mStoredProcString = "select * from ";
 		const string mTableString = "table ";
 
@@ -461,6 +462,8 @@ namespace Pqsql
 
 			SetStatementTimeout();
 
+			SetApplicationName();
+
 			PqsqlDataReader reader = new PqsqlDataReader(this, behavior, statements);
 			reader.NextResult(); // always execute first command
 			return reader;
@@ -515,42 +518,62 @@ namespace Pqsql
 			}
 		}
 
+		// executes SET parameter=value
+		private void SetSessionParameter(string parameter, object value, bool quote)
+		{
+			StringBuilder sb = new StringBuilder();
+			sb.Append("set ");
+			sb.Append(parameter);
+			sb.Append('=');
+
+			if (quote) sb.Append('"');
+			sb.Append(value);
+			if (quote) sb.Append('"');
+
+			byte[] stmt = PqsqlUTF8Statement.CreateUTF8Statement(sb);
+			IntPtr res;
+			IntPtr pc = mConn.PGConnection;
+
+			unsafe
+			{
+				fixed (byte* st = stmt)
+				{
+					res = PqsqlWrapper.PQexec(pc, st);
+				}
+			}
+
+			if (res != IntPtr.Zero)
+			{
+				ExecStatus s = (ExecStatus) PqsqlWrapper.PQresultStatus(res);
+
+				PqsqlWrapper.PQclear(res);
+
+				if (s == ExecStatus.PGRES_COMMAND_OK)
+				{
+					return;
+				}
+			}
+
+			string err = mConn.GetErrorMessage();
+			throw new PqsqlException("Could not set " + parameter + " to «" + value + "»: " + err);
+		}
+
+		// sets application_name of the current session
+		private void SetApplicationName()
+		{
+			string appname = mConn.ApplicationName;
+			if (!string.IsNullOrEmpty(appname))
+			{
+				SetSessionParameter(mApplicationNameString, appname, true);
+			}
+		}
 
 		// sets statement_timeout of the current session
 		private void SetStatementTimeout()
 		{
 			if (mCmdTimeout > 0 && mCmdTimeoutSet == false)
 			{
-				StringBuilder sb = new StringBuilder();
-				sb.Append(mStatementTimeoutString);
-				sb.Append(CommandTimeout);
-				byte[] stmtTimeout = PqsqlUTF8Statement.CreateUTF8Statement(sb);
-				IntPtr res;
-				IntPtr pc = mConn.PGConnection;
-
-				unsafe
-				{
-					fixed (byte* st = stmtTimeout)
-					{
-						res = PqsqlWrapper.PQexec(pc, st);
-					}
-				}
-
-				if (res != IntPtr.Zero)
-				{
-					ExecStatus s = (ExecStatus) PqsqlWrapper.PQresultStatus(res);
-
-					PqsqlWrapper.PQclear(res);
-
-					if (s == ExecStatus.PGRES_COMMAND_OK)
-					{
-						mCmdTimeoutSet = true;
-						return;
-					}
-				}
-
-				string err = mConn.GetErrorMessage();
-				throw new PqsqlException("Could not set statement timeout to «" + CommandTimeout + "»: " + err);
+				SetSessionParameter(mStatementTimeoutString, CommandTimeout, false);
 			}
 		}
 
@@ -574,6 +597,9 @@ namespace Pqsql
 			r.Consume(); // sync protocol: consume remaining rows
 			return o;
 		}
+
+
+		#region parse sql statements and replace parameter names
 
 		// statement parser states
 		const int QUOTE = (1 << 0);
@@ -741,6 +767,8 @@ namespace Pqsql
 				resizeAndSet(ref stmt, ref statements, stmtNum);
 			}
 		}
+
+		#endregion
 
 		//
 		// Summary:
