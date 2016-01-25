@@ -1,17 +1,23 @@
 ﻿using System;
+using System.Data;
 using System.IO;
 
 namespace Pqsql
 {
 	public sealed class PqsqlLargeObject : Stream
 	{
-
+		// reference connection
 		private readonly PqsqlConnection mConn;
+		// PGConn struct
+		private readonly IntPtr mPGConn;
 
+		// the oid of the large object
+		private uint mOid;
+		// file descriptor for mOid
 		private int mFd;
-
+		// open mode
 		private LoOpen mMode;
-
+		// current position of mFd
 		private long mPos;
 
 		public PqsqlLargeObject(PqsqlConnection conn)
@@ -21,6 +27,23 @@ namespace Pqsql
 				throw new ArgumentNullException("conn");
 			}
 			mConn = conn;
+
+			switch (conn.State)
+			{
+			case ConnectionState.Broken:
+				throw new PqsqlException("PqsqlConnection.State is broken");
+			case ConnectionState.Closed:
+				mConn.Open();
+				break;
+			}
+
+			mPGConn = conn.PGConnection;
+			if (mPGConn == IntPtr.Zero)
+			{
+				throw new ArgumentNullException("PqsqlConnection is closed: " + mConn.GetErrorMessage());
+			}
+
+			mOid = 0;
 			mFd = -1;
 			mMode = 0;
 			mPos = -1;
@@ -41,6 +64,7 @@ namespace Pqsql
 		}
 
 		bool mDisposed;
+
 
 		/// <summary>
 		/// Releases the unmanaged resources used by the <see cref="T:System.IO.Stream"/> and optionally releases the managed resources.
@@ -71,32 +95,50 @@ namespace Pqsql
 
 		public uint Create()
 		{
-			IntPtr conn = mConn.PGConnection;
+			// returns 0 (InvalidOid) on error
+			uint ret = PqsqlWrapper.lo_create(mPGConn, 0);
 
-			if (conn == IntPtr.Zero)
-				return 0; // InvalidOid
+			if (ret == 0)
+			{
+				throw new PqsqlException("Could not create large object: " + mConn.GetErrorMessage());
+			}
 
-			return PqsqlWrapper.lo_create(conn, 0);
+			return ret;
 		}
 
 		public int Unlink(uint oid)
 		{
-			IntPtr conn = mConn.PGConnection;
+			// returns < 0 on error
+			int ret = PqsqlWrapper.lo_unlink(mPGConn, oid);
 
-			if (conn == IntPtr.Zero)
-				return -1;
+			if (ret < 0)
+			{
+				throw new PqsqlException(string.Format("Could not unlink large object {0}: {1}", oid, mConn.GetErrorMessage()));
+			}
 
-			return PqsqlWrapper.lo_unlink(conn, oid);
+			return ret;
+		}
+
+		public int Unlink()
+		{
+			return Unlink(mOid);
 		}
 
 		public int Open(uint oid, LoOpen mode)
 		{
-			IntPtr conn = mConn.PGConnection;
+			if (oid == 0)
+			{
+				throw new ArgumentException("Cannot open large object with InvalidOid (0)", "oid");
+			}
 
-			if (conn == IntPtr.Zero)
-				return -1;
+			mFd = PqsqlWrapper.lo_open(mPGConn, oid, (int) mode);
 
-			mFd = PqsqlWrapper.lo_open(conn, oid, (int) mode);
+			if (mFd < 0)
+			{
+				throw new PqsqlException(string.Format("Cannot open large object {0}: {1}", oid, mConn.GetErrorMessage()));
+			}
+
+			mOid = oid;
 			mMode = mode;
 			mPos = 0;
 			return mFd;
@@ -107,12 +149,7 @@ namespace Pqsql
 			if (mFd < 0)
 				return;
 
-			IntPtr conn = mConn.PGConnection;
-
-			if (conn == IntPtr.Zero)
-				return;
-
-			PqsqlWrapper.lo_close(conn, mFd);
+			PqsqlWrapper.lo_close(mPGConn, mFd); // ignore errors
 			mFd = -1;
 			mMode = 0;
 			mPos = -1;
@@ -127,14 +164,16 @@ namespace Pqsql
 		public override long Seek(long offset, SeekOrigin whence)
 		{
 			if (mFd < 0)
-				return -1;
+			{
+				throw new PqsqlException(string.Format("Cannot seek closed large object {0}", mOid));
+			}
 
-			IntPtr conn = mConn.PGConnection;
+			mPos = PqsqlWrapper.lo_lseek64(mPGConn, mFd, offset, (int) whence);
 
-			if (conn == IntPtr.Zero)
-				return -1;
-
-			mPos = PqsqlWrapper.lo_lseek64(conn, mFd, offset, (int) whence);
+			if (mPos < 0)
+			{
+				throw new PqsqlException(string.Format("Could not seek large object {0}: {1}", mOid, mConn.GetErrorMessage()));
+			}
 
 			return mPos;
 		}
@@ -143,18 +182,15 @@ namespace Pqsql
 		public override void SetLength(long value)
 		{
 			if (mFd < 0)
-				return;
+			{
+				throw new PqsqlException(string.Format("Cannot truncate closed large object {0}", mOid));
+			}
 
-			IntPtr conn = mConn.PGConnection;
-
-			if (conn == IntPtr.Zero)
-				return;
-
-			int ret = PqsqlWrapper.lo_truncate64(conn, mFd, value);
+			int ret = PqsqlWrapper.lo_truncate64(mPGConn, mFd, value);
 
 			if (ret < 0)
 			{
-				throw new PqsqlException("Could not truncate large object to " + value + " bytes: " + mConn.GetErrorMessage());
+				throw new PqsqlException(string.Format("Could not truncate large object {0} to {1} bytes: {2}", mOid, value, mConn.GetErrorMessage()));
 			}
 		}
 
@@ -178,10 +214,8 @@ namespace Pqsql
 			if (count < 0)
 				throw new ArgumentOutOfRangeException("count");
 
-			IntPtr conn = mConn.PGConnection;
-
-			if (conn == IntPtr.Zero)
-				throw new PqsqlException("Cannot read from large object, connection is null");
+			if (mFd < 0)
+				throw new PqsqlException(string.Format("Cannot read closed large object {0}", mOid));
 
 			int read;
 
@@ -189,7 +223,7 @@ namespace Pqsql
 			{
 				fixed (byte* b = &buffer[offset])
 				{
-					read = PqsqlWrapper.lo_read(conn, mFd, b, (ulong) count);
+					read = PqsqlWrapper.lo_read(mPGConn, mFd, b, (ulong) count);
 				}
 			}
 
@@ -199,7 +233,7 @@ namespace Pqsql
 				return read;
 			}
 
-			throw new PqsqlException("Could not read from large object: " + mConn.GetErrorMessage());
+			throw new PqsqlException(string.Format("Could not read large object {0}: {1}" , mOid, mConn.GetErrorMessage()));
 		}
 
 		// write to LO
@@ -222,12 +256,10 @@ namespace Pqsql
 			if (count < 0)
 				throw new ArgumentOutOfRangeException("count");
 
-			IntPtr conn = mConn.PGConnection;
+			if (mFd < 0)
+				throw new PqsqlException(string.Format("Cannot write closed large object {0}", mOid));
 
-			if (conn == IntPtr.Zero)
-				throw new PqsqlException("Cannot write to large object, connection is null");
-
-			int ret = 1;
+			int ret = count;
 
 			unsafe
 			{
@@ -235,7 +267,7 @@ namespace Pqsql
 				{
 					fixed (byte* b = &buffer[offset])
 					{
-						ret = PqsqlWrapper.lo_write(conn, mFd, b, (ulong) count);
+						ret = PqsqlWrapper.lo_write(mPGConn, mFd, b, (ulong) count);
 					}
 
 					if (ret > 0)
@@ -249,7 +281,7 @@ namespace Pqsql
 	
 			if (ret < 0)
 			{
-				throw new PqsqlException("Could not write to large object: " + mConn.GetErrorMessage());
+				throw new PqsqlException(string.Format("Could not write to large object {0}: {1}", mOid, mConn.GetErrorMessage()));
 			}
 		}
 
@@ -278,14 +310,6 @@ namespace Pqsql
 		{
 			get
 			{
-				if (mFd < 0)
-					return -1;
-
-				IntPtr conn = mConn.PGConnection;
-
-				if (conn == IntPtr.Zero)
-					return -1;
-
 				long cur = mPos;
 				long ret = Seek(0, SeekOrigin.End);
 				if (ret != cur)
@@ -298,25 +322,12 @@ namespace Pqsql
 		{
 			get
 			{
-				if (mFd < 0)
-					return -1;
-
-				IntPtr conn = mConn.PGConnection;
-
-				if (conn == IntPtr.Zero)
-					return -1;
-
 				return mPos;
 			}
 
 			set
 			{
-				if (mFd < 0 || mPos == value)
-					return;
-
-				IntPtr conn = mConn.PGConnection;
-
-				if (conn == IntPtr.Zero)
+				if (mPos == value)
 					return;
 
 				Seek(value, SeekOrigin.Begin);

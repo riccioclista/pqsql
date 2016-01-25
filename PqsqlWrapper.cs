@@ -96,6 +96,7 @@ namespace Pqsql
 	/// <summary>
 	/// mode bitmask for lo_open
 	/// </summary>
+	[Flags]
 	public enum LoOpen
 	{
 		INV_WRITE = 0x00020000,
