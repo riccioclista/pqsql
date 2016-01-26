@@ -123,7 +123,7 @@ namespace Pqsql
 				}
 			}
 
-			if (pgConn == IntPtr.Zero)
+			if (pgConn == IntPtr.Zero || !CheckOrRelease(pgConn))
 			{
 				pgConn = SetupPGConn(connStringBuilder);
 			}
@@ -133,6 +133,20 @@ namespace Pqsql
 			return pgConn;
 		}
 
+		private static bool CheckOrRelease(IntPtr pgConn)
+		{
+			ConnectionStatus s = (ConnectionStatus) PqsqlWrapper.PQstatus(pgConn);
+			if (s != ConnectionStatus.CONNECTION_OK) goto broken;
+
+			PGTransactionStatus ts = (PGTransactionStatus) PqsqlWrapper.PQtransactionStatus(pgConn);
+			if (ts != PGTransactionStatus.PQTRANS_IDLE) goto broken;
+
+			return true;
+
+		broken:
+			PqsqlWrapper.PQfinish(pgConn);
+			return false;
+		}
 
 		public static void ReleasePGConn(PqsqlConnectionStringBuilder connStringBuilder, IntPtr pgConnHandle)
 		{
@@ -174,6 +188,10 @@ namespace Pqsql
 		private static bool DiscardConnection(IntPtr conn)
 		{
 			bool rollback = false;
+
+			ConnectionStatus cs = (ConnectionStatus) PqsqlWrapper.PQstatus(conn);
+			if (cs != ConnectionStatus.CONNECTION_OK)
+				return false; // connection broken
 
 			switch ((PGTransactionStatus) PqsqlWrapper.PQtransactionStatus(conn))
 			{
