@@ -2,12 +2,6 @@
 using System.Collections.Generic;
 using System.Threading;
 
-// declare ConnectionInfo pool object
-//
-// Item1: PGConn pointer
-// Item2: time when connection entered the connection pool
-using ConnectionInfo = System.Tuple<System.IntPtr, System.DateTime>;
-
 namespace Pqsql
 {
 	internal static class PqsqlConnectionPool
@@ -15,6 +9,14 @@ namespace Pqsql
 		// to send when releasing a connection
 		private static byte[] DiscardAllStatement = PqsqlUTF8Statement.CreateUTF8Statement("DISCARD ALL");
 
+		// ConnectionInfo pool object
+		private class ConnectionInfo
+		{
+			// PGConn pointer
+			public IntPtr pgconn;
+			// how often did PoolService visit this item
+			public int visited;
+		}
 
 		// maps connection strings to connection queues
 		private static readonly Dictionary<PqsqlConnectionStringBuilder, Queue<ConnectionInfo>> mPooledConns = new Dictionary<PqsqlConnectionStringBuilder, Queue<ConnectionInfo>>();
@@ -22,50 +24,92 @@ namespace Pqsql
 		private static object mPooledConnsLock = new object();
 
 		// 30 sec idle timeout
-		private static readonly TimeSpan IdleTimeout = new TimeSpan(0,0,30);
+		const int IdleTimeout = 30000;
 		// only pool connections if we have <= 50 connections in the pool
 		const int MaxQueue = 50;
+		// only cleanup connections if the oldest one had been visited more than VisitedThreshold times
+		const int VisitedThreshold = 2;
 
 		// global timer for cleaning connections
-		private static readonly Timer mTimer = new Timer(PoolService, null, Timeout.Infinite, Timeout.Infinite);
+		private static readonly Timer mTimer;
 
-		private static void RestartTimer()
+#if PQSQL_DEBUG
+		private static log4net.ILog mLogger;
+#endif
+
+		// static constructor for log4net
+		static PqsqlConnectionPool()
 		{
-			mTimer.Change(IdleTimeout.Seconds * 1000, Timeout.Infinite);
-		}
+			mTimer = new Timer(PoolService, new List<IntPtr>(), Timeout.Infinite, Timeout.Infinite);
+			mTimer.Change(IdleTimeout, IdleTimeout);
 
+#if PQSQL_DEBUG
+			log4net.Layout.PatternLayout layout = new log4net.Layout.PatternLayout("%date{ISO8601} [%thread] %-5level %logger - %message%newline");
+			log4net.Appender.RollingFileAppender appender = new log4net.Appender.RollingFileAppender
+			{
+				File = "c:\\windows\\temp\\pqsql_connection_pool.log",
+				Layout = layout
+			};
+			layout.ActivateOptions();
+			appender.ActivateOptions();
+			log4net.Config.BasicConfigurator.Configure(appender);
+			mLogger = log4net.LogManager.GetLogger(typeof(PqsqlConnectionPool));
+#endif
+		}
 
 		private static void PoolService(object o)
 		{
-			DateTime now = DateTime.Now;
-			bool haveConnections = false;
-			List<IntPtr> closeConnections = new List<IntPtr>();
+			List<IntPtr> closeConnections = o as List<IntPtr>;
 
+			// we assume that we run PoolService in less than IdleTimeout msecs
 			lock (mPooledConnsLock)
 			{
-				foreach (Queue<ConnectionInfo> queue in mPooledConns.Values)
+#if PQSQL_DEBUG
+				mLogger.Debug("Running PoolService");
+#endif
+				Dictionary<PqsqlConnectionStringBuilder, Queue<ConnectionInfo>>.Enumerator e = mPooledConns.GetEnumerator();
+
+				while (e.MoveNext())
 				{
+					KeyValuePair<PqsqlConnectionStringBuilder, Queue<ConnectionInfo>> item = e.Current;
+#if PQSQL_DEBUG
+					PqsqlConnectionStringBuilder csb = item.Key;
+#endif
+					Queue<ConnectionInfo> queue = item.Value;
+
 					lock (queue)
 					{
 						int count = queue.Count;
+
+#if PQSQL_DEBUG
+						mLogger.DebugFormat("ConnectionPool {0}: {1} waiting connections", csb.ConnectionString, count);
+#endif
+
 						if (count == 0) continue;
 
-						haveConnections = true;
 						int maxRelease = count / 2 + 1;
 
-						while (maxRelease > 0)
-						{
-							ConnectionInfo i = queue.Peek();
+						ConnectionInfo i = queue.Peek();
+						i.visited++;
 
-							if (now - i.Item2 > IdleTimeout)
+#if PQSQL_DEBUG
+						if (i.visited <= VisitedThreshold)
+						{
+							mLogger.DebugFormat("ConnectionPool {0}: {1} visits", csb.ConnectionString, i.visited);
+						}
+#endif
+
+						if (i.visited > VisitedThreshold)
+						{
+#if PQSQL_DEBUG
+							mLogger.DebugFormat("ConnectionPool {0}: visit threshold {1} reached, releasing {2} connections", csb.ConnectionString, i.visited, maxRelease);
+#endif
+							while (maxRelease > 0)
 							{
+								// clean maxRelease connections
 								i = queue.Dequeue();
-								closeConnections.Add(i.Item1); // close connections outside of queue lock
+								closeConnections.Add(i.pgconn); // close connections outside of queue lock
 								maxRelease--;
-							}
-							else
-							{
-								maxRelease = 0;
 							}
 						}
 					}
@@ -78,10 +122,7 @@ namespace Pqsql
 				PqsqlWrapper.PQfinish(conn); // close connection and release memory
 			}
 
-			if (haveConnections)
-			{
-				RestartTimer();
-			}
+			closeConnections.Clear();
 		}
 
 
@@ -116,10 +157,18 @@ namespace Pqsql
 
 			lock (queue)
 			{
-				if (queue.Count > 0)
+				int count = queue.Count;
+				if (count > 0)
 				{
 					ConnectionInfo i = queue.Dequeue();
-					pgConn = i.Item1;
+					pgConn = i.pgconn;
+
+					if (count > 1)
+					{
+						// head of queue will inherit old visited count
+						ConnectionInfo j = queue.Peek();
+						j.visited = i.visited;
+					}
 				}
 			}
 
@@ -127,8 +176,6 @@ namespace Pqsql
 			{
 				pgConn = SetupPGConn(connStringBuilder);
 			}
-
-			RestartTimer();
 
 			return pgConn;
 		}
@@ -160,28 +207,27 @@ namespace Pqsql
 				mPooledConns.TryGetValue(connStringBuilder, out queue);
 			}
 
+			bool closeConnection = true;
+
 			if (queue == null || !DiscardConnection(pgConnHandle))
 			{
-				PqsqlWrapper.PQfinish(pgConnHandle); // close connection and release memory
-				return;
+				goto close; // just cleanup connection and restart timer
 			}
 
-			bool closeConnection = true;
 			lock (queue)
 			{
 				if (queue.Count < MaxQueue)
 				{
-					queue.Enqueue(new ConnectionInfo(pgConnHandle, DateTime.Now));
-					closeConnection = false;
+					queue.Enqueue(new ConnectionInfo{ pgconn = pgConnHandle, visited = 0 });
+					closeConnection = false; // keep connection
 				}
 			}
 
+		close:
 			if (closeConnection)
 			{
 				PqsqlWrapper.PQfinish(pgConnHandle); // close connection and release memory
 			}
-
-			RestartTimer();
 		}
 
 
