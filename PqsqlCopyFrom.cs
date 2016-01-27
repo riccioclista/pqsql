@@ -1,10 +1,12 @@
 ﻿using System;
+using System.Data;
+using System.Text;
 
 namespace Pqsql
 {
 	public sealed class PqsqlCopyFrom
 	{
-
+		// connection for COPY FROM
 		private PqsqlConnection mConn;
 
 		// fixed-size column buffer, flushes content to db connection once page size is reached
@@ -12,12 +14,29 @@ namespace Pqsql
 
 		// variable-size binary value buffer, used to store encoded column values
 		private IntPtr mExpBuf;
+		// number of columns in the destination table
+		private int mColumns;
+		// column datatype information for type inference
+		private PqsqlColInfo[] mRowInfo;
+		// field position in the current row
+		private int mPos;
+
+		public int CopyTimeout { get; set; }
+
+		public string ColumnList { get; set; }
+
+		public string Table { get; set; }
+
 
 		public PqsqlCopyFrom(PqsqlConnection conn)
 		{
 			mConn = conn;
 			mExpBuf = PqsqlWrapper.createPQExpBuffer();
 			mColBuf = IntPtr.Zero;
+
+			mPos = 0;
+			mRowInfo = null;
+			mColumns = 0;
 		}
 
 		~PqsqlCopyFrom()
@@ -55,12 +74,72 @@ namespace Pqsql
 
 		#endregion
 
-		public void Start(string copy_query)
+		public void Start()
 		{
-			IntPtr res;
-			byte[] q = PqsqlUTF8Statement.CreateUTF8Statement(copy_query);
-			IntPtr conn = mConn.PGConnection;
+			if (string.IsNullOrEmpty(Table))
+			{
+				throw new ArgumentNullException("Table property is null");
+			}
 
+			// PQexec does not set field types in PQresult for COPY FROM statements,
+			// just retrieve 0 rows for the field types of Table
+
+			StringBuilder sb = new StringBuilder();
+			sb.AppendFormat("SELECT {0} FROM {1} LIMIT 0", (object) ColumnList ?? '*' , Table);
+
+			// fetch number of columns and store column information
+			using
+			(
+				PqsqlCommand cmd = new PqsqlCommand(mConn)
+				{
+					CommandText = sb.ToString(), 
+					CommandType = CommandType.Text,
+					CommandTimeout = CopyTimeout
+				}
+			)
+			using
+			(
+				PqsqlDataReader r = cmd.ExecuteReader(CommandBehavior.Default)
+			)
+			{
+				// just pick current row information
+				PqsqlColInfo[] src = r.RowInformation;
+				mColumns = src.Length;
+				mRowInfo = new PqsqlColInfo[mColumns];
+
+				Array.Copy(src, mRowInfo, mColumns);
+			}
+
+			// reset current field position
+			mPos = 0;
+
+			// now build COPY FROM statement
+			sb.Clear();
+			sb.AppendFormat("COPY {0} (", Table);
+
+			// always create list of columns
+			if (string.IsNullOrEmpty(ColumnList))
+			{
+				bool addsep = false;
+				// just assume that we use standard table order
+				foreach (PqsqlColInfo row in mRowInfo)
+				{
+					if (addsep) sb.Append(',');
+					addsep = true;
+					sb.Append(row.ColumnName);
+				}
+			}
+			else
+			{
+				// let user decide the column order
+				sb.Append(ColumnList);
+			}
+
+			sb.Append(") FROM STDIN BINARY");
+
+			byte[] q = PqsqlUTF8Statement.CreateUTF8Statement(sb);
+			IntPtr conn = mConn.PGConnection;
+			IntPtr res;
 			unsafe
 			{
 				fixed (byte* qp = q)
@@ -89,12 +168,16 @@ namespace Pqsql
 				// check first column format, current implementation will have all columns set to binary 
 				if (PqsqlWrapper.PQfformat(res, 0) == 0)
 				{
+					PqsqlWrapper.PQclear(res);
 					throw new PqsqlException("PqsqlCopyFrom only supports COPY FROM STDIN BINARY");
 				}
 
-				// get number of columns
-				int num_cols = PqsqlWrapper.PQnfields(res);
-				
+				if (mColumns != PqsqlWrapper.PQnfields(res))
+				{
+					PqsqlWrapper.PQclear(res);
+					throw new PqsqlException("Received wrong number of columns for " + sb);
+				}
+
 				// done with result inspection
 				PqsqlWrapper.PQclear(res);
 
@@ -103,14 +186,14 @@ namespace Pqsql
 					PqsqlBinaryFormat.pqcb_free(mColBuf);
 				}
 
-				mColBuf = PqsqlBinaryFormat.pqcb_create(conn, num_cols);
+				mColBuf = PqsqlBinaryFormat.pqcb_create(conn, mColumns);
 
 				return;
 			}
 
 			bailout:
 			string err = mConn.GetErrorMessage();
-			throw new PqsqlException("Could not execute statement «" + copy_query + "»: " + err);
+			throw new PqsqlException("Could not execute statement «" + sb + "»: " + err);
 		}
 
 
@@ -266,7 +349,7 @@ namespace Pqsql
 			return err;
 		}
 
-
+		// returns current position of mExpBuf
 		private long LengthCheckReset()
 		{
 			long len = PqsqlBinaryFormat.pqbf_get_buflen(mExpBuf);
@@ -292,6 +375,12 @@ namespace Pqsql
 			{
 				string err = Error();
 				throw new PqsqlException(err);
+			}
+
+			// rewind mPos in case we hit column boundary
+			if (++mPos >= mColumns)
+			{
+				mPos = 0;
 			}
 
 			return (int) type_length;
@@ -320,40 +409,115 @@ namespace Pqsql
 		public int WriteInt2(short i)
 		{
 			long begin = LengthCheckReset();
-			PqsqlBinaryFormat.pqbf_set_int2(mExpBuf, i);
+
+			PqsqlColInfo ci = mRowInfo[mPos];
+			PqsqlDbType oid = ci.Oid;
+			uint destination_length;
+
+			// check destination row datatype
+			switch (oid)
+			{
+				case PqsqlDbType.Int8:
+					PqsqlBinaryFormat.pqbf_set_int8(mExpBuf, i);
+					destination_length = 8;
+					break;
+				case PqsqlDbType.Int4:
+					PqsqlBinaryFormat.pqbf_set_int4(mExpBuf, i);
+					destination_length = 4;
+					break;
+				case PqsqlDbType.Int2:
+					PqsqlBinaryFormat.pqbf_set_int2(mExpBuf, i);
+					destination_length = 2;
+					break;
+				default:
+					throw new PqsqlException("Column " + ci.ColumnName + ": cannot write " + typeof(short) + " to column of type " + oid);
+			}
+
 			unsafe
 			{
 				sbyte* val = PqsqlBinaryFormat.pqbf_get_bufval(mExpBuf) + begin;
-				return PutColumn(val, 2);
+				return PutColumn(val, destination_length);
 			}
 		}
 
 		public int WriteInt4(int i)
 		{
 			long begin = LengthCheckReset();
-			PqsqlBinaryFormat.pqbf_set_int4(mExpBuf, i);
+
+			PqsqlColInfo ci = mRowInfo[mPos];
+			PqsqlDbType oid = ci.Oid;
+			uint destination_length;
+
+			// check destination row datatype
+			switch (oid)
+			{
+			case PqsqlDbType.Int8:
+				PqsqlBinaryFormat.pqbf_set_int8(mExpBuf, i);
+				destination_length = 8;
+				break;
+			case PqsqlDbType.Int4:
+				PqsqlBinaryFormat.pqbf_set_int4(mExpBuf, i);
+				destination_length = 4;
+				break;
+			case PqsqlDbType.Int2:
+				// dangerous, but let's try it
+				PqsqlBinaryFormat.pqbf_set_int2(mExpBuf, (short) i);
+				destination_length = 2;
+				break;
+			default:
+				throw new PqsqlException("Column " + ci.ColumnName + ": cannot write " + typeof(int) + " to column of type " + oid);
+			}
+
 			unsafe
 			{
 				sbyte* val = PqsqlBinaryFormat.pqbf_get_bufval(mExpBuf) + begin;
-				return PutColumn(val, 4);
+				return PutColumn(val, destination_length);
 			}
 		}
 
 		public int WriteInt8(long i)
 		{
 			long begin = LengthCheckReset();
-			PqsqlBinaryFormat.pqbf_set_int8(mExpBuf, i);
+
+			PqsqlColInfo ci = mRowInfo[mPos];
+			PqsqlDbType oid = ci.Oid;
+			uint destination_length;
+
+			// check destination row datatype
+			switch (oid)
+			{
+				case PqsqlDbType.Int8:
+					PqsqlBinaryFormat.pqbf_set_int8(mExpBuf, i);
+					destination_length = 8;
+					break;
+				case PqsqlDbType.Int4:
+					// dangerous, but let's try it
+					PqsqlBinaryFormat.pqbf_set_int4(mExpBuf, (int) i);
+					destination_length = 4;
+					break;
+				case PqsqlDbType.Int2:
+					// dangerous, but let's try it
+					PqsqlBinaryFormat.pqbf_set_int2(mExpBuf, (short) i);
+					destination_length = 2;
+					break;
+				default:
+					throw new PqsqlException("Column " + ci.ColumnName + ": cannot write " + typeof(long) + " to column of type " + oid);
+			}
+
 			unsafe
 			{
 				sbyte* val = PqsqlBinaryFormat.pqbf_get_bufval(mExpBuf) + begin;
-				return PutColumn(val, 8);
+				return PutColumn(val, destination_length);
 			}
 		}
 
 		public int WriteFloat4(float f)
 		{
 			long begin = LengthCheckReset();
+
+			// TODO try to infer destination datatype
 			PqsqlBinaryFormat.pqbf_set_float4(mExpBuf, f);
+
 			unsafe
 			{
 				sbyte* val = PqsqlBinaryFormat.pqbf_get_bufval(mExpBuf) + begin;
@@ -364,7 +528,10 @@ namespace Pqsql
 		public int WriteFloat8(double d)
 		{
 			long begin = LengthCheckReset();
+
+			// TODO try to infer destination datatype
 			PqsqlBinaryFormat.pqbf_set_float8(mExpBuf, d);
+
 			unsafe
 			{
 				sbyte* val = PqsqlBinaryFormat.pqbf_get_bufval(mExpBuf) + begin;
@@ -375,6 +542,8 @@ namespace Pqsql
 		public int WriteNumeric(decimal d)
 		{
 			long begin = LengthCheckReset();
+
+			// TODO try to infer destination datatype
 			PqsqlBinaryFormat.pqbf_set_numeric(mExpBuf, decimal.ToDouble(d));
 			long end = PqsqlBinaryFormat.pqbf_get_buflen(mExpBuf);
 
