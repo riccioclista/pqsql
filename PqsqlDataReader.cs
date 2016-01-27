@@ -111,6 +111,13 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 		readonly string[] mStatements;
 
 
+		// used in PqsqlCopyFrom to retrieve type information
+		internal PqsqlColInfo[] RowInformation
+		{
+			get { return mRowInfo; }
+		}
+
+
 		#region DbDataReader
 
 		#region ctors and dtors
