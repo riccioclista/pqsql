@@ -720,6 +720,11 @@ namespace Pqsql
 		// for PqsqlDataReader
 		public static PqsqlTypeName FetchType(PqsqlDbType oid, string connstring)
 		{
+			if (oid == 0)
+			{
+				throw new ArgumentOutOfRangeException("Datatype with oid=0 (InvalidOid) not supported");
+			}
+
 			// try to guess the type mapping
 			using (PqsqlConnection conn = new PqsqlConnection(connstring))
 			using (PqsqlCommand cmd = new PqsqlCommand(TypeCategoryByTypeOid, conn))
