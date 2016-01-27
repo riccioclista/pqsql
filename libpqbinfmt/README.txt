@@ -46,7 +46,11 @@ and arrays of the above types as element type
 Unsupported features
 ====================
 
-COPY TO STDOUT BINARY
+- COPY TO STDOUT BINARY
+
+- COPY FROM STDIN BINARY
+  Flags field: Bit 16 (if 1, OIDs are included in the data; if 0, not)
+
 
 
 
