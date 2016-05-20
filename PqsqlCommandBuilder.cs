@@ -15,7 +15,7 @@ namespace Pqsql
 		{
 		}
 
-		public PqsqlCommandBuilder(PqsqlDataAdapter adapter)
+		public PqsqlCommandBuilder(DbDataAdapter adapter)
 		{
 			DataAdapter = adapter;
 			QuotePrefix = "\"";

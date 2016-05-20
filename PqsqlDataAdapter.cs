@@ -26,7 +26,7 @@ namespace Pqsql
 		{
 		}
 
-		public PqsqlDataAdapter(PqsqlCommand selectCommand)
+		public PqsqlDataAdapter(DbCommand selectCommand)
     {
       SelectCommand = selectCommand;
     }
