@@ -397,7 +397,7 @@ namespace Pqsql
 		//     An array of values of type System.Data.Common.DbParameter to add to the collection.
 		public override void AddRange(Array values)
 		{
-			Array.ForEach<PqsqlParameter>(values as PqsqlParameter[], val => Add(val));
+			Array.ForEach(values as PqsqlParameter[], val => Add(val));
 		}
 
 		//
