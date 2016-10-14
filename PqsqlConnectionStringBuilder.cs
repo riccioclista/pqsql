@@ -123,6 +123,11 @@ namespace Pqsql
 		public const string options = "options";
 		public const string application_name = "application_name";
 
+		public const string keepalives = "keepalives";
+		public const string keepalives_idle = "keepalives_idle";
+		public const string keepalives_interval = "keepalives_interval";
+		public const string keepalives_count = "keepalives_count";
+
 		// .NET connection string aliases will be replaced with their libpq equivalents
 		static readonly string[] hostAlias = { "server", "data source", "datasource", "address", "addr", "network address" };
 		static readonly string[] dbnameAlias = { "database", "initial catalog" };
