@@ -30,6 +30,11 @@ namespace Pqsql
 		// only cleanup connections if the oldest one had been visited more than VisitedThreshold times
 		const int VisitedThreshold = 2;
 
+		// busy wait 500msec until we have received the empty result
+		const int EmptyBusyWait = 500;
+		// maximum number of retries waiting for the empty result
+		const int EmptyMaxRetry = 20;
+
 		// global timer for cleaning connections
 		private static readonly Timer mTimer;
 
@@ -182,15 +187,79 @@ namespace Pqsql
 
 		private static bool CheckOrRelease(IntPtr pgConn)
 		{
+			// is connection reusable?
 			ConnectionStatus s = (ConnectionStatus) PqsqlWrapper.PQstatus(pgConn);
 			if (s != ConnectionStatus.CONNECTION_OK) goto broken;
 
 			PGTransactionStatus ts = (PGTransactionStatus) PqsqlWrapper.PQtransactionStatus(pgConn);
 			if (ts != PGTransactionStatus.PQTRANS_IDLE) goto broken;
 
-			return true;
+			// send empty query to test whether we are really connected (tcp keepalive might have closed socket)
+			unsafe
+			{
+				byte[] empty = { 0 }; // empty query string
+
+				fixed (byte* eq = empty)
+				{
+					if (PqsqlWrapper.PQsendQuery(pgConn, eq) == 0) // could not send query
+						goto broken;
+				}
+			}
+
+			// wait for empty result: after sending query, we might have to wait for the result for too long
+			// (network device down or server has just died)
+			int retry = 0;
+			while (retry < EmptyMaxRetry)
+			{
+				if (PqsqlWrapper.PQconsumeInput(pgConn) == 0)
+					goto broken;
+
+				if (PqsqlWrapper.PQisBusy(pgConn) == 1) // PQgetResult will block 
+				{
+					retry++;
+					Thread.Sleep(EmptyBusyWait);
+				}
+				else // done receiving empty result, PQgetResult will not block 
+				{
+					break;
+				}
+			}
+
+			if (retry >= EmptyMaxRetry) // timeout reading empty result
+				goto broken;
+			
+			// Reading empty result: consume and clear remaining results until we reach the NULL result
+			IntPtr res;
+			ExecStatus st = ExecStatus.PGRES_EMPTY_QUERY;
+			while ((res = PqsqlWrapper.PQgetResult(pgConn)) != IntPtr.Zero)
+			{
+				ExecStatus st0 = (ExecStatus) PqsqlWrapper.PQresultStatus(res);
+
+				if (st0 != ExecStatus.PGRES_EMPTY_QUERY)
+					st = st0;
+
+				// always free res
+				PqsqlWrapper.PQclear(res);
+			}
+
+			if (st != ExecStatus.PGRES_EMPTY_QUERY) // received wrong exec status
+				goto broken;
+
+			return true; // successfully reused connection
 
 		broken:
+			// reconnect with current connection setting
+			PqsqlWrapper.PQreset(pgConn);
+
+			s = (ConnectionStatus) PqsqlWrapper.PQstatus(pgConn);
+			if (s == ConnectionStatus.CONNECTION_OK)
+			{
+				ts = (PGTransactionStatus) PqsqlWrapper.PQtransactionStatus(pgConn);
+				if (ts == PGTransactionStatus.PQTRANS_IDLE)
+					return true; // successfully reconnected
+			}
+
+			// could not reconnect: finally give up and clean up memory
 			PqsqlWrapper.PQfinish(pgConn);
 			return false;
 		}

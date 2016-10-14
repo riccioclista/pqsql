@@ -266,7 +266,6 @@ namespace Pqsql
 
 		//
 		// http://www.postgresql.org/docs/current/static/libpq-exec.html
-		// http://www.postgresql.org/docs/current/static/libpq-async.html
 		//
 
 		#region blocking queries
@@ -281,6 +280,9 @@ namespace Pqsql
 
 		#endregion
 
+		//
+		// http://www.postgresql.org/docs/current/static/libpq-async.html
+		//
 
 		#region non-blocking queries
 
@@ -295,6 +297,14 @@ namespace Pqsql
 		[DllImport("libpq.dll")]
 		public static extern IntPtr PQgetResult(IntPtr conn);
 		// PGresult *PQgetResult(PGconn *conn)
+
+		[DllImport("libpq.dll")]
+		public static extern int PQconsumeInput(IntPtr conn);
+		// int PQconsumeInput(PGconn *conn);
+
+		[DllImport("libpq.dll")]
+		public static extern int PQisBusy(IntPtr conn);
+		// int PQisBusy(PGconn *conn);
 
 		#endregion
 
