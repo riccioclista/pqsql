@@ -6,8 +6,8 @@ libpqbinfmt
 
 Assumes that headers and lib files are installed in C:\pgsql
 
-Just unpack postgresql-9.4.5-1-windows-x64-binaries.zip from
-http://www.enterprisedb.com/postgresql-945-binaries-win64?ls=Crossover&type=Crossover
+Just unpack postgresql-9.4.9-2-windows-x64-binaries.zip from
+http://www.enterprisedb.com/postgresql-949-binaries-win64?ls=Crossover&type=Crossover
 into C:\pgsql
 
 
@@ -25,17 +25,17 @@ https://www.microsoft.com/en-us/download/details.aspx?id=13523
 The libpq DLLs depend on Visual C++ Redistributable Packages for Visual Studio 2013 from
 https://www.microsoft.com/en-us/download/details.aspx?id=40784
 
-libpqbinfmt us based on x64 libpq from PostgreSQL 9.4.5:
+libpqbinfmt us based on x64 libpq from PostgreSQL 9.4.9:
 http://www.postgresql.org/docs/current/static/libpq.html
 
-libpq DLLs can be retrieved from postgresql-9.4.5-1-windows-x64-binaries.zip:
-http://www.enterprisedb.com/postgresql-945-binaries-win64?ls=Crossover&type=Crossover
+libpq DLLs can be retrieved from postgresql-9.4.9-2-windows-x64-binaries.zip:
+http://www.enterprisedb.com/postgresql-949-binaries-win64?ls=Crossover&type=Crossover
 
-libpq 9.4.5 is linked with
-- OpenSSL 1.0.1p (libeay32.dll and ssleay32.dll)
+libpq 9.4.9 is linked with
+- OpenSSL 1.0.2h (libeay32.dll and ssleay32.dll)
 - libintl 0.18.1 (libintl-8.dll)
 
-postgresql-9.4.5-1-windows-x64-binaries.zip contains the necessary DLLs
+postgresql-9.4.9-2-windows-x64-binaries.zip contains the necessary DLLs
 for libpqbinfmt:
 - pgsql\bin\libpq.dll
 - pgsql\bin\libeay32.dll

@@ -63,3 +63,12 @@ timetz
 timestamptz
 uuid
 ...
+
+
+Incorporated Postgresql code
+============================
+src/backend/utils/adt/float.c
+src/backend/utils/adt/numeric.c
+src/include/utils/numeric.h
+src/interfaces/ecpg/ecpglib/pg_type.h
+src/interfaces/libpq/pqexpbuffer.h
