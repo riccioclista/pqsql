@@ -445,8 +445,6 @@ namespace Pqsql
 		// http://www.postgresql.org/docs/current/static/largeobjects.html
 		//
 
-		// TODO add LO support
-
 		#region LO creat / unlink
 
 		[DllImport("libpq.dll")]
