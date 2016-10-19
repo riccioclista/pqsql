@@ -75,30 +75,31 @@ namespace Pqsql
 #if PQSQL_DEBUG
 				mLogger.Debug("Running PoolService");
 #endif
-				Dictionary<PqsqlConnectionStringBuilder, Queue<ConnectionInfo>>.Enumerator e = mPooledConns.GetEnumerator();
 
-				while (e.MoveNext())
+				using (Dictionary<PqsqlConnectionStringBuilder, Queue<ConnectionInfo>>.Enumerator e = mPooledConns.GetEnumerator())
 				{
-					KeyValuePair<PqsqlConnectionStringBuilder, Queue<ConnectionInfo>> item = e.Current;
+					while (e.MoveNext())
+					{
+						KeyValuePair<PqsqlConnectionStringBuilder, Queue<ConnectionInfo>> item = e.Current;
 #if PQSQL_DEBUG
 					PqsqlConnectionStringBuilder csb = item.Key;
 #endif
-					Queue<ConnectionInfo> queue = item.Value;
+						Queue<ConnectionInfo> queue = item.Value;
 
-					lock (queue)
-					{
-						int count = queue.Count;
+						lock (queue)
+						{
+							int count = queue.Count;
 
 #if PQSQL_DEBUG
 						mLogger.DebugFormat("ConnectionPool {0}: {1} waiting connections", csb.ConnectionString, count);
 #endif
 
-						if (count == 0) continue;
+							if (count == 0) continue;
 
-						int maxRelease = count / 2 + 1;
+							int maxRelease = count/2 + 1;
 
-						ConnectionInfo i = queue.Peek();
-						i.visited++;
+							ConnectionInfo i = queue.Peek();
+							i.visited++;
 
 #if PQSQL_DEBUG
 						if (i.visited <= VisitedThreshold)
@@ -107,17 +108,18 @@ namespace Pqsql
 						}
 #endif
 
-						if (i.visited > VisitedThreshold)
-						{
+							if (i.visited > VisitedThreshold)
+							{
 #if PQSQL_DEBUG
 							mLogger.DebugFormat("ConnectionPool {0}: visit threshold {1} reached, releasing {2} connections", csb.ConnectionString, i.visited, maxRelease);
 #endif
-							while (maxRelease > 0)
-							{
-								// clean maxRelease connections
-								i = queue.Dequeue();
-								closeConnections.Add(i.pgconn); // close connections outside of queue lock
-								maxRelease--;
+								while (maxRelease > 0)
+								{
+									// clean maxRelease connections
+									i = queue.Dequeue();
+									closeConnections.Add(i.pgconn); // close connections outside of queue lock
+									maxRelease--;
+								}
 							}
 						}
 					}
