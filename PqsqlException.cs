@@ -36,7 +36,7 @@ namespace Pqsql
 		{
 			sbyte* sqlState = PqsqlWrapper.PQresultErrorField(result, PqsqlDiag.PG_DIAG_SQLSTATE);
 
-			int code = 0; // error code '00000' means successful_completion
+			int code = (int) PqsqlState.SUCCESSFUL_COMPLETION; // code=0: error code '00000' means successful_completion
 
 			if (sqlState != null)
 			{
