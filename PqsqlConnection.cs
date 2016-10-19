@@ -238,6 +238,42 @@ namespace Pqsql
 
 		//
 		// Summary:
+		//     Gets the transaction state of the connection.
+		//
+		// Returns:
+		//     The transaction state of the connection.
+		[Browsable(false)]
+		internal PGTransactionStatus TransactionStatus
+		{
+			get
+			{
+				mTransStatus = (mConnection == IntPtr.Zero) ?
+					PGTransactionStatus.PQTRANS_UNKNOWN : // unknown transaction status
+					(PGTransactionStatus) PqsqlWrapper.PQtransactionStatus(mConnection); // update transaction status
+				return mTransStatus;
+			}
+		}
+
+		//
+		// Summary:
+		//     Gets the state of the connection.
+		//
+		// Returns:
+		//     The state of the connection.
+		[Browsable(false)]
+		internal ConnectionStatus Status
+		{
+			get
+			{
+				mStatus = (mConnection == IntPtr.Zero) ?
+					ConnectionStatus.CONNECTION_BAD : // broken connection
+					(ConnectionStatus) PqsqlWrapper.PQstatus(mConnection);
+				return mStatus;
+			}
+		}
+
+		//
+		// Summary:
 		//     Gets a string that describes the state of the connection.
 		//
 		// Returns:
@@ -251,15 +287,10 @@ namespace Pqsql
 				if (mConnection == IntPtr.Zero)
 					return ConnectionState.Closed;
 
-				// update connection status
-				mStatus = (ConnectionStatus) PqsqlWrapper.PQstatus(mConnection);
+				ConnectionState s = ConnectionState.Closed; // 0
 
-				// update transaction status
-				mTransStatus = (PGTransactionStatus) PqsqlWrapper.PQtransactionStatus(mConnection);
-
-				ConnectionState s = ConnectionState.Closed;
-
-				switch (mStatus)
+				// updates connection status
+				switch (Status)
 				{
 					case ConnectionStatus.CONNECTION_OK:
 						s |= ConnectionState.Open;
@@ -274,7 +305,8 @@ namespace Pqsql
 						break;
 				}
 
-				switch (mTransStatus)
+				// updates transaction status
+				switch (TransactionStatus)
 				{
 					case PGTransactionStatus.PQTRANS_ACTIVE: /* command in progress */
 						s |= ConnectionState.Executing;
@@ -450,10 +482,8 @@ namespace Pqsql
 				// close and open with current connection setting
 				PqsqlWrapper.PQreset(mConnection);
 
-				// get connection status
-				mStatus = (ConnectionStatus) PqsqlWrapper.PQstatus(mConnection);
-
-				if (mStatus == ConnectionStatus.CONNECTION_BAD)
+				// update connection and transaction status
+				if (Status == ConnectionStatus.CONNECTION_BAD || TransactionStatus != PGTransactionStatus.PQTRANS_IDLE)
 				{
 					string err = GetErrorMessage();
 					PqsqlWrapper.PQfinish(mConnection); // force release of mConnection memory
@@ -475,10 +505,8 @@ namespace Pqsql
 
 			if (mConnection != IntPtr.Zero)
 			{
-				// get connection status
-				mStatus = (ConnectionStatus) PqsqlWrapper.PQstatus(mConnection);
-
-				if (mStatus == ConnectionStatus.CONNECTION_BAD)
+				// update connection and transaction status
+				if (Status == ConnectionStatus.CONNECTION_BAD || TransactionStatus != PGTransactionStatus.PQTRANS_IDLE)
 				{
 					string err = GetErrorMessage();
 					PqsqlWrapper.PQfinish(mConnection); // force release of mConnection memory
