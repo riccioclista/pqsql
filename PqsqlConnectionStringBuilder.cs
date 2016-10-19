@@ -1,6 +1,7 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Data.Common;
+using System.Diagnostics.Contracts;
 
 namespace Pqsql
 {
@@ -233,6 +234,7 @@ namespace Pqsql
 		// host=localhost; port=5432; user=postgres; password=P4$$word; dbname=postgres; connect_timeout=10
 		public PqsqlConnectionStringBuilder(string s)
 		{
+			Contract.Requires<ArgumentNullException>(s != null); 
 			ConnectionString = s;
 		}
 

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics.Contracts;
 
 namespace Pqsql
 {
@@ -621,9 +622,8 @@ namespace Pqsql
 
     };
 
-		// maps DbType to PqsqlDbType (DbType.DateTimeOffset is maximal integer for the array)
-		static readonly PqsqlDbType[] mDbTypeArray = new PqsqlDbType[(int) DbType.DateTimeOffset + 1]
-		{
+		// maps DbType to PqsqlDbType
+		static readonly PqsqlDbType[] mDbTypeArray = {
 			// DbType.AnsiString = 0,
 			PqsqlDbType.Text,
 
@@ -721,9 +721,9 @@ namespace Pqsql
 		public static PqsqlTypeName FetchType(PqsqlDbType oid, string connstring)
 		{
 			if (oid == 0)
-			{
 				throw new ArgumentOutOfRangeException("Datatype with oid=0 (InvalidOid) not supported");
-			}
+
+			Contract.EndContractBlock();
 
 			// try to guess the type mapping
 			using (PqsqlConnection conn = new PqsqlConnection(connstring))

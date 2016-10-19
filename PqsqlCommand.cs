@@ -160,6 +160,7 @@ namespace Pqsql
 				{
 					mConn = null;
 				}
+				// ReSharper disable once RedundantCheckBeforeAssignment
 				else if (mConn != value)
 				{
 					mConn = value;

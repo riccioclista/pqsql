@@ -181,6 +181,7 @@ namespace Pqsql
 			{
 				if (value < -1)
 					throw new ArgumentException(String.Format("Invalid parameter Size value '{0}'. The value must be greater than or equal to 0.", value));
+
 				Contract.EndContractBlock();
 
 				mSize = value;

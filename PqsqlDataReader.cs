@@ -4,6 +4,7 @@ using System.Data;
 using System.ComponentModel;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using System.Globalization;
 using System.Runtime.InteropServices;
 
@@ -412,6 +413,8 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 
 			if (ordinal < 0 || ordinal >= mColumns)
 				throw new IndexOutOfRangeException("Column " + ordinal + " out of range");
+
+			Contract.EndContractBlock();
 		}
 
 		private void CheckOrdinalType(int ordinal, PqsqlDbType oid)
@@ -468,6 +471,8 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 		{
 			if (ndim != 1)
 				throw new NotImplementedException("Arrays with ndim=" + ndim + " not supported yet");
+
+			Contract.EndContractBlock();
 
 			int[] idx = new int[ndim];
 			for (int d = 0; d < ndim; d++)
@@ -1157,6 +1162,8 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 			if (string.IsNullOrEmpty(name))
 				throw new ArgumentNullException("name");
 
+			Contract.EndContractBlock();
+
 			int col = PqsqlWrapper.PQfnumber(mResult, name);
 
 			if (col == -1)
@@ -1220,6 +1227,8 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 			{
 				throw new InvalidOperationException("PqsqlDataReader.GetSchemaTable failed, connection closed");
 			}
+
+			Contract.EndContractBlock();
 
 			if (mStmtNum == -1) // nothing executed yet, retrieve column information before we can continue
 			{
@@ -1539,6 +1548,8 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 		{
 			if (values == null)
 				throw new ArgumentNullException("values");
+
+			Contract.EndContractBlock();
 
 			int count = Math.Min(mColumns, values.Length);
 			for (int i = 0; i < count; i++)

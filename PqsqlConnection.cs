@@ -2,6 +2,7 @@
 using System.Data.Common;
 using System.Data;
 using System.ComponentModel;
+using System.Diagnostics.Contracts;
 
 namespace Pqsql
 {
@@ -58,6 +59,7 @@ namespace Pqsql
 
 		public PqsqlConnection(PqsqlConnectionStringBuilder builder)
 		{
+			Contract.Requires<ArgumentNullException>(builder != null);
 			Init();
 			mConnectionStringBuilder = builder;
 		}

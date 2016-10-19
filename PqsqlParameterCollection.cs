@@ -4,6 +4,7 @@ using System.Data.Common;
 using System.ComponentModel;
 using System.Collections;
 using System.Data;
+using System.Diagnostics.Contracts;
 using System.Text;
 
 namespace Pqsql
@@ -54,6 +55,11 @@ namespace Pqsql
 			if (mDisposed)
 			{
 				return;
+			}
+
+			if (disposing)
+			{
+				// always dispose parameter buffer
 			}
 
 			if (mPqPB != IntPtr.Zero)
@@ -569,10 +575,7 @@ namespace Pqsql
 		//     The System.Data.Common.DbParameter object to insert into the collection.
 		public override void Insert(int index, object value)
 		{
-			if (value == null)
-			{
-				throw new ArgumentNullException("value must not be null");
-			}
+			Contract.Requires<ArgumentNullException>(value != null);
 
 			PqsqlParameter val = value as PqsqlParameter;
 
@@ -595,10 +598,7 @@ namespace Pqsql
 		//     The System.Data.Common.DbParameter object to remove.
 		public override void Remove(object value)
 		{
-			if (value == null)
-			{
-				throw new ArgumentNullException("value must not be null");
-			}
+			Contract.Requires<ArgumentNullException>(value != null);
 
 			RemoveAt(IndexOf(value));
 			mChanged = true;
@@ -617,6 +617,7 @@ namespace Pqsql
 			{
 				throw new ArgumentOutOfRangeException("index out of range");
 			}
+			Contract.EndContractBlock();
 
 			PqsqlParameter old = mParamList[index];
 

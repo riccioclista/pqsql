@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Data;
+using System.Diagnostics.Contracts;
 using System.Text;
 
 namespace Pqsql
@@ -77,9 +78,9 @@ namespace Pqsql
 		public void Start()
 		{
 			if (string.IsNullOrEmpty(Table))
-			{
 				throw new ArgumentNullException("Table property is null");
-			}
+
+			Contract.EndContractBlock();
 
 			// PQexec does not set field types in PQresult for COPY FROM statements,
 			// just retrieve 0 rows for the field types of Table
@@ -588,12 +589,12 @@ namespace Pqsql
 			}
 		}
 
-		public unsafe int WriteTime(DateTime dt)
+		public int WriteTime(DateTime dt)
 		{
 			throw new NotImplementedException("WriteTime not implemented");
 		}
 
-		public unsafe int WriteDate(DateTime dt)
+		public int WriteDate(DateTime dt)
 		{
 			throw new NotImplementedException("WriteDate not implemented");
 		}

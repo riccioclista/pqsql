@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using System.Threading;
 
 namespace Pqsql
@@ -64,6 +65,8 @@ namespace Pqsql
 
 		private static void PoolService(object o)
 		{
+			Contract.Requires<ArgumentNullException>(o != null);
+
 			List<IntPtr> closeConnections = o as List<IntPtr>;
 
 			// we assume that we run PoolService in less than IdleTimeout msecs
@@ -133,6 +136,8 @@ namespace Pqsql
 
 		internal static IntPtr SetupPGConn(PqsqlConnectionStringBuilder connStringBuilder)
 		{
+			Contract.Requires<ArgumentNullException>(connStringBuilder != null);
+
 			// setup null-terminated key-value arrays for the connection
 			string[] keys = new string[connStringBuilder.Keys.Count + 1];
 			string[] vals = new string[connStringBuilder.Values.Count + 1];
@@ -148,6 +153,8 @@ namespace Pqsql
 
 		public static IntPtr GetPGConn(PqsqlConnectionStringBuilder connStringBuilder)
 		{
+			Contract.Requires<ArgumentNullException>(connStringBuilder != null);
+
 			Queue<ConnectionInfo> queue;
 			IntPtr pgConn = IntPtr.Zero;
 
@@ -177,7 +184,7 @@ namespace Pqsql
 				}
 			}
 
-			if (pgConn == IntPtr.Zero || !CheckOrRelease(pgConn))
+			if (!CheckOrRelease(pgConn))
 			{
 				pgConn = SetupPGConn(connStringBuilder);
 			}
@@ -187,6 +194,9 @@ namespace Pqsql
 
 		private static bool CheckOrRelease(IntPtr pgConn)
 		{
+			if (pgConn == IntPtr.Zero)
+				return false;
+
 			// is connection reusable?
 			ConnectionStatus s = (ConnectionStatus) PqsqlWrapper.PQstatus(pgConn);
 			if (s != ConnectionStatus.CONNECTION_OK) goto broken;
@@ -266,10 +276,12 @@ namespace Pqsql
 
 		public static void ReleasePGConn(PqsqlConnectionStringBuilder connStringBuilder, IntPtr pgConnHandle)
 		{
-			Queue<ConnectionInfo> queue;
+			Contract.Requires<ArgumentNullException>(connStringBuilder != null);
 
 			if (pgConnHandle == IntPtr.Zero)
 				return;
+
+			Queue<ConnectionInfo> queue;
 
 			lock (mPooledConnsLock)
 			{
@@ -302,6 +314,9 @@ namespace Pqsql
 
 		private static bool DiscardConnection(IntPtr conn)
 		{
+			if (conn == IntPtr.Zero)
+				return false;
+
 			bool rollback = false;
 
 			ConnectionStatus cs = (ConnectionStatus) PqsqlWrapper.PQstatus(conn);

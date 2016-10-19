@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Data.Common;
 using System.Data;
+using System.Diagnostics.Contracts;
 
 namespace Pqsql
 {
@@ -379,9 +380,9 @@ namespace Pqsql
 		public override string QuoteIdentifier(string unquotedIdentifier)
 		{
 			if (unquotedIdentifier == null)
-			{
 				throw new ArgumentNullException("unquotedIdentifier", "Unquoted identifier must not be null");
-			}
+
+			Contract.EndContractBlock();
 
 			return String.Format("{0}{1}{2}", QuotePrefix, unquotedIdentifier.Replace(QuotePrefix, QuotePrefix + QuotePrefix), QuoteSuffix);
 		}
@@ -418,6 +419,8 @@ namespace Pqsql
 			if (pa == null)
 				throw new ArgumentException("adapter needs to be a PqsqlDataAdapter");
 
+			Contract.EndContractBlock();
+
 			PqsqlRowUpdatingEventHandler handler = (s, e) => RowUpdatingHandler(e);
 
 			// unregister if we had registered adapter before
@@ -441,9 +444,9 @@ namespace Pqsql
 		public override string UnquoteIdentifier(string quotedIdentifier)
 		{
 			if (quotedIdentifier == null)
-			{
 				throw new ArgumentNullException("quotedIdentifier", "Quoted identifier parameter cannot be null");
-			}
+
+			Contract.EndContractBlock();
 
 			string uqid = quotedIdentifier.Trim().Replace(QuotePrefix + QuotePrefix, QuotePrefix);
 
