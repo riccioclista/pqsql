@@ -127,37 +127,17 @@ namespace Pqsql
 		// send commit or rollback. must not throw, used in Dispose()
 		internal ExecStatus SaveTransaction(bool commit)
 		{
-			ExecStatus s = ExecStatus.PGRES_EMPTY_QUERY;
+			if (mConn == null)
+				return ExecStatus.PGRES_EMPTY_QUERY;
 
-			if (mConn != null)
-			{
-				IntPtr pgconn = mConn.PGConnection;
+			// in case we are not in a transaction, report closed transaction
+			if (mConn.TransactionStatus != PGTransactionStatus.PQTRANS_INTRANS)
+				return ExecStatus.PGRES_EMPTY_QUERY;
 
-				PGTransactionStatus ts = (PGTransactionStatus) PqsqlWrapper.PQtransactionStatus(pgconn);
+			// if we are, either commit or rollback
+			byte[] txnString = commit ? mCommit : RollbackStatement;
 
-				if (ts != PGTransactionStatus.PQTRANS_INTRANS)
-					return ExecStatus.PGRES_EMPTY_QUERY;
-
-				// commit or rollback
-				byte[] txnString = commit ? mCommit : RollbackStatement;
-
-				unsafe
-				{
-					IntPtr res;
-					fixed (byte* t = txnString)
-					{
-						res = PqsqlWrapper.PQexec(pgconn, t);
-					}
-
-					if (res != IntPtr.Zero)
-					{
-						s = (ExecStatus) PqsqlWrapper.PQresultStatus(res);
-						PqsqlWrapper.PQclear(res);
-					}
-				}
-			}
-
-			return s;
+			return mConn.Exec(txnString);
 		}
 
 		// Summary:

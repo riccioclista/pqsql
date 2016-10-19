@@ -532,31 +532,13 @@ namespace Pqsql
 			if (quote) sb.Append('"');
 
 			byte[] stmt = PqsqlUTF8Statement.CreateUTF8Statement(sb);
-			IntPtr res;
-			IntPtr pc = mConn.PGConnection;
+			ExecStatus s = mConn.Exec(stmt);
 
-			unsafe
+			if (s != ExecStatus.PGRES_COMMAND_OK)
 			{
-				fixed (byte* st = stmt)
-				{
-					res = PqsqlWrapper.PQexec(pc, st);
-				}
+				string err = mConn.GetErrorMessage();
+				throw new PqsqlException("Could not set " + parameter + " to «" + value + "»: " + err);
 			}
-
-			if (res != IntPtr.Zero)
-			{
-				ExecStatus s = (ExecStatus) PqsqlWrapper.PQresultStatus(res);
-
-				PqsqlWrapper.PQclear(res);
-
-				if (s == ExecStatus.PGRES_COMMAND_OK)
-				{
-					return;
-				}
-			}
-
-			string err = mConn.GetErrorMessage();
-			throw new PqsqlException("Could not set " + parameter + " to «" + value + "»: " + err);
 		}
 
 		// sets application_name of the current session

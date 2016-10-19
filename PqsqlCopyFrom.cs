@@ -139,62 +139,41 @@ namespace Pqsql
 			sb.Append(") FROM STDIN BINARY");
 
 			byte[] q = PqsqlUTF8Statement.CreateUTF8Statement(sb);
-			IntPtr conn = mConn.PGConnection;
+
 			IntPtr res;
-			unsafe
+			ExecStatus s = mConn.Exec(q, out res);
+
+			// result buffer should contain column information and PGconn should be in COPY_IN state
+			if (res == IntPtr.Zero || s != ExecStatus.PGRES_COPY_IN)
 			{
-				fixed (byte* qp = q)
-				{
-					res = PqsqlWrapper.PQexec(conn, qp);
-				}
+				mConn.Consume(res); // we might receive several results...
+				throw new PqsqlException("Could not execute statement «" + sb + "»: " + mConn.GetErrorMessage());
 			}
 
-			if (res != IntPtr.Zero) // result buffer should contain column information
+			// check first column format, current implementation will have all columns set to binary 
+			if (PqsqlWrapper.PQfformat(res, 0) == 0)
 			{
-				ExecStatus s = (ExecStatus) PqsqlWrapper.PQresultStatus(res);
-
-				if (s != ExecStatus.PGRES_COPY_IN)
-				{
-					PqsqlWrapper.PQclear(res);
-					// consume all remaining results until we reach the NULL result
-					while ((res = PqsqlWrapper.PQgetResult(conn)) != IntPtr.Zero)
-					{
-						// always free mResult
-						PqsqlWrapper.PQclear(res);
-					}
-
-					goto bailout;
-				}
-
-				// check first column format, current implementation will have all columns set to binary 
-				if (PqsqlWrapper.PQfformat(res, 0) == 0)
-				{
-					PqsqlWrapper.PQclear(res);
-					throw new PqsqlException("PqsqlCopyFrom only supports COPY FROM STDIN BINARY");
-				}
-
-				if (mColumns != PqsqlWrapper.PQnfields(res))
-				{
-					PqsqlWrapper.PQclear(res);
-					throw new PqsqlException("Received wrong number of columns for " + sb);
-				}
-
-				// done with result inspection
-				PqsqlWrapper.PQclear(res);
-
-				if (mColBuf != IntPtr.Zero)
-				{
-					PqsqlBinaryFormat.pqcb_free(mColBuf);
-				}
-
-				mColBuf = PqsqlBinaryFormat.pqcb_create(conn, mColumns);
-
-				return;
+				mConn.Consume(res);
+				throw new PqsqlException("PqsqlCopyFrom only supports COPY FROM STDIN BINARY");
 			}
 
-			bailout:
-			string err = mConn.GetErrorMessage();
-			throw new PqsqlException("Could not execute statement «" + sb + "»: " + err);
+			// sanity check
+			if (mColumns != PqsqlWrapper.PQnfields(res))
+			{
+				mConn.Consume(res);
+				throw new PqsqlException("Received wrong number of columns for " + sb);
+			}
+
+			// done with result inspection
+			PqsqlWrapper.PQclear(res);
+
+			if (mColBuf != IntPtr.Zero)
+			{
+				PqsqlBinaryFormat.pqcb_free(mColBuf);
+			}
+
+			IntPtr conn = mConn.PGConnection;
+			mColBuf = PqsqlBinaryFormat.pqcb_create(conn, mColumns);
 		}
 
 

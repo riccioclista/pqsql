@@ -374,26 +374,12 @@ namespace Pqsql
 			// get transaction start command
 			byte[] txnString = txn.TransactionStart;
 
-			unsafe
+			ExecStatus s = Exec(txnString);
+
+			if (s != ExecStatus.PGRES_COMMAND_OK)
 			{
-				IntPtr res;
-				fixed (byte* t = txnString)
-				{
-					res = PqsqlWrapper.PQexec(mConnection, t);
-				}
-
-				ExecStatus s = ExecStatus.PGRES_EMPTY_QUERY;
-				if (res != IntPtr.Zero)
-				{
-					s = (ExecStatus) PqsqlWrapper.PQresultStatus(res);
-					PqsqlWrapper.PQclear(res);
-				}
-
-				if (s != ExecStatus.PGRES_COMMAND_OK)
-				{
-					string err = GetErrorMessage();
-					throw new PqsqlException("Transaction start failed: " + err);
-				}
+				string err = GetErrorMessage();
+				throw new PqsqlException("Transaction start failed: " + err);
 			}
 
 			return txn;
@@ -462,7 +448,7 @@ namespace Pqsql
 
 		//
 		// Summary:
-		//     Enlists in the specified transaction.
+		//     Enlists in the specified transaction. TODO
 		//
 		// Parameters:
 		//   transaction:
@@ -522,6 +508,60 @@ namespace Pqsql
 			}
 		}
 
+		// call PQexec and immediately discard PGresult struct
+		internal ExecStatus Exec(byte[] stmt)
+		{
+			IntPtr res;
+			ExecStatus s = Exec(stmt, out res);
+			Consume(res);
+			return s;
+		}
+
+		// call PQexec
+		internal ExecStatus Exec(byte[] stmt, out IntPtr res)
+		{
+			if (mConnection == IntPtr.Zero)
+			{
+				res = IntPtr.Zero;
+				return ExecStatus.PGRES_FATAL_ERROR;
+			}
+
+			unsafe
+			{
+				fixed (byte* st = stmt)
+				{
+					res = PqsqlWrapper.PQexec(mConnection, st);
+				}
+			}
+
+			ExecStatus s = ExecStatus.PGRES_FATAL_ERROR;
+
+			if (res != IntPtr.Zero)
+			{
+				s = (ExecStatus) PqsqlWrapper.PQresultStatus(res);
+			}
+
+			return s;
+		}
+
+		// consume remaining results from connection
+		internal void Consume(IntPtr res)
+		{
+			if (mConnection == IntPtr.Zero)
+				return;
+
+			if (res != IntPtr.Zero)
+			{
+				PqsqlWrapper.PQclear(res);
+			}
+
+			// consume all remaining results until we reach the NULL result
+			while ((res = PqsqlWrapper.PQgetResult(mConnection)) != IntPtr.Zero)
+			{
+				// always free mResult
+				PqsqlWrapper.PQclear(res);
+			}
+		}
 
 		// return current error message
 		internal string GetErrorMessage()
