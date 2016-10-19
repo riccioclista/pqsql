@@ -21,7 +21,6 @@ namespace Pqsql
 		/// <summary>
 		/// Corresponds to the PostgreSQL 8-byte "bigint" type.
 		/// </summary>
-		/// <remarks>See </remarks>
 		Int8 = 20,
 
 		/// <summary>
@@ -44,17 +43,20 @@ namespace Pqsql
 		/// </summary>
 		Float4 = 700,
 
-		/// <summary/>
+		/// <summary>
 		/// Corresponds to the PostgreSQL 2-byte "smallint" type.
 		/// </summary>
 		Int2 = 21,
 
 		#endregion
 
-		// http://www.postgresql.org/docs/9.4/static/datatype-money.html
+		// http://www.postgresql.org/docs/current/static/datatype-money.html
 
 		#region Money
-		
+
+		/// <summary>
+		/// Corresponds to the PostgreSQL "money" type.
+		/// </summary>
 		Money = 790,
 
 		#endregion	
@@ -73,7 +75,7 @@ namespace Pqsql
 		#region Enumerated Types
 
 		/// <summary>
-		/// Corresponds to the PostgreSQL "enum" type.
+		/// TODO Corresponds to the PostgreSQL "enum" type.
 		/// </summary>
 		/// <remarks>See http://www.postgresql.org/docs/current/static/datatype-enum.html</remarks>
 		//Enum = 47,
@@ -249,7 +251,7 @@ namespace Pqsql
 		#region Composite Types
 
 		/// <summary>
-		/// Corresponds to the PostgreSQL "composite" type.
+		/// TODO Corresponds to the PostgreSQL "composite" type.
 		/// </summary>
 		/// <remarks>See http://www.postgresql.org/docs/current/static/rowtypes.html</remarks>
 		//Composite = 48,
@@ -258,15 +260,7 @@ namespace Pqsql
 
 		#region Range Types
 
-		/// <summary>
-		/// Corresponds to the PostgreSQL "array" type, a variable-length multidimensional array of
-		/// another type. This value must be combined with another value from <see cref="NpgsqlDbType"/>
-		/// via a bit OR (e.g. NpgsqlDbType.Array | NpgsqlDbType.Integer)
-		/// </summary>
-		/// <remarks>
-		/// Supported since PostgreSQL 9.2.
-		/// See http://www.postgresql.org/docs/9.2/static/rangetypes.html
-		/// </remarks>
+		/// TODO http://www.postgresql.org/docs/current/static/rangetypes.html
 		//Range = 0x40000000,
 
 		#endregion
@@ -279,7 +273,7 @@ namespace Pqsql
 		Refcursor = 1790,
 
 		/// <summary>
-		/// Corresponds to the PostgreSQL internal "oidvector" type.
+		/// TODO Corresponds to the PostgreSQL internal "oidvector" type.
 		/// </summary>
 		/// <remarks>See http://www.postgresql.org/docs/current/static/datatype-oid.html</remarks>
 		//Oidvector = 29,
@@ -291,19 +285,19 @@ namespace Pqsql
 		Oid = 26,
 
 		/// <summary>
-		/// Corresponds to the PostgreSQL "xid" type, an internal transaction identifier.
+		/// TODO Corresponds to the PostgreSQL "xid" type, an internal transaction identifier.
 		/// </summary>
 		/// <remarks>See http://www.postgresql.org/docs/current/static/datatype-oid.html</remarks>
 		//Xid = 42,
 
 		/// <summary>
-		/// Corresponds to the PostgreSQL "cid" type, an internal command identifier.
+		/// TODO Corresponds to the PostgreSQL "cid" type, an internal command identifier.
 		/// </summary>
 		/// <remarks>See http://www.postgresql.org/docs/current/static/datatype-oid.html</remarks>
 		//Cid = 43,
 
 		/// <summary>
-		/// Corresponds to the PostgreSQL "regtype" type, a numeric (OID) ID of a type in the pg_type table.
+		/// TODO Corresponds to the PostgreSQL "regtype" type, a numeric (OID) ID of a type in the pg_type table.
 		/// </summary>
 		//Regtype = 49,
 
