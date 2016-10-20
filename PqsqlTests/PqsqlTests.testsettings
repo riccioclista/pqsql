@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<TestSettings name="PqsqlTests" id="18148cd6-3896-43f8-9570-c6bd16aca8ab" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Description>These are default test settings for a local test run.</Description>
+  <Deployment>
+    <DeploymentItem filename="C:\pgsql\bin\libintl-8.dll" />
+    <DeploymentItem filename="C:\pgsql\bin\ssleay32.dll" />
+    <DeploymentItem filename="C:\pgsql\bin\libpq.dll" />
+    <DeploymentItem filename="bin\x64\Release\libpqbinfmt.dll" />
+    <DeploymentItem filename="bin\x64\Debug\Pqsql.dll" />
+    <DeploymentItem filename="C:\pgsql\bin\libeay32.dll" />
+  </Deployment>
+  <Execution hostProcessPlatform="MSIL">
+    <Timeouts testTimeout="20000" />
+    <TestTypeSpecific>
+      <UnitTestRunConfig testTypeId="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b">
+        <AssemblyResolution>
+          <TestDirectory useLoadContext="false" />
+        </AssemblyResolution>
+      </UnitTestRunConfig>
+    </TestTypeSpecific>
+    <AgentRule name="Execution Agents">
+    </AgentRule>
+  </Execution>
+</TestSettings>
