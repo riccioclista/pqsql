@@ -720,10 +720,9 @@ namespace Pqsql
 		// for PqsqlDataReader
 		public static PqsqlTypeName FetchType(PqsqlDbType oid, string connstring)
 		{
-			if (oid == 0)
-				throw new ArgumentOutOfRangeException("Datatype with oid=0 (InvalidOid) not supported");
-
-			Contract.EndContractBlock();
+			Contract.Requires<ArgumentOutOfRangeException>(oid != 0, "Datatype with oid=0 (InvalidOid) not supported");
+			Contract.Requires<ArgumentNullException>(connstring != null);
+			Contract.Ensures(Contract.Result<PqsqlTypeName>() != null);
 
 			// try to guess the type mapping
 			using (PqsqlConnection conn = new PqsqlConnection(connstring))
@@ -780,6 +779,7 @@ namespace Pqsql
 		// for PqsqlParameter
 		public static PqsqlDbType GetPqsqlDbType(DbType dbType)
 		{
+			Contract.Assume((int) dbType < mDbTypeArray.Length);
 			return mDbTypeArray[(int) dbType];
 		}
 
@@ -800,6 +800,8 @@ namespace Pqsql
 		// for PqsqlParameterCollection
 		public static Action<IntPtr, object> SetArrayValue(PqsqlDbType oid, PqsqlTypeName n)
 		{
+			Contract.Requires<ArgumentNullException>(n != null);
+
 			oid &= ~PqsqlDbType.Array; // remove Array flag
 			PqsqlDbType arrayoid = n.ArrayDbType;
 			Action<IntPtr, object> setArrayItem = n.SetArrayItem;

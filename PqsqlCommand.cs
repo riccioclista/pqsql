@@ -3,6 +3,7 @@ using System.Text;
 using System.Data.Common;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics.Contracts;
 
 namespace Pqsql
 {
@@ -243,6 +244,7 @@ namespace Pqsql
 		{
 			get
 			{
+				Contract.Ensures(Contract.Result<PqsqlParameterCollection>() != null);
 				return mParams;
 			}
 		}
@@ -361,6 +363,7 @@ namespace Pqsql
 		//     A System.Data.Common.DbParameter object.
 		public new PqsqlParameter CreateParameter()
 		{
+			Contract.Ensures(Contract.Result<PqsqlParameter>() != null);
 			return new PqsqlParameter();
 		}
 
@@ -418,6 +421,7 @@ namespace Pqsql
 		//     A System.Data.Common.DbDataReader object.
 		public new PqsqlDataReader ExecuteReader()
 		{
+			Contract.Ensures(Contract.Result<PqsqlDataReader>() != null);
 			return ExecuteReader(CommandBehavior.Default);
 		}
 
@@ -435,6 +439,8 @@ namespace Pqsql
 		//     An System.Data.Common.DbDataReader object.
 		public new PqsqlDataReader ExecuteReader(CommandBehavior behavior)
 		{
+			Contract.Ensures(Contract.Result<PqsqlDataReader>() != null);
+
 			string[] statements;
 
 #if false
@@ -461,10 +467,14 @@ namespace Pqsql
 					throw new InvalidEnumArgumentException("unknown CommandType");
 			}
 
+			Contract.Assert(statements != null);
+
 			if (statements.Length < 2)
 				behavior |= CommandBehavior.SingleResult;
 
 			CheckOpen();
+
+			Contract.Assert(mConn != null);
 
 			SetStatementTimeout();
 
@@ -477,6 +487,8 @@ namespace Pqsql
 
 		private string[] BuildTableStatement()
 		{
+			Contract.Ensures(Contract.Result<string[]>() != null);
+
 			string[] statements = new string[1];
 
 			StringBuilder tq = new StringBuilder(mTableString);
@@ -489,6 +501,8 @@ namespace Pqsql
 
 		private string[] BuildStoredProcStatement()
 		{
+			Contract.Ensures(Contract.Result<string[]>() != null);
+
 			string[] statements = new string[1];
 
 			StringBuilder spq = new StringBuilder();
@@ -523,6 +537,8 @@ namespace Pqsql
 		// open connection if it is closed or broken
 		private void CheckOpen()
 		{
+			Contract.Assume(mConn != null);
+
 			ConnectionState s = mConn.State;
 
 			if (s == ConnectionState.Closed || (s & ConnectionState.Broken) > 0)
@@ -534,6 +550,8 @@ namespace Pqsql
 		// executes SET parameter=value
 		private void SetSessionParameter(string parameter, object value, bool quote)
 		{
+			Contract.Assume(mConn != null);
+
 			StringBuilder sb = new StringBuilder();
 			sb.Append("set ");
 			sb.Append(parameter);
@@ -609,6 +627,10 @@ namespace Pqsql
 		// resize statements to i+1, and set i to sb
 		private void ResizeAndSetStatements(ref StringBuilder statement, ref string[] statements, int i)
 		{
+			Contract.Requires<ArgumentNullException>(statements != null);
+			Contract.Requires<ArgumentNullException>(statement != null);
+			Contract.Requires<ArgumentNullException>(i >= 0);
+
 			Array.Resize(ref statements, i + 1);
 			statements[i] = statement.ToString().TrimStart();
 			statement.Clear();
@@ -617,6 +639,10 @@ namespace Pqsql
 		// replace parameter name with $ index in statement
 		private void ReplaceParameter(ref StringBuilder statement, ref StringBuilder paramName, ref StringBuilder paramIndex)
 		{
+			Contract.Requires<ArgumentNullException>(statement != null);
+			Contract.Requires<ArgumentNullException>(paramName != null);
+			Contract.Requires<ArgumentNullException>(paramIndex != null);
+
 			string p = paramName.ToString();
 			int j = mParams.IndexOf(p);
 
@@ -636,6 +662,8 @@ namespace Pqsql
 		/// <returns></returns>
 		private string[] ParseStatements()
 		{
+			Contract.Ensures(Contract.Result<string[]>() != null);
+
 			string[] statements = new string[0];
 
 			int parsingState = 0; // 1...quote, 2...dollarQuote, ...
@@ -648,6 +676,7 @@ namespace Pqsql
 			StringBuilder paramIndex = new StringBuilder(); // $i
 			paramIndex.Append('$');
 
+			Contract.Assume(CommandText != null);
 
 			//
 			// parse multiple statements separated by ';'
@@ -686,6 +715,7 @@ namespace Pqsql
 					}
 					else // we probably ran into :: or :=
 					{
+						Contract.Assume(stmt != null);
 						stmt.Append(':'); // take first : and put it back
 						stmt.Append(c); // take current character and put it back
 						paramName.Length = 1;
@@ -702,6 +732,7 @@ namespace Pqsql
 					}
 
 					// replace parameter name with $ index
+					Contract.Assume(stmt != null);
 					ReplaceParameter(ref stmt, ref paramName, ref paramIndex);
 
 					// now continue with parsing statement(s)
@@ -748,6 +779,7 @@ namespace Pqsql
 						  continue;
 
 						case ';':
+							Contract.Assume(stmt != null);
 							ResizeAndSetStatements(ref stmt, ref statements, stmtNum++);
 							continue;
 					}
@@ -757,6 +789,7 @@ namespace Pqsql
 				stmt.Append(c);
 			}
 
+			Contract.Assume(stmt != null);
 			if (stmt.Length > 0) // add last statement not terminated by ';'
 			{
 				if (paramName.Length > 1) // did not finish replacing parameter name

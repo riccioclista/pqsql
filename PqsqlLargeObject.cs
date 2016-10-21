@@ -23,12 +23,7 @@ namespace Pqsql
 
 		public PqsqlLargeObject(PqsqlConnection conn)
 		{
-			if (conn == null)
-			{
-				throw new ArgumentNullException("conn");
-			}
-
-			Contract.EndContractBlock();
+			Contract.Requires<ArgumentNullException>(conn != null);
 
 			mConn = conn;
 
@@ -130,12 +125,7 @@ namespace Pqsql
 
 		public int Open(uint oid, LoOpen mode)
 		{
-			if (oid == 0)
-			{
-				throw new ArgumentException("Cannot open large object with InvalidOid (0)", "oid");
-			}
-
-			Contract.EndContractBlock();
+			Contract.Requires<ArgumentException>(oid != 0, "Cannot open large object with InvalidOid (0)");
 
 			mFd = PqsqlWrapper.lo_open(mPGConn, oid, (int) mode);
 
@@ -174,8 +164,6 @@ namespace Pqsql
 				throw new PqsqlException(string.Format("Cannot seek closed large object {0}", mOid));
 			}
 
-			Contract.EndContractBlock();
-
 			mPos = PqsqlWrapper.lo_lseek64(mPGConn, mFd, offset, (int) whence);
 
 			if (mPos < 0)
@@ -193,8 +181,6 @@ namespace Pqsql
 			{
 				throw new PqsqlException(string.Format("Cannot truncate closed large object {0}", mOid));
 			}
-
-			Contract.EndContractBlock();
 
 			int ret = PqsqlWrapper.lo_truncate64(mPGConn, mFd, value);
 
@@ -226,8 +212,6 @@ namespace Pqsql
 
 			if (mFd < 0)
 				throw new PqsqlException(string.Format("Cannot read closed large object {0}", mOid));
-
-			Contract.EndContractBlock();
 
 			int read;
 
@@ -270,8 +254,6 @@ namespace Pqsql
 
 			if (mFd < 0)
 				throw new PqsqlException(string.Format("Cannot write closed large object {0}", mOid));
-
-			Contract.EndContractBlock();
 
 			int ret = count;
 
@@ -326,6 +308,7 @@ namespace Pqsql
 			{
 				long cur = mPos;
 				long ret = Seek(0, SeekOrigin.End);
+				Contract.Assume(ret >= 0);
 				if (ret != cur)
 					Seek(cur, SeekOrigin.Begin);
 				return ret;
@@ -336,6 +319,7 @@ namespace Pqsql
 		{
 			get
 			{
+				Contract.Assume(mPos >= 0);
 				return mPos;
 			}
 

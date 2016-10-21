@@ -210,6 +210,7 @@ namespace Pqsql
 		//     to perform deletions.
 		public new PqsqlCommand GetDeleteCommand()
 		{
+			Contract.Ensures(Contract.Result<PqsqlCommand>() != null);
 			return GetDeleteCommand(false);
 		}
 
@@ -229,6 +230,7 @@ namespace Pqsql
 		//     to perform deletions.
 		public new PqsqlCommand GetDeleteCommand(bool useColumnsForParameterNames)
 		{
+			Contract.Ensures(Contract.Result<PqsqlCommand>() != null);
 			PqsqlCommand cmd = (PqsqlCommand) base.GetDeleteCommand(useColumnsForParameterNames);
 			cmd.UpdatedRowSource = UpdateRowSource.None;
 			return cmd;
@@ -244,6 +246,7 @@ namespace Pqsql
 		//     to perform insertions.
 		public new PqsqlCommand GetInsertCommand()
 		{
+			Contract.Ensures(Contract.Result<PqsqlCommand>() != null);
 			return GetInsertCommand(false);
 		}
 
@@ -263,6 +266,7 @@ namespace Pqsql
 		//     to perform insertions.
 		public new PqsqlCommand GetInsertCommand(bool useColumnsForParameterNames)
 		{
+			Contract.Ensures(Contract.Result<PqsqlCommand>() != null);
 			PqsqlCommand cmd = (PqsqlCommand) base.GetInsertCommand(useColumnsForParameterNames);
 			cmd.UpdatedRowSource = UpdateRowSource.None;
 			return cmd;
@@ -325,6 +329,7 @@ namespace Pqsql
 		//     to perform updates.
 		public new PqsqlCommand GetUpdateCommand()
 		{
+			Contract.Ensures(Contract.Result<PqsqlCommand>() != null);
 			return GetUpdateCommand(false);
 		}
 
@@ -344,6 +349,7 @@ namespace Pqsql
 		//     to perform updates.
 		public new PqsqlCommand GetUpdateCommand(bool useColumnsForParameterNames)
 		{
+			Contract.Ensures(Contract.Result<PqsqlCommand>() != null);
 			PqsqlCommand cmd = (PqsqlCommand) base.GetUpdateCommand(useColumnsForParameterNames);
 			cmd.UpdatedRowSource = UpdateRowSource.None;
 			return cmd;
@@ -385,8 +391,6 @@ namespace Pqsql
 			if (unquotedIdentifier == null)
 				throw new ArgumentNullException("unquotedIdentifier", "Unquoted identifier must not be null");
 
-			Contract.EndContractBlock();
-
 			return String.Format("{0}{1}{2}", QuotePrefix, unquotedIdentifier.Replace(QuotePrefix, QuotePrefix + QuotePrefix), QuoteSuffix);
 		}
 
@@ -422,8 +426,6 @@ namespace Pqsql
 			if (pa == null)
 				throw new ArgumentException("adapter needs to be a PqsqlDataAdapter");
 
-			Contract.EndContractBlock();
-
 			PqsqlRowUpdatingEventHandler handler = (s, e) => RowUpdatingHandler(e);
 
 			// unregister if we had registered adapter before
@@ -448,8 +450,6 @@ namespace Pqsql
 		{
 			if (quotedIdentifier == null)
 				throw new ArgumentNullException("quotedIdentifier", "Quoted identifier parameter cannot be null");
-
-			Contract.EndContractBlock();
 
 			string uqid = quotedIdentifier.Trim().Replace(QuotePrefix + QuotePrefix, QuotePrefix);
 

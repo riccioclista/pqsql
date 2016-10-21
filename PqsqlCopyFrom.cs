@@ -77,10 +77,7 @@ namespace Pqsql
 
 		public void Start()
 		{
-			if (string.IsNullOrEmpty(Table))
-				throw new ArgumentNullException("Table property is null");
-
-			Contract.EndContractBlock();
+			Contract.Requires<ArgumentNullException>(!string.IsNullOrEmpty(Table), "Table property is null");
 
 			// PQexec does not set field types in PQresult for COPY FROM statements,
 			// just retrieve 0 rows for the field types of Table
@@ -185,6 +182,8 @@ namespace Pqsql
 		{
 			IntPtr res;
 			string err = string.Empty;
+
+			Contract.Assume(mConn != null);
 			IntPtr conn = mConn.PGConnection;
 
 			if (mColBuf == IntPtr.Zero)
@@ -392,7 +391,13 @@ namespace Pqsql
 
 		public int WriteInt2(short i)
 		{
+			if (mRowInfo == null)
+				throw new InvalidOperationException("PqsqlCopyFrom.Start must be called before we can write data");
+
 			long begin = LengthCheckReset();
+
+			Contract.Assert(mRowInfo != null);
+			Contract.Assert(mPos >= 0);
 
 			PqsqlColInfo ci = mRowInfo[mPos];
 			PqsqlDbType oid = ci.Oid;
@@ -426,7 +431,13 @@ namespace Pqsql
 
 		public int WriteInt4(int i)
 		{
+			if (mRowInfo == null)
+				throw new InvalidOperationException("PqsqlCopyFrom.Start must be called before we can write data");
+
 			long begin = LengthCheckReset();
+
+			Contract.Assert(mRowInfo != null);
+			Contract.Assert(mPos >= 0);
 
 			PqsqlColInfo ci = mRowInfo[mPos];
 			PqsqlDbType oid = ci.Oid;
@@ -461,7 +472,13 @@ namespace Pqsql
 
 		public int WriteInt8(long i)
 		{
+			if (mRowInfo == null)
+				throw new InvalidOperationException("PqsqlCopyFrom.Start must be called before we can write data");
+
 			long begin = LengthCheckReset();
+
+			Contract.Assert(mRowInfo != null);
+			Contract.Assert(mPos >= 0);
 
 			PqsqlColInfo ci = mRowInfo[mPos];
 			PqsqlDbType oid = ci.Oid;

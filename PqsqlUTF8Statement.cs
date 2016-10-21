@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Diagnostics.Contracts;
 using System.Text;
 
 namespace Pqsql
@@ -10,6 +11,7 @@ namespace Pqsql
 		// return static UTF8-encoded statement including trailing 0 byte
 		internal static byte[] CreateUTF8Statement(string s)
 		{
+			Contract.Requires<ArgumentNullException>(s != null);
 			byte[] b = Encoding.UTF8.GetBytes(s); // not null terminated
 			int blen = b.Length;
 			Array.Resize(ref b, blen + 1);
@@ -20,7 +22,7 @@ namespace Pqsql
 		// return static UTF8-encoded statement including trailing 0 byte
 		internal static byte[] CreateUTF8Statement(StringBuilder sb)
 		{
-			Debug.Assert(sb != null, "sb != null");
+			Contract.Requires<ArgumentNullException>(sb != null);
 			return CreateUTF8Statement(sb.ToString());
 		}
 
@@ -44,6 +46,7 @@ namespace Pqsql
 					{
 						buflen <<= 1; // exponential growth strategy
 						Array.Resize(ref buf, buflen);
+						Contract.Assume(pos < buf.Length);
 					}
 
 					buf[pos++] = *s++;

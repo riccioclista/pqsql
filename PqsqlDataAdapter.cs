@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Data.Common;
+using System.Diagnostics.Contracts;
 
 namespace Pqsql
 {
@@ -39,6 +40,8 @@ namespace Pqsql
 		public PqsqlDataAdapter(String selectCommandText, String selectConnectionString)
 			: this(selectCommandText, new PqsqlConnection(selectConnectionString))
     {
+			Contract.Requires<ArgumentNullException>(selectCommandText != null);
+			Contract.Requires<ArgumentNullException>(selectConnectionString != null);
 		}
 
 		/// <summary>

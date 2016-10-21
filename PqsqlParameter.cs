@@ -144,6 +144,7 @@ namespace Pqsql
 		{
 			get
 			{
+				Contract.Ensures(Contract.Result<System.String>() != null);
 				return string.IsNullOrEmpty(mName) ? string.Empty : mName;
 			}
 			set
@@ -179,11 +180,7 @@ namespace Pqsql
 			}
 			set
 			{
-				if (value < -1)
-					throw new ArgumentException(String.Format("Invalid parameter Size value '{0}'. The value must be greater than or equal to 0.", value));
-
-				Contract.EndContractBlock();
-
+				Contract.Requires<ArgumentException>(value >= 0, "Invalid property Size value < 0");
 				mSize = value;
 			}
 		}

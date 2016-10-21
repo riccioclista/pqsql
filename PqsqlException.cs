@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Data.Common;
+using System.Diagnostics.Contracts;
 
 namespace Pqsql
 {
@@ -61,6 +62,7 @@ namespace Pqsql
 		{
 			get
 			{
+				Contract.Ensures(Contract.Result<string>() != null);
 				char[] err = new char[5];
 				int code = ErrorCode;
 				for (int j = 0; j < 5; j++)

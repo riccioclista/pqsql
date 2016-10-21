@@ -99,6 +99,7 @@ namespace Pqsql
 							int maxRelease = count/2 + 1;
 
 							ConnectionInfo i = queue.Peek();
+							Contract.Assume(i != null);
 							i.visited++;
 
 #if PQSQL_DEBUG
@@ -117,6 +118,7 @@ namespace Pqsql
 								{
 									// clean maxRelease connections
 									i = queue.Dequeue();
+									Contract.Assume(i != null);
 									closeConnections.Add(i.pgconn); // close connections outside of queue lock
 									maxRelease--;
 								}
@@ -175,12 +177,14 @@ namespace Pqsql
 				if (count > 0)
 				{
 					ConnectionInfo i = queue.Dequeue();
+					Contract.Assume(i != null);
 					pgConn = i.pgconn;
 
 					if (count > 1)
 					{
 						// head of queue will inherit old visited count
 						ConnectionInfo j = queue.Peek();
+						Contract.Assume(j != null);
 						j.visited = i.visited;
 					}
 				}

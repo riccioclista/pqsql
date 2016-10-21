@@ -50,6 +50,7 @@ namespace Pqsql
 		public PqsqlConnection(string connectionString)
 			: this(new PqsqlConnectionStringBuilder(connectionString))
 		{
+			Contract.Requires<ArgumentNullException>(connectionString != null);
 		}
 
 		public PqsqlConnection()
@@ -112,7 +113,11 @@ namespace Pqsql
 		[SettingsBindable(true)]
 		public override string ConnectionString
 		{
-			get { return mConnectionStringBuilder.ConnectionString; }
+			get
+			{
+				Contract.Ensures(Contract.Result<System.String>() != null);
+				return mConnectionStringBuilder.ConnectionString;
+			}
 			set
 			{
 				if (!string.IsNullOrEmpty(value) && !mConnectionStringBuilder.ConnectionString.Equals(value))
@@ -337,6 +342,7 @@ namespace Pqsql
 		//     An object representing the new transaction.
 		protected override DbTransaction BeginDbTransaction(IsolationLevel isolationLevel)
 		{
+			Contract.Assume(isolationLevel != IsolationLevel.Chaos);
 			return BeginTransaction(isolationLevel);
 		}
 
@@ -348,6 +354,7 @@ namespace Pqsql
 		//     An object representing the new transaction.
 		public new PqsqlTransaction BeginTransaction()
 		{
+			Contract.Ensures(Contract.Result<PqsqlTransaction>() != null);
 			return BeginTransaction(IsolationLevel.Unspecified);
 		}
 
@@ -363,6 +370,9 @@ namespace Pqsql
 		//     An object representing the new transaction.
 		public new PqsqlTransaction BeginTransaction(IsolationLevel isolationLevel)
 		{
+			Contract.Requires<ArgumentException>(isolationLevel != IsolationLevel.Chaos);
+			Contract.Ensures(Contract.Result<PqsqlTransaction>() != null);
+
 			if (mConnection == IntPtr.Zero)
 			{
 				Open();
@@ -442,6 +452,7 @@ namespace Pqsql
 		//     A System.Data.Common.DbCommand object.
 		public new PqsqlCommand CreateCommand()
 		{
+			Contract.Ensures(Contract.Result<PqsqlCommand>() != null);
 			return new PqsqlCommand(this);
 		}
 
@@ -565,6 +576,8 @@ namespace Pqsql
 		// return current error message
 		internal string GetErrorMessage()
 		{
+			Contract.Ensures(Contract.Result<string>() != null);
+
 			string msg = string.Empty;
 
 			if (mConnection != IntPtr.Zero)

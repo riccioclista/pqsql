@@ -158,7 +158,11 @@ namespace Pqsql
 		[RefreshProperties(RefreshProperties.All)]
 		public new string ConnectionString
 		{
-			get { return base.ConnectionString; }
+			get
+			{
+				Contract.Ensures(Contract.Result<string>() != null);
+				return base.ConnectionString;
+			}
 
 			set
 			{
@@ -249,6 +253,7 @@ namespace Pqsql
 
 		public override bool Equals(object o)
 		{
+			Contract.Assume(o != null);
 			if (o.GetType() != typeof(PqsqlConnectionStringBuilder))
 				return false;
 			return Equals((PqsqlConnectionStringBuilder) o);
