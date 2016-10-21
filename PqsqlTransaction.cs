@@ -8,7 +8,7 @@ namespace Pqsql
 	public sealed class PqsqlTransaction : DbTransaction
 	{
 
-		private IsolationLevel mIsolationLevel;
+		private readonly IsolationLevel mIsolationLevel;
 
 		private PqsqlConnection mConn;
 

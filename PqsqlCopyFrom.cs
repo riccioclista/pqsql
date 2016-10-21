@@ -105,6 +105,10 @@ namespace Pqsql
 			{
 				// just pick current row information
 				PqsqlColInfo[] src = r.RowInformation;
+
+				if (src == null)
+					throw new PqsqlException("Cannot retrieve RowInformation for table " + Table);
+
 				mColumns = src.Length;
 				mRowInfo = new PqsqlColInfo[mColumns];
 

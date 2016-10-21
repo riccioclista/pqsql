@@ -15,7 +15,7 @@ namespace Pqsql
 		private readonly List<PqsqlParameter> mParamList = new List<PqsqlParameter>();
 
 		// Dictionary lookups for GetValue to improve performance
-		private Dictionary<string, int> lookup;
+		private readonly Dictionary<string, int> lookup;
 
 		// pqparam_buffer* for Input and InputOutput parameter
 		private IntPtr mPqPB;
@@ -27,11 +27,6 @@ namespace Pqsql
 		//     Initializes a new instance of the System.Data.Common.DbParameterCollection
 		//     class.
 		public PqsqlParameterCollection()
-		{
-			Init();
-		}
-
-		private void Init()
 		{
 			mPqPB = PqsqlBinaryFormat.pqpb_create(); // create pqparam_buffer
 			lookup = new Dictionary<string, int>();
@@ -391,7 +386,7 @@ namespace Pqsql
 				mChanged = true;
 			}
 
-			return i;
+			return i < -1 ? -1 : i;
 		}
 
 		//
@@ -556,7 +551,7 @@ namespace Pqsql
 				int ret;
 				if (lookup.TryGetValue(sb.ToString(), out ret))
 				{
-					return ret;
+					return ret < -1 ? -1 : ret;
 				}
 			}
 

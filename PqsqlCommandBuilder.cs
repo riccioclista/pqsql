@@ -174,7 +174,10 @@ namespace Pqsql
 		//     if it is part of the insert or update values.
 		protected override void ApplyParameterInfo(DbParameter p, DataRow row, StatementType statementType, bool whereClause)
 		{
-			PqsqlParameter pqp = (PqsqlParameter) p;
+			PqsqlParameter pqp = p as PqsqlParameter;
+
+			if (pqp == null)
+				throw new InvalidCastException("Cannot ApplyParameterInfo on non-PqsqlParameter");
 
 			if (pqp.SourceColumnNullMapping)
 			{

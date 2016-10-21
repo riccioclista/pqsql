@@ -35,7 +35,7 @@ namespace Pqsql
 		/// <summary>
 		/// an ADO.NET connection string
 		/// </summary>
-		private PqsqlConnectionStringBuilder mConnectionStringBuilder;
+		private readonly PqsqlConnectionStringBuilder mConnectionStringBuilder;
 
 		/// <summary>
 		/// Server Version
@@ -115,8 +115,7 @@ namespace Pqsql
 			get { return mConnectionStringBuilder.ConnectionString; }
 			set
 			{
-				string oldValue = mConnectionStringBuilder.ConnectionString;
-				if (oldValue == null || !oldValue.Equals(value))
+				if (!string.IsNullOrEmpty(value) && !mConnectionStringBuilder.ConnectionString.Equals(value))
 				{
 					mConnectionStringBuilder.ConnectionString = value;
 					mNewConnectionString = true;

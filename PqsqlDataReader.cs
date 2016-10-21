@@ -128,7 +128,11 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 		public PqsqlDataReader(PqsqlCommand command, CommandBehavior behavior, string[] statements)
 		{
 			mCmd = command;
+
 			mConn = command.Connection;
+			if (mConn == null)
+				throw new ArgumentNullException("PqsqlDataReader cannot work on closed connection");
+
 			mPGConn = mConn.PGConnection;
 
 			mBehaviour = behavior;
@@ -1334,6 +1338,9 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 					colInfo = new SchemaTableColumnInfo(-1, null, false, false, false, false);
 				}
 
+				if (colInfo == null)
+					throw new PqsqlException("SchemaTableColumnInfo is null for ColumnName " + name);
+
 				row.SetField(j++, ci.Oid); // TypeOid
 				row.SetField(j++, !colInfo.Item4); // AllowDBNull
 				row.SetField(j++, name); // BaseColumnName
@@ -1799,6 +1806,9 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 
 				// try to lookup OID, otherwise try to guess type and fetch type specs from DB
 				PqsqlTypeRegistry.PqsqlTypeName tn = PqsqlTypeRegistry.Get(oid) ?? PqsqlTypeRegistry.FetchType(oid, mConn.ConnectionString);
+
+				if (tn == null || tn.GetValue == null || string.IsNullOrEmpty(tn.DataTypeName) || tn.ProviderType == null)
+					throw new PqsqlException("PqsqlTypeName invalid");
 
 				mRowInfo[o].DataTypeName = tn.DataTypeName; // cache PG datatype name
 				mRowInfo[o].ProviderType = tn.ProviderType; // cache corresponding ProviderType

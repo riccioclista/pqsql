@@ -749,6 +749,9 @@ namespace Pqsql
 						{
 							string typname = reader.GetString(1);
 
+							if (typname == null)
+								throw new PqsqlException("Could not fetch datatype name " + oid);
+
 							// assume that we can use this type just like PqsqlDbType.Text (e.g., citext)
 							PqsqlTypeName tn = new PqsqlTypeName
 							{
@@ -783,7 +786,15 @@ namespace Pqsql
 		// for PqsqlParameter
 		public static DbType GetDbType(PqsqlDbType oid)
 		{
-			return Get(oid).DbType;
+			PqsqlTypeName tn = Get(oid);
+
+			if (tn == null)
+			{
+				// do not try to fetch datatype specs with PqsqlTypeRegistry.FetchType() here, just bail out
+				throw new NotSupportedException(string.Format("Datatype {0} is not supported", oid & ~PqsqlDbType.Array));
+			}
+
+			return tn.DbType;
 		}
 
 		// for PqsqlParameterCollection

@@ -218,7 +218,7 @@ namespace Pqsql
 			if (offset + count > blen)
 				throw new ArgumentException("offset or count larger than buffer");
 			
-			if (offset < 0)
+			if (offset < 0 || offset >= blen)
 				throw new ArgumentOutOfRangeException("offset");
 
 			if (count < 0)
@@ -341,7 +341,7 @@ namespace Pqsql
 
 			set
 			{
-				if (mPos == value)
+				if (value < 0 || mPos == value)
 					return;
 
 				Seek(value, SeekOrigin.Begin);

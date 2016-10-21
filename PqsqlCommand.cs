@@ -107,6 +107,8 @@ namespace Pqsql
 			}
 			set
 			{
+				if (value == null)
+					throw new ArgumentNullException("CommandText");
 				mCmdText = value;
 			}
 		}
@@ -433,7 +435,7 @@ namespace Pqsql
 		//     An System.Data.Common.DbDataReader object.
 		public new PqsqlDataReader ExecuteReader(CommandBehavior behavior)
 		{
-			string[] statements = new string[0];
+			string[] statements;
 
 #if false
 			// always set SingleRow mode for now,
@@ -444,16 +446,19 @@ namespace Pqsql
 			switch(CommandType)
 			{
 				case CommandType.Text:
-					ParseStatements(ref statements);
+					statements = ParseStatements();
 					break;
 
 				case CommandType.StoredProcedure:
-					BuildStoredProcStatement(ref statements);
+					statements = BuildStoredProcStatement();
 					break;
 
 				case CommandType.TableDirect:
-					BuildTableStatement(ref statements);
+					statements = BuildTableStatement();
 					break;
+
+				default:
+					throw new InvalidEnumArgumentException("unknown CommandType");
 			}
 
 			if (statements.Length < 2)
@@ -470,16 +475,22 @@ namespace Pqsql
 			return reader;
 		}
 
-		private void BuildTableStatement(ref string[] statements)
+		private string[] BuildTableStatement()
 		{
+			string[] statements = new string[1];
+
 			StringBuilder tq = new StringBuilder(mTableString);
 			tq.Append(CommandText);
-			Array.Resize(ref statements, 1);
+
 			statements[0] = tq.ToString();
+
+			return statements;
 		}
 
-		private void BuildStoredProcStatement(ref string[] statements)
+		private string[] BuildStoredProcStatement()
 		{
+			string[] statements = new string[1];
+
 			StringBuilder spq = new StringBuilder();
 			spq.Append(mStoredProcString);
 			spq.Append(CommandText);
@@ -504,8 +515,9 @@ namespace Pqsql
 
 			spq.Append(')');
 
-			Array.Resize(ref statements, 1);
 			statements[0] = spq.ToString();
+
+			return statements;
 		}
 
 		// open connection if it is closed or broken
@@ -593,15 +605,39 @@ namespace Pqsql
 		const int PARAM1 = (1 << 5);
 		const int ESCAPE = (1 << 6);
 
-		delegate void ResizeAndSetStatements(ref StringBuilder sb, ref string[] st, int i);
-		delegate void ReplaceParameter(ref StringBuilder sb);
+
+		// resize statements to i+1, and set i to sb
+		private void ResizeAndSetStatements(ref StringBuilder statement, ref string[] statements, int i)
+		{
+			Array.Resize(ref statements, i + 1);
+			statements[i] = statement.ToString().TrimStart();
+			statement.Clear();
+		}
+
+		// replace parameter name with $ index in statement
+		private void ReplaceParameter(ref StringBuilder statement, ref StringBuilder paramName, ref StringBuilder paramIndex)
+		{
+			string p = paramName.ToString();
+			int j = mParams.IndexOf(p);
+
+			if (j < 0)
+				throw new PqsqlException("Could not find parameter «" + p + "» in PqsqlCommand.Parameters");
+
+			paramIndex.Append(j + 1);
+			statement.Append(paramIndex);
+
+			paramIndex.Length = 1;
+			paramName.Length = 1;
+		}
 
 		/// <summary>
 		/// split PqsqlCommand.CommandText into an array of sub-statements
 		/// </summary>
 		/// <returns></returns>
-		private void ParseStatements(ref string[] statements)
+		private string[] ParseStatements()
 		{
+			string[] statements = new string[0];
+
 			int parsingState = 0; // 1...quote, 2...dollarQuote, ...
 
 			StringBuilder stmt = new StringBuilder(); // buffer for current statement
@@ -612,27 +648,6 @@ namespace Pqsql
 			StringBuilder paramIndex = new StringBuilder(); // $i
 			paramIndex.Append('$');
 
-			// resize statements to i+1, and set i to sb
-			ResizeAndSetStatements resizeAndSet = (ref StringBuilder sb, ref string[] st, int i) => {
-				Array.Resize(ref st, i + 1);
-				st[i] = sb.ToString().TrimStart();
-				sb.Clear();
-			};
-
-			// replace parameter name with $ index
-			ReplaceParameter replaceParameter = (ref StringBuilder sb) => {
-				string p = paramName.ToString();
-				int j = mParams.IndexOf(p);
-
-				if (j < 0)
-					throw new PqsqlException("Could not find parameter «" + p + "» in PqsqlCommand.Parameters");
-
-				paramIndex.Append(j + 1);
-				sb.Append(paramIndex);
-
-				paramIndex.Length = 1;
-				paramName.Length = 1;
-			};
 
 			//
 			// parse multiple statements separated by ';'
@@ -687,7 +702,7 @@ namespace Pqsql
 					}
 
 					// replace parameter name with $ index
-					replaceParameter(ref stmt);
+					ReplaceParameter(ref stmt, ref paramName, ref paramIndex);
 
 					// now continue with parsing statement(s)
 					parsingState &= ~(PARAM0 | PARAM1);
@@ -733,7 +748,7 @@ namespace Pqsql
 						  continue;
 
 						case ';':
-							resizeAndSet(ref stmt, ref statements, stmtNum++);
+							ResizeAndSetStatements(ref stmt, ref statements, stmtNum++);
 							continue;
 					}
 				}
@@ -745,10 +760,12 @@ namespace Pqsql
 			if (stmt.Length > 0) // add last statement not terminated by ';'
 			{
 				if (paramName.Length > 1) // did not finish replacing parameter name
-					replaceParameter(ref stmt);
+					ReplaceParameter(ref stmt, ref paramName, ref paramIndex);
 
-				resizeAndSet(ref stmt, ref statements, stmtNum);
+				ResizeAndSetStatements(ref stmt, ref statements, stmtNum);
 			}
+
+			return statements;
 		}
 
 		#endregion
