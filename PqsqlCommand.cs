@@ -562,9 +562,9 @@ namespace Pqsql
 			if (quote) sb.Append('"');
 
 			byte[] stmt = PqsqlUTF8Statement.CreateUTF8Statement(sb);
-			ExecStatus s = mConn.Exec(stmt);
+			ExecStatusType s = mConn.Exec(stmt);
 
-			if (s != ExecStatus.PGRES_COMMAND_OK)
+			if (s != ExecStatusType.PGRES_COMMAND_OK)
 			{
 				string err = mConn.GetErrorMessage();
 				throw new PqsqlException("Could not set " + parameter + " to «" + value + "»: " + err);

@@ -20,10 +20,10 @@ namespace Pqsql
 		private IntPtr mConnection;
 
 		// Open / Broken / Connecting
-		private ConnectionStatus mStatus;
+		private ConnStatusType mStatus;
 
 		// Executing / Broken
-		private PGTransactionStatus mTransStatus;
+		private PGTransactionStatusType mTransStatus;
 
 		private bool mNewConnectionString;
 
@@ -73,8 +73,8 @@ namespace Pqsql
 		{
 			mNewConnectionString = true;
 			mConnection = IntPtr.Zero;
-			mStatus = ConnectionStatus.CONNECTION_BAD;
-			mTransStatus = PGTransactionStatus.PQTRANS_UNKNOWN;
+			mStatus = ConnStatusType.CONNECTION_BAD;
+			mTransStatus = PGTransactionStatusType.PQTRANS_UNKNOWN;
 			mServerVersion = -1;
 		}
 
@@ -247,13 +247,13 @@ namespace Pqsql
 		// Returns:
 		//     The transaction state of the connection.
 		[Browsable(false)]
-		internal PGTransactionStatus TransactionStatus
+		internal PGTransactionStatusType TransactionStatus
 		{
 			get
 			{
 				mTransStatus = (mConnection == IntPtr.Zero) ?
-					PGTransactionStatus.PQTRANS_UNKNOWN : // unknown transaction status
-					(PGTransactionStatus) PqsqlWrapper.PQtransactionStatus(mConnection); // update transaction status
+					PGTransactionStatusType.PQTRANS_UNKNOWN : // unknown transaction status
+					PqsqlWrapper.PQtransactionStatus(mConnection); // update transaction status
 				return mTransStatus;
 			}
 		}
@@ -265,13 +265,13 @@ namespace Pqsql
 		// Returns:
 		//     The state of the connection.
 		[Browsable(false)]
-		internal ConnectionStatus Status
+		internal ConnStatusType Status
 		{
 			get
 			{
 				mStatus = (mConnection == IntPtr.Zero) ?
-					ConnectionStatus.CONNECTION_BAD : // broken connection
-					(ConnectionStatus) PqsqlWrapper.PQstatus(mConnection);
+					ConnStatusType.CONNECTION_BAD : // broken connection
+					PqsqlWrapper.PQstatus(mConnection);
 				return mStatus;
 			}
 		}
@@ -296,11 +296,11 @@ namespace Pqsql
 				// updates connection status
 				switch (Status)
 				{
-					case ConnectionStatus.CONNECTION_OK:
+					case ConnStatusType.CONNECTION_OK:
 						s |= ConnectionState.Open;
 						break;
 
-					case ConnectionStatus.CONNECTION_BAD:
+					case ConnStatusType.CONNECTION_BAD:
 						s = ConnectionState.Broken;
 						break;
 
@@ -312,18 +312,18 @@ namespace Pqsql
 				// updates transaction status
 				switch (TransactionStatus)
 				{
-					case PGTransactionStatus.PQTRANS_ACTIVE: /* command in progress */
+					case PGTransactionStatusType.PQTRANS_ACTIVE: /* command in progress */
 						s |= ConnectionState.Executing;
 						break;
 
-					case PGTransactionStatus.PQTRANS_INERROR: /* idle, within failed transaction */
-					case PGTransactionStatus.PQTRANS_UNKNOWN: /* cannot determine status */
+					case PGTransactionStatusType.PQTRANS_INERROR: /* idle, within failed transaction */
+					case PGTransactionStatusType.PQTRANS_UNKNOWN: /* cannot determine status */
 						s = ConnectionState.Broken; // set to Broken
 						break;
 
 					/* the other two states do not contribute to the overall state:
-					 * PGTransactionStatus.PQTRANS_IDLE               // connection idle
-					 * PGTransactionStatus.PQTRANS_INTRANS            // idle, within transaction block
+					 * PGTransactionStatusType.PQTRANS_IDLE               // connection idle
+					 * PGTransactionStatusType.PQTRANS_INTRANS            // idle, within transaction block
 					 */
 				}
 
@@ -383,9 +383,9 @@ namespace Pqsql
 			// get transaction start command
 			byte[] txnString = txn.TransactionStart;
 
-			ExecStatus s = Exec(txnString);
+			ExecStatusType s = Exec(txnString);
 
-			if (s != ExecStatus.PGRES_COMMAND_OK)
+			if (s != ExecStatusType.PGRES_COMMAND_OK)
 			{
 				string err = GetErrorMessage();
 				throw new PqsqlException("Transaction start failed: " + err);
@@ -479,7 +479,7 @@ namespace Pqsql
 				PqsqlWrapper.PQreset(mConnection);
 
 				// update connection and transaction status
-				if (Status == ConnectionStatus.CONNECTION_BAD || TransactionStatus != PGTransactionStatus.PQTRANS_IDLE)
+				if (Status == ConnStatusType.CONNECTION_BAD || TransactionStatus != PGTransactionStatusType.PQTRANS_IDLE)
 				{
 					string err = GetErrorMessage();
 					PqsqlWrapper.PQfinish(mConnection); // force release of mConnection memory
@@ -491,7 +491,7 @@ namespace Pqsql
 				return;
 			}
 
-			if (mStatus != ConnectionStatus.CONNECTION_BAD)
+			if (mStatus != ConnStatusType.CONNECTION_BAD)
 			{
 				Close(); // force release of mConnection memory
 			}
@@ -502,7 +502,7 @@ namespace Pqsql
 			if (mConnection != IntPtr.Zero)
 			{
 				// update connection and transaction status
-				if (Status == ConnectionStatus.CONNECTION_BAD || TransactionStatus != PGTransactionStatus.PQTRANS_IDLE)
+				if (Status == ConnStatusType.CONNECTION_BAD || TransactionStatus != PGTransactionStatusType.PQTRANS_IDLE)
 				{
 					string err = GetErrorMessage();
 					PqsqlWrapper.PQfinish(mConnection); // force release of mConnection memory
@@ -519,21 +519,21 @@ namespace Pqsql
 		}
 
 		// call PQexec and immediately discard PGresult struct
-		internal ExecStatus Exec(byte[] stmt)
+		internal ExecStatusType Exec(byte[] stmt)
 		{
 			IntPtr res;
-			ExecStatus s = Exec(stmt, out res);
+			ExecStatusType s = Exec(stmt, out res);
 			Consume(res);
 			return s;
 		}
 
 		// call PQexec
-		internal ExecStatus Exec(byte[] stmt, out IntPtr res)
+		internal ExecStatusType Exec(byte[] stmt, out IntPtr res)
 		{
 			if (mConnection == IntPtr.Zero)
 			{
 				res = IntPtr.Zero;
-				return ExecStatus.PGRES_FATAL_ERROR;
+				return ExecStatusType.PGRES_FATAL_ERROR;
 			}
 
 			unsafe
@@ -544,11 +544,11 @@ namespace Pqsql
 				}
 			}
 
-			ExecStatus s = ExecStatus.PGRES_FATAL_ERROR;
+			ExecStatusType s = ExecStatusType.PGRES_FATAL_ERROR;
 
 			if (res != IntPtr.Zero)
 			{
-				s = (ExecStatus) PqsqlWrapper.PQresultStatus(res);
+				s = PqsqlWrapper.PQresultStatus(res);
 			}
 
 			return s;

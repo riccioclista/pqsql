@@ -15,7 +15,7 @@ namespace Pqsql
 	};
 
 	// enum ConnectionStatusType from libpq-fe.h
-	internal enum ConnectionStatus
+	internal enum ConnStatusType
 	{
 		CONNECTION_OK = 0,
 		CONNECTION_BAD,
@@ -35,7 +35,7 @@ namespace Pqsql
 	};
 
 	// enum ExecStatusType from libpq-fe.h
-	internal enum ExecStatus
+	internal enum ExecStatusType
 	{
 		PGRES_EMPTY_QUERY = 0, /* empty query string was executed */
 		PGRES_COMMAND_OK,			 /* a query command that doesn't return anything was executed properly by the backend */
@@ -49,8 +49,8 @@ namespace Pqsql
 		PGRES_SINGLE_TUPLE		 /* single tuple from larger resultset */
 	};
 
-	// see enum PGTransactionStatus in libpq-fe.h
-	internal enum PGTransactionStatus
+	// see enum PGTransactionStatusType in libpq-fe.h
+	internal enum PGTransactionStatusType
 	{
 		PQTRANS_IDLE,               /* connection idle */
 		PQTRANS_ACTIVE,             /* command in progress */
@@ -597,7 +597,7 @@ namespace Pqsql
 		#region connection status and error message
 
 		[DllImport("libpq.dll")]
-		public static extern int PQstatus(IntPtr conn);
+		public static extern ConnStatusType PQstatus(IntPtr conn);
 		// ConnStatusType PQstatus(conn)
 
 		[DllImport("libpq.dll")]
@@ -610,7 +610,7 @@ namespace Pqsql
 		#region transaction status
 
 		[DllImport("libpq.dll")]
-		public static extern int PQtransactionStatus(IntPtr conn);
+		public static extern PGTransactionStatusType PQtransactionStatus(IntPtr conn);
 		// PGTransactionStatusType PQtransactionStatus(const PGconn *conn);
 
 		#endregion
@@ -756,7 +756,7 @@ namespace Pqsql
 		#region result status and error message
 
 		[DllImport("libpq.dll")]
-		public static extern int PQresultStatus(IntPtr res);
+		public static extern ExecStatusType PQresultStatus(IntPtr res);
 		// ExecStatusType PQresultStatus(const PGresult *res);
 
 		[DllImport("libpq.dll")]

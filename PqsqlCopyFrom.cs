@@ -142,10 +142,10 @@ namespace Pqsql
 			byte[] q = PqsqlUTF8Statement.CreateUTF8Statement(sb);
 
 			IntPtr res;
-			ExecStatus s = mConn.Exec(q, out res);
+			ExecStatusType s = mConn.Exec(q, out res);
 
 			// result buffer should contain column information and PGconn should be in COPY_IN state
-			if (res == IntPtr.Zero || s != ExecStatus.PGRES_COPY_IN)
+			if (res == IntPtr.Zero || s != ExecStatusType.PGRES_COPY_IN)
 			{
 				mConn.Consume(res); // we might receive several results...
 				throw new PqsqlException("Could not execute statement «" + sb + "»: " + mConn.GetErrorMessage());
@@ -201,11 +201,11 @@ namespace Pqsql
 
 			if (res != IntPtr.Zero)
 			{
-				ExecStatus s = (ExecStatus) PqsqlWrapper.PQresultStatus(res);
+				ExecStatusType s = PqsqlWrapper.PQresultStatus(res);
 
 				PqsqlWrapper.PQclear(res);
 
-				if (s == ExecStatus.PGRES_COPY_IN)
+				if (s == ExecStatusType.PGRES_COPY_IN)
 				{
 					// still in COPY_IN mode? bail out!
 					byte[] b = PqsqlUTF8Statement.CreateUTF8Statement("COPY FROM cancelled by client");
@@ -222,7 +222,7 @@ namespace Pqsql
 
 					if (res != IntPtr.Zero)
 					{
-						s = (ExecStatus) PqsqlWrapper.PQresultStatus(res);
+						s = PqsqlWrapper.PQresultStatus(res);
 						PqsqlWrapper.PQclear(res);
 					}
 
@@ -231,7 +231,7 @@ namespace Pqsql
 					goto bailout;
 				}
 				
-				if (s != ExecStatus.PGRES_COMMAND_OK)
+				if (s != ExecStatusType.PGRES_COMMAND_OK)
 				{
 					err = err.Insert(0, "COPY FROM failed (" + s + "): ");
 
@@ -283,11 +283,11 @@ namespace Pqsql
 
 			if (res != IntPtr.Zero)
 			{
-				ExecStatus s = (ExecStatus) PqsqlWrapper.PQresultStatus(res);
+				ExecStatusType s = PqsqlWrapper.PQresultStatus(res);
 
 				PqsqlWrapper.PQclear(res);
 
-				if (s == ExecStatus.PGRES_COPY_IN)
+				if (s == ExecStatusType.PGRES_COPY_IN)
 				{
 					// still in COPY_IN mode? bail out!
 					byte[] b = PqsqlUTF8Statement.CreateUTF8Statement("COPY FROM cancelled by client");
@@ -304,12 +304,12 @@ namespace Pqsql
 
 					if (res != IntPtr.Zero)
 					{
-						s = (ExecStatus) PqsqlWrapper.PQresultStatus(res);
+						s = PqsqlWrapper.PQresultStatus(res);
 						PqsqlWrapper.PQclear(res);
 					}
 				}
 
-				if (s != ExecStatus.PGRES_COMMAND_OK)
+				if (s != ExecStatusType.PGRES_COMMAND_OK)
 				{
 					err = err.Insert(0, "COPY FROM failed (" + s + "): ");
 

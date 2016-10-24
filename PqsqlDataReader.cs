@@ -1767,13 +1767,13 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 
 			if (mResult != IntPtr.Zero) // result buffer not exhausted
 			{
-				ExecStatus s = (ExecStatus) PqsqlWrapper.PQresultStatus(mResult);
+				ExecStatusType s = PqsqlWrapper.PQresultStatus(mResult);
 
 				//
 				// INSERT / UPDATE / DELETE / CREATE statement processing
 				//
 
-				if (s == ExecStatus.PGRES_COMMAND_OK)
+				if (s == ExecStatusType.PGRES_COMMAND_OK)
 				{
 					mRecordsAffected = GetCmdTuples(s);
 
@@ -1787,7 +1787,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 				// error handling
 				//
 
-				if (s != ExecStatus.PGRES_SINGLE_TUPLE && s != ExecStatus.PGRES_TUPLES_OK)
+				if (s != ExecStatusType.PGRES_SINGLE_TUPLE && s != ExecStatusType.PGRES_TUPLES_OK)
 				{
 					string err = mConn.GetErrorMessage();
 					PqsqlException ex = new PqsqlException(err, mResult);
@@ -1847,15 +1847,15 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 		/// retrieve the number of touched rows
 		/// </summary>
 		/// <returns>number of touched records for UPDATE / DELETE / INSERT / CREATE * / ... statements, otherwise -1</returns>
-		private int GetCmdTuples(ExecStatus s)
+		private int GetCmdTuples(ExecStatusType s)
 		{
 			switch (s)
 			{
-				case ExecStatus.PGRES_SINGLE_TUPLE: // SELECT
-				case ExecStatus.PGRES_TUPLES_OK:
+				case ExecStatusType.PGRES_SINGLE_TUPLE: // SELECT
+				case ExecStatusType.PGRES_TUPLES_OK:
 					return -1;
 
-				case ExecStatus.PGRES_COMMAND_OK: // UPDATE / DELETE / INSERT / CREATE * / ...
+				case ExecStatusType.PGRES_COMMAND_OK: // UPDATE / DELETE / INSERT / CREATE * / ...
 					unsafe
 					{
 						if (mResult == IntPtr.Zero)

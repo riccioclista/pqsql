@@ -125,14 +125,14 @@ namespace Pqsql
 		}
 
 		// send commit or rollback. must not throw, used in Dispose()
-		internal ExecStatus SaveTransaction(bool commit)
+		internal ExecStatusType SaveTransaction(bool commit)
 		{
 			if (mConn == null)
-				return ExecStatus.PGRES_EMPTY_QUERY;
+				return ExecStatusType.PGRES_EMPTY_QUERY;
 
 			// in case we are not in a transaction, report closed transaction
-			if (mConn.TransactionStatus != PGTransactionStatus.PQTRANS_INTRANS)
-				return ExecStatus.PGRES_EMPTY_QUERY;
+			if (mConn.TransactionStatus != PGTransactionStatusType.PQTRANS_INTRANS)
+				return ExecStatusType.PGRES_EMPTY_QUERY;
 
 			// if we are, either commit or rollback
 			byte[] txnString = commit ? mCommit : RollbackStatement;
@@ -144,14 +144,14 @@ namespace Pqsql
 		//     Commits the database transaction.
 		public override void Commit()
 		{
-			ExecStatus s = SaveTransaction(true);
+			ExecStatusType s = SaveTransaction(true);
 
 			switch (s)
 			{
-				case ExecStatus.PGRES_COMMAND_OK:
+				case ExecStatusType.PGRES_COMMAND_OK:
 					return;
 
-				case ExecStatus.PGRES_EMPTY_QUERY:
+				case ExecStatusType.PGRES_EMPTY_QUERY:
 					throw new PqsqlException("Cannot commit: connection or transaction is closed");
 
 				default:
@@ -165,14 +165,14 @@ namespace Pqsql
 		//     Rolls back a transaction from a pending state.
 		public override void Rollback()
 		{
-			ExecStatus s = SaveTransaction(false);
+			ExecStatusType s = SaveTransaction(false);
 
 			switch (s)
 			{
-				case ExecStatus.PGRES_COMMAND_OK:
+				case ExecStatusType.PGRES_COMMAND_OK:
 					return;
 
-				case ExecStatus.PGRES_EMPTY_QUERY:
+				case ExecStatusType.PGRES_EMPTY_QUERY:
 					throw new PqsqlException("Cannot rollback: connection or transaction is closed");
 
 				default:

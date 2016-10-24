@@ -204,11 +204,11 @@ namespace Pqsql
 				return false;
 
 			// is connection reusable?
-			ConnectionStatus s = (ConnectionStatus) PqsqlWrapper.PQstatus(pgConn);
-			if (s != ConnectionStatus.CONNECTION_OK) goto broken;
+			ConnStatusType s = PqsqlWrapper.PQstatus(pgConn);
+			if (s != ConnStatusType.CONNECTION_OK) goto broken;
 
-			PGTransactionStatus ts = (PGTransactionStatus) PqsqlWrapper.PQtransactionStatus(pgConn);
-			if (ts != PGTransactionStatus.PQTRANS_IDLE) goto broken;
+			PGTransactionStatusType ts = PqsqlWrapper.PQtransactionStatus(pgConn);
+			if (ts != PGTransactionStatusType.PQTRANS_IDLE) goto broken;
 
 			// send empty query to test whether we are really connected (tcp keepalive might have closed socket)
 			unsafe
@@ -246,19 +246,19 @@ namespace Pqsql
 			
 			// Reading empty result: consume and clear remaining results until we reach the NULL result
 			IntPtr res;
-			ExecStatus st = ExecStatus.PGRES_EMPTY_QUERY;
+			ExecStatusType st = ExecStatusType.PGRES_EMPTY_QUERY;
 			while ((res = PqsqlWrapper.PQgetResult(pgConn)) != IntPtr.Zero)
 			{
-				ExecStatus st0 = (ExecStatus) PqsqlWrapper.PQresultStatus(res);
+				ExecStatusType st0 = PqsqlWrapper.PQresultStatus(res);
 
-				if (st0 != ExecStatus.PGRES_EMPTY_QUERY)
+				if (st0 != ExecStatusType.PGRES_EMPTY_QUERY)
 					st = st0;
 
 				// always free res
 				PqsqlWrapper.PQclear(res);
 			}
 
-			if (st != ExecStatus.PGRES_EMPTY_QUERY) // received wrong exec status
+			if (st != ExecStatusType.PGRES_EMPTY_QUERY) // received wrong exec status
 				goto broken;
 
 			return true; // successfully reused connection
@@ -267,11 +267,11 @@ namespace Pqsql
 			// reconnect with current connection setting
 			PqsqlWrapper.PQreset(pgConn);
 
-			s = (ConnectionStatus) PqsqlWrapper.PQstatus(pgConn);
-			if (s == ConnectionStatus.CONNECTION_OK)
+			s = PqsqlWrapper.PQstatus(pgConn);
+			if (s == ConnStatusType.CONNECTION_OK)
 			{
-				ts = (PGTransactionStatus) PqsqlWrapper.PQtransactionStatus(pgConn);
-				if (ts == PGTransactionStatus.PQTRANS_IDLE)
+				ts = PqsqlWrapper.PQtransactionStatus(pgConn);
+				if (ts == PGTransactionStatusType.PQTRANS_IDLE)
 					return true; // successfully reconnected
 			}
 
@@ -325,29 +325,30 @@ namespace Pqsql
 
 			bool rollback = false;
 
-			ConnectionStatus cs = (ConnectionStatus) PqsqlWrapper.PQstatus(conn);
-			if (cs != ConnectionStatus.CONNECTION_OK)
+			ConnStatusType cs = PqsqlWrapper.PQstatus(conn);
+			if (cs != ConnStatusType.CONNECTION_OK)
 				return false; // connection broken
 
-			switch ((PGTransactionStatus) PqsqlWrapper.PQtransactionStatus(conn))
+			PGTransactionStatusType ts = PqsqlWrapper.PQtransactionStatus(conn);
+			switch (ts)
 			{
-				case PGTransactionStatus.PQTRANS_INERROR: /* idle, within failed transaction */
-				case PGTransactionStatus.PQTRANS_INTRANS: /* idle, within transaction block */
+				case PGTransactionStatusType.PQTRANS_INERROR: /* idle, within failed transaction */
+				case PGTransactionStatusType.PQTRANS_INTRANS: /* idle, within transaction block */
 					rollback = true;
 					break;
 
-				case PGTransactionStatus.PQTRANS_IDLE: /* connection idle */
+				case PGTransactionStatusType.PQTRANS_IDLE: /* connection idle */
 					// nothing to do
 					break;
 
-			  // PGTransactionStatus.PQTRANS_ACTIVE: /* command in progress */
-				// PGTransactionStatus.PQTRANS_UNKNOWN: /* cannot determine status */
+			  // PGTransactionStatusType.PQTRANS_ACTIVE: /* command in progress */
+				// PGTransactionStatusType.PQTRANS_UNKNOWN: /* cannot determine status */
 				default:
 					return false; // connection broken
 			}
 
 			IntPtr res;
-			ExecStatus s = ExecStatus.PGRES_FATAL_ERROR;
+			ExecStatusType s = ExecStatusType.PGRES_FATAL_ERROR;
 			
 			// we need to rollback before we can discard the connection
 			if (rollback)
@@ -360,18 +361,18 @@ namespace Pqsql
 
 						if (res != IntPtr.Zero)
 						{
-							s = (ExecStatus) PqsqlWrapper.PQresultStatus(res);
+							s = PqsqlWrapper.PQresultStatus(res);
 							PqsqlWrapper.PQclear(res);
 						}
 					}
 				}
 
-				if (s != ExecStatus.PGRES_COMMAND_OK)
+				if (s != ExecStatusType.PGRES_COMMAND_OK)
 				{
 					return false; // connection broken
 				}
 
-				s = ExecStatus.PGRES_FATAL_ERROR;
+				s = ExecStatusType.PGRES_FATAL_ERROR;
 			}
 
 			// discard connection
@@ -383,13 +384,13 @@ namespace Pqsql
 
 					if (res != IntPtr.Zero)
 					{
-						s = (ExecStatus) PqsqlWrapper.PQresultStatus(res);
+						s = PqsqlWrapper.PQresultStatus(res);
 						PqsqlWrapper.PQclear(res);
 					}
 				}
 			}
 
-			if (s != ExecStatus.PGRES_COMMAND_OK)
+			if (s != ExecStatusType.PGRES_COMMAND_OK)
 			{
 				return false; // connection broken
 			}
