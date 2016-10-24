@@ -1940,16 +1940,24 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 					if (j < 0)
 					{
 						// throw error if we didn't find the corresponding parameter name in our parameter list
-						PqsqlException e = new PqsqlException(string.Format("Received unrecognized output parameter «{0}» when calling function «{1}»", colName, mCmd.CommandText))
+						throw new PqsqlException(string.Format("Received unrecognized output parameter «{0}» when calling function «{1}»", colName, mCmd.CommandText))
 						{
 							Hint = "Please adjust parameter names in PqsqlCommand.Parameters"
 						};
-						throw e;
 					}
 
 					// set new Value for found parameter based on 1st row
 					// (this even works if parameter direction was wrong)
-					parms[j].Value = tn.GetValue(mResult, 0, o, modifier);
+					PqsqlParameter parm = parms[j];
+					if (parm == null)
+					{
+						throw new PqsqlException("Output parameter «" + colName + "» is null")
+						{
+							Hint = "Please adjust parameter names in PqsqlCommand.Parameters"
+						};
+					}
+
+					parm.Value = tn.GetValue(mResult, 0, o, modifier);
 				}
 			}
 		}
