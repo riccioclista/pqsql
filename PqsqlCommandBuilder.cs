@@ -391,7 +391,10 @@ namespace Pqsql
 			if (unquotedIdentifier == null)
 				throw new ArgumentNullException("unquotedIdentifier", "Unquoted identifier must not be null");
 
-			return String.Format("{0}{1}{2}", QuotePrefix, unquotedIdentifier.Replace(QuotePrefix, QuotePrefix + QuotePrefix), QuoteSuffix);
+			if (string.IsNullOrEmpty(QuotePrefix))
+				return unquotedIdentifier;
+
+			return String.Format("{0}{1}{2}", QuotePrefix, unquotedIdentifier.Replace(QuotePrefix, QuotePrefix + QuotePrefix), QuoteSuffix ?? string.Empty);
 		}
 
 		//
@@ -451,17 +454,22 @@ namespace Pqsql
 			if (quotedIdentifier == null)
 				throw new ArgumentNullException("quotedIdentifier", "Quoted identifier parameter cannot be null");
 
-			string uqid = quotedIdentifier.Trim().Replace(QuotePrefix + QuotePrefix, QuotePrefix);
-
+			string uqid = quotedIdentifier.Trim();
 			int beg = 0;
 			int len = uqid.Length;
 
-			if (uqid.StartsWith(QuotePrefix))
+			if (!string.IsNullOrEmpty(QuotePrefix))
 			{
-				beg++;
+				uqid = uqid.Replace(QuotePrefix + QuotePrefix, QuotePrefix);
+				len = uqid.Length;
+
+				if (uqid.StartsWith(QuotePrefix))
+				{
+					beg++;
+				}
 			}
 
-			if (uqid.EndsWith(QuoteSuffix))
+			if (!string.IsNullOrEmpty(QuoteSuffix) && uqid.EndsWith(QuoteSuffix))
 			{
 				len = uqid.Length - beg - 1;
 			}
