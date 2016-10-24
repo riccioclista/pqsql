@@ -400,6 +400,9 @@ namespace Pqsql
 			Contract.Assert(mPos >= 0);
 
 			PqsqlColInfo ci = mRowInfo[mPos];
+			if (ci == null)
+				throw new PqsqlException("PqsqlCopyFrom.Start could not setup column information for column " + mPos);
+
 			PqsqlDbType oid = ci.Oid;
 			uint destination_length;
 
@@ -440,6 +443,9 @@ namespace Pqsql
 			Contract.Assert(mPos >= 0);
 
 			PqsqlColInfo ci = mRowInfo[mPos];
+			if (ci == null)
+				throw new PqsqlException("PqsqlCopyFrom.Start could not setup column information for column " + mPos);
+
 			PqsqlDbType oid = ci.Oid;
 			uint destination_length;
 
@@ -481,6 +487,9 @@ namespace Pqsql
 			Contract.Assert(mPos >= 0);
 
 			PqsqlColInfo ci = mRowInfo[mPos];
+			if (ci == null)
+				throw new PqsqlException("PqsqlCopyFrom.Start could not setup column information for column " + mPos);
+
 			PqsqlDbType oid = ci.Oid;
 			uint destination_length;
 
