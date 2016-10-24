@@ -53,7 +53,7 @@ namespace PqsqlTests
 		#endregion
 
 		[TestMethod]
-		public void TestMethod1()
+		public void PqsqlConnectionTest1()
 		{
 			PqsqlConnection connection = new PqsqlConnection("");
 
@@ -64,7 +64,7 @@ namespace PqsqlTests
 		}
 
 		[TestMethod]
-		public void TestMethod2()
+		public void PqsqlConnectionTest2()
 		{
 			PqsqlConnection connection = new PqsqlConnection("host=localhost; port=5432; dbname=postgres; connect_timeout=3");
 
