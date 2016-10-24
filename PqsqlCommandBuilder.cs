@@ -185,7 +185,11 @@ namespace Pqsql
 			}
 			else
 			{
-				pqp.PqsqlDbType = (PqsqlDbType) row[PqsqlSchemaTableColumn.TypeOid];
+				object o = row[PqsqlSchemaTableColumn.TypeOid];
+				
+				Contract.Assume(o != null);
+
+				pqp.PqsqlDbType = (PqsqlDbType) o;
 			}
 		}
 

@@ -352,6 +352,8 @@ namespace Pqsql
 		// otherwise, value points to beginning of binary encoding with type_length bytes
 		private unsafe int PutColumn(sbyte* value, uint type_length)
 		{
+			Contract.Ensures(mPos < mColumns);
+
 			int ret = PqsqlBinaryFormat.pqcb_put_col(mColBuf, value, type_length);
 
 			if (ret < 1)
@@ -396,8 +398,8 @@ namespace Pqsql
 
 			long begin = LengthCheckReset();
 
-			Contract.Assert(mRowInfo != null);
-			Contract.Assert(mPos >= 0);
+			Contract.Assume(mRowInfo != null);
+			Contract.Assume(mPos >= 0 && mPos < mRowInfo.Length);
 
 			PqsqlColInfo ci = mRowInfo[mPos];
 			if (ci == null)
@@ -439,8 +441,8 @@ namespace Pqsql
 
 			long begin = LengthCheckReset();
 
-			Contract.Assert(mRowInfo != null);
-			Contract.Assert(mPos >= 0);
+			Contract.Assume(mRowInfo != null);
+			Contract.Assume(mPos >= 0 && mPos < mRowInfo.Length);
 
 			PqsqlColInfo ci = mRowInfo[mPos];
 			if (ci == null)
@@ -483,8 +485,8 @@ namespace Pqsql
 
 			long begin = LengthCheckReset();
 
-			Contract.Assert(mRowInfo != null);
-			Contract.Assert(mPos >= 0);
+			Contract.Assume(mRowInfo != null);
+			Contract.Assume(mPos >= 0 && mPos < mRowInfo.Length);
 
 			PqsqlColInfo ci = mRowInfo[mPos];
 			if (ci == null)

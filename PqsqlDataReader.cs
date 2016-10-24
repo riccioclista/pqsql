@@ -112,6 +112,15 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 		readonly string[] mStatements;
 
 
+		[ContractInvariantMethod]
+		private void ClassInvariant()
+		{
+			Contract.Invariant(mStmtNum >= -1);
+			Contract.Invariant(mMaxRows >= -1);
+			Contract.Invariant(mRowNum >= -1);
+		}
+
+
 		// used in PqsqlCopyFrom to retrieve type information
 		internal PqsqlColInfo[] RowInformation
 		{
@@ -520,6 +529,8 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 
 			Array a = Array.CreateInstance(flags > 0 ? nullable : nonNullable, dim, lbound);
 
+			Contract.Assume(a.Rank >= 1);
+
 			FillArray(ref a, val, ndim, (x, len) => itemDelegate(x, len));
 
 			return a;
@@ -541,12 +552,15 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 		//     The specified cast is not valid.
 		public override bool GetBoolean(int ordinal)
 		{
-			Contract.Requires<IndexOutOfRangeException>(ordinal >= 0);
+			Contract.Assert(ordinal >= 0);
 			if (ordinal >= mColumns)
 				throw new IndexOutOfRangeException("Column out of range");
 			if (mResult == IntPtr.Zero)
 				throw new IndexOutOfRangeException("No tuple available");
+
 			Contract.Assume(mRowInfo != null);
+			Contract.Assume(ordinal < mRowInfo.Length);
+
 			if (PqsqlDbType.Boolean != mRowInfo[ordinal].Oid)
 				throw new IndexOutOfRangeException("Row datatype accessed with wrong datatype");
 
@@ -575,7 +589,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 		//     The specified cast is not valid.
 		public override byte GetByte(int ordinal)
 		{
-			Contract.Requires<IndexOutOfRangeException>(ordinal >= 0);
+			Contract.Assert(ordinal >= 0);
 			if (ordinal >= mColumns)
 				throw new IndexOutOfRangeException("Column out of range");
 			if (mResult == IntPtr.Zero)
@@ -619,12 +633,15 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 		//     The specified cast is not valid.
 		public override long GetBytes(int ordinal, long dataOffset, byte[] buffer, int bufferOffset, int length)
 		{
-			Contract.Requires<IndexOutOfRangeException>(ordinal >= 0);
+			Contract.Assert(ordinal >= 0);
 			if (ordinal >= mColumns)
 				throw new IndexOutOfRangeException("Column out of range");
 			if (mResult == IntPtr.Zero)
 				throw new IndexOutOfRangeException("No tuple available");
+
 			Contract.Assume(mRowInfo != null);
+			Contract.Assume(ordinal < mRowInfo.Length);
+
 			if (PqsqlDbType.Bytea != mRowInfo[ordinal].Oid)
 				throw new IndexOutOfRangeException("Row datatype accessed with wrong datatype");
 
@@ -744,11 +761,14 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 		//     The specified cast is not valid.
 		public override string GetDataTypeName(int ordinal)
 		{
-			Contract.Requires<IndexOutOfRangeException>(ordinal >= 0);
+			Contract.Assert(ordinal >= 0);
 			if (ordinal >= mColumns)
 				throw new IndexOutOfRangeException("Column out of range");
 			if (mResult == IntPtr.Zero)
 				throw new IndexOutOfRangeException("No tuple available");
+
+			Contract.Assume(mRowInfo != null);
+			Contract.Assume(ordinal < mRowInfo.Length);
 
 			return mRowInfo[ordinal].DataTypeName;
 		}
@@ -768,11 +788,14 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 		//     The specified cast is not valid.
 		public override DateTime GetDateTime(int ordinal)
 		{
-			Contract.Requires<IndexOutOfRangeException>(ordinal >= 0);
+			Contract.Assert(ordinal >= 0);
 			if (ordinal >= mColumns)
 				throw new IndexOutOfRangeException("Column out of range");
 			if (mResult == IntPtr.Zero)
 				throw new IndexOutOfRangeException("No tuple available");
+
+			Contract.Assume(mRowInfo != null);
+			Contract.Assume(ordinal < mRowInfo.Length);
 
 			PqsqlDbType oid = mRowInfo[ordinal].Oid;
 			switch (oid)
@@ -828,13 +851,13 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 
 		internal static DateTime GetTime(IntPtr res, int row, int ordinal)
 		{
-			// CodeContracts: Suggested ensures for member pqbf_get_time: The caller expects the postcondition Contract.Ensures((621355968000000000 + Contract.Result<System.Int64>() * (long)(10000000)) <= 3155378975999999999); to hold for the external member pqbf_get_time. Consider adding a postcondition or an assume to document it
-			Contract.Ensures((PqsqlBinaryFormat.UnixEpochTicks + Contract.Result<System.DateTime>().Ticks * TimeSpan.TicksPerSecond) <= DateTime.MaxValue.Ticks);
-
 			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
 			long t;
 
 			t = PqsqlBinaryFormat.pqbf_get_time(v);
+
+			Contract.Assume(t >= 0);
+			Contract.Assume((PqsqlBinaryFormat.UnixEpochTicks + t * TimeSpan.TicksPerSecond) <= DateTime.MaxValue.Ticks);
 
 			long ticks = PqsqlBinaryFormat.UnixEpochTicks + t * TimeSpan.TicksPerSecond;
 
@@ -845,12 +868,15 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 
 		public TimeSpan GetTimeSpan(int ordinal)
 		{
-			Contract.Requires<IndexOutOfRangeException>(ordinal >= 0);
+			Contract.Assume(ordinal >= 0);
 			if (ordinal >= mColumns)
 				throw new IndexOutOfRangeException("Column out of range");
 			if (mResult == IntPtr.Zero)
 				throw new IndexOutOfRangeException("No tuple available");
+
 			Contract.Assume(mRowInfo != null);
+			Contract.Assume(ordinal < mRowInfo.Length);
+
 			if (PqsqlDbType.Interval != mRowInfo[ordinal].Oid)
 				throw new IndexOutOfRangeException("Row datatype accessed with wrong datatype");
 
@@ -935,12 +961,15 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 		//     The specified cast is not valid.
 		public override decimal GetDecimal(int ordinal)
 		{
-			Contract.Requires<IndexOutOfRangeException>(ordinal >= 0);
+			Contract.Assert(ordinal >= 0);
 			if (ordinal >= mColumns)
 				throw new IndexOutOfRangeException("Column out of range");
 			if (mResult == IntPtr.Zero)
 				throw new IndexOutOfRangeException("No tuple available");
+
 			Contract.Assume(mRowInfo != null);
+			Contract.Assume(ordinal < mRowInfo.Length);
+
 			if (PqsqlDbType.Numeric != mRowInfo[ordinal].Oid)
 				throw new IndexOutOfRangeException("Row datatype accessed with wrong datatype");
 
@@ -971,11 +1000,14 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 		//     The specified cast is not valid.
 		public override double GetDouble(int ordinal)
 		{
-			Contract.Requires<IndexOutOfRangeException>(ordinal >= 0);
+			Contract.Assert(ordinal >= 0);
 			if (ordinal >= mColumns)
 				throw new IndexOutOfRangeException("Column out of range");
 			if (mResult == IntPtr.Zero)
 				throw new IndexOutOfRangeException("No tuple available");
+
+			Contract.Assume(mRowInfo != null);
+			Contract.Assume(ordinal < mRowInfo.Length);
 
 			PqsqlColInfo ci = mRowInfo[ordinal];
 
@@ -1028,12 +1060,14 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 		//     The specified cast is not valid.
 		public override Type GetFieldType(int ordinal)
 		{
-			Contract.Requires<IndexOutOfRangeException>(ordinal >= 0, "Column out of range");
+			Contract.Assert(ordinal >= 0);
 			if (ordinal >= mColumns)
 				throw new IndexOutOfRangeException("Column out of range");
 			if (mResult == IntPtr.Zero)
 				throw new IndexOutOfRangeException("No tuple available");
+
 			Contract.Assume(mRowInfo != null);
+			Contract.Assume(ordinal < mRowInfo.Length);
 
 			return mRowInfo[ordinal].ProviderType;
 		}
@@ -1055,12 +1089,15 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 		//     The specified cast is not valid.
 		public override float GetFloat(int ordinal)
 		{
-			Contract.Requires<IndexOutOfRangeException>(ordinal >= 0);
+			Contract.Assert(ordinal >= 0);
 			if (ordinal >= mColumns)
 				throw new IndexOutOfRangeException("Column out of range");
 			if (mResult == IntPtr.Zero)
 				throw new IndexOutOfRangeException("No tuple available");
+
 			Contract.Assume(mRowInfo != null);
+			Contract.Assume(ordinal < mRowInfo.Length);
+
 			if (PqsqlDbType.Float4 != mRowInfo[ordinal].Oid)
 				throw new IndexOutOfRangeException("Row datatype accessed with wrong datatype");
 
@@ -1089,12 +1126,15 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 		//     The specified cast is not valid.
 		public override Guid GetGuid(int ordinal)
 		{
-			Contract.Requires<IndexOutOfRangeException>(ordinal >= 0);
+			Contract.Assert(ordinal >= 0);
 			if (ordinal >= mColumns)
 				throw new IndexOutOfRangeException("Column out of range");
 			if (mResult == IntPtr.Zero)
 				throw new IndexOutOfRangeException("No tuple available");
+
 			Contract.Assume(mRowInfo != null);
+			Contract.Assume(ordinal < mRowInfo.Length);
+
 			if (PqsqlDbType.Uuid != mRowInfo[ordinal].Oid)
 				throw new IndexOutOfRangeException("Row datatype accessed with wrong datatype");
 
@@ -1123,12 +1163,15 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 		//     The specified cast is not valid.
 		public override short GetInt16(int ordinal)
 		{
-			Contract.Requires<IndexOutOfRangeException>(ordinal >= 0);
+			Contract.Assert(ordinal >= 0);
 			if (ordinal >= mColumns)
 				throw new IndexOutOfRangeException("Column out of range");
 			if (mResult == IntPtr.Zero)
 				throw new IndexOutOfRangeException("No tuple available");
+
 			Contract.Assume(mRowInfo != null);
+			Contract.Assume(ordinal < mRowInfo.Length);
+
 			if (PqsqlDbType.Int2 != mRowInfo[ordinal].Oid)
 				throw new IndexOutOfRangeException("Row datatype accessed with wrong datatype");
 
@@ -1157,12 +1200,15 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 		//     The specified cast is not valid.
 		public override int GetInt32(int ordinal)
 		{
-			Contract.Requires<IndexOutOfRangeException>(ordinal >= 0);
+			Contract.Assert(ordinal >= 0);
 			if (ordinal >= mColumns)
 				throw new IndexOutOfRangeException("Column out of range");
 			if (mResult == IntPtr.Zero)
 				throw new IndexOutOfRangeException("No tuple available");
+
 			Contract.Assume(mRowInfo != null);
+			Contract.Assume(ordinal < mRowInfo.Length);
+
 			if (PqsqlDbType.Int4 != mRowInfo[ordinal].Oid)
 				throw new IndexOutOfRangeException("Row datatype accessed with wrong datatype");
 
@@ -1177,12 +1223,15 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 
 		public uint GetOid(int ordinal)
 		{
-			Contract.Requires<IndexOutOfRangeException>(ordinal >= 0);
+			Contract.Assume(ordinal >= 0);
 			if (ordinal >= mColumns)
 				throw new IndexOutOfRangeException("Column out of range");
 			if (mResult == IntPtr.Zero)
 				throw new IndexOutOfRangeException("No tuple available");
+
 			Contract.Assume(mRowInfo != null);
+			Contract.Assume(ordinal < mRowInfo.Length);
+
 			if (PqsqlDbType.Oid != mRowInfo[ordinal].Oid)
 				throw new IndexOutOfRangeException("Row datatype accessed with wrong datatype");
 
@@ -1211,12 +1260,15 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 		//     The specified cast is not valid.
 		public override long GetInt64(int ordinal)
 		{
-			Contract.Requires<IndexOutOfRangeException>(ordinal >= 0);
+			Contract.Assert(ordinal >= 0);
 			if (ordinal >= mColumns)
 				throw new IndexOutOfRangeException("Column out of range");
 			if (mResult == IntPtr.Zero)
 				throw new IndexOutOfRangeException("No tuple available");
+
 			Contract.Assume(mRowInfo != null);
+			Contract.Assume(ordinal < mRowInfo.Length);
+
 			if (PqsqlDbType.Int8 == mRowInfo[ordinal].Oid)
 				throw new IndexOutOfRangeException("Row datatype accessed with wrong datatype");
 
@@ -1241,12 +1293,14 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 		//     The name of the specified column.
 		public override string GetName(int ordinal)
 		{
-			Contract.Requires<IndexOutOfRangeException>(ordinal >= 0, "Column out of range");
+			Contract.Assert(ordinal >= 0);
 			if (ordinal >= mColumns)
 				throw new IndexOutOfRangeException("Column out of range");
 			if (mResult == IntPtr.Zero)
 				throw new IndexOutOfRangeException("No tuple available");
+
 			Contract.Assume(mRowInfo != null);
+			Contract.Assume(ordinal < mRowInfo.Length);
 
 			return mRowInfo[ordinal].ColumnName;
 		}
@@ -1567,14 +1621,16 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 		//     The specified cast is not valid.
 		public override string GetString(int ordinal)
 		{
-			Contract.Requires<IndexOutOfRangeException>(ordinal >= 0, "Column out of range");
+			Contract.Assert(ordinal >= 0);
 			if (ordinal >= mColumns)
 				throw new IndexOutOfRangeException("Column out of range");
 			if (mResult == IntPtr.Zero)
 				throw new IndexOutOfRangeException("No tuple available");
 
-			PqsqlDbType oid = mRowInfo[ordinal].Oid;
+			Contract.Assume(mRowInfo != null);
+			Contract.Assume(ordinal < mRowInfo.Length);
 
+			PqsqlDbType oid = mRowInfo[ordinal].Oid;
 			switch (oid)
 			{
 				case PqsqlDbType.Text:
@@ -1639,7 +1695,8 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 		//     The value of the specified column.
 		public override object GetValue(int ordinal)
 		{
-			Contract.Requires<IndexOutOfRangeException>(ordinal >= 0, "Column out of range");
+			Contract.Requires<IndexOutOfRangeException>(ordinal >= 0);
+
 			if (ordinal >= mColumns)
 				throw new IndexOutOfRangeException("Column out of range");
 			if (mResult == IntPtr.Zero)
@@ -1710,6 +1767,8 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 				return false;
 
 			Contract.Assert(mStmtNum >= -1);
+			Contract.Assert(mStmtNum < mMaxStmt - 1);
+			Contract.Assert(mPGConn != IntPtr.Zero);
 
 			mStmtNum++; // set next statement
 			mPopulateAndFill = true; // next Read() below will get fresh row information
@@ -1803,7 +1862,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 
 				if (mMaxRows == -1) // get number of tuples in a fresh result buffer
 				{
-					mMaxRows = PqsqlWrapper.PQntuples(mResult);
+					mMaxRows = PqsqlWrapper.PQntuples(mResult); // TODO what if we have more than 2^31 tuples?
 				}
 
 				// first row of current statement => get column information and fill output parameters
@@ -1879,6 +1938,8 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 		/// </summary>
 		private void PopulateRowInfoAndOutputParameters()
 		{
+			Contract.Ensures(mRowInfo != null);
+
 			mColumns = PqsqlWrapper.PQnfields(mResult); // get number of columns
 			Contract.Assume(mColumns >= 0);
 			mRowInfo = new PqsqlColInfo[mColumns];
@@ -1926,8 +1987,9 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 				PqsqlTypeRegistry.PqsqlTypeName tn = PqsqlTypeRegistry.Get(oid) ?? PqsqlTypeRegistry.FetchType(oid, mConn.ConnectionString);
 
 				Contract.Assert(tn != null);
-				if (tn.GetValue == null || string.IsNullOrEmpty(tn.DataTypeName) || tn.ProviderType == null)
-					throw new PqsqlException("PqsqlTypeName invalid");
+				Contract.Assert(tn.DataTypeName != null);
+				Contract.Assert(tn.ProviderType != null);
+				Contract.Assert(tn.GetValue != null);
 
 				mRowInfo[o].DataTypeName = tn.DataTypeName; // cache PG datatype name
 				mRowInfo[o].ProviderType = tn.ProviderType; // cache corresponding ProviderType
@@ -1968,7 +2030,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 		/// <returns>true if and only if current statement was successfully executed</returns>
 		private bool Execute()
 		{
-			Contract.Requires<ArgumentOutOfRangeException>(mStmtNum >= 0 && mStmtNum < mStatements.Length);
+			Contract.Requires<IndexOutOfRangeException>(mStmtNum >= 0 && mStmtNum < mStatements.Length);
 
 			string stmt = mStatements[mStmtNum]; // current statement
 			CommandBehavior behave = mBehaviour; // result fetching behaviour

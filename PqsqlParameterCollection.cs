@@ -304,14 +304,14 @@ namespace Pqsql
 		{
 			get
 			{
-				Contract.Requires<ArgumentOutOfRangeException>(index >= 0);
+				Contract.Requires<IndexOutOfRangeException>(index >= 0);
 				Contract.Assume(index < mParamList.Count);
 
 				return mParamList[index];
 			}
 			set
 			{
-				Contract.Requires<ArgumentOutOfRangeException>(index >= 0);
+				Contract.Requires<IndexOutOfRangeException>(index >= 0);
 				Contract.Assume(index < mParamList.Count);
 
 				PqsqlParameter old = mParamList[index];
@@ -501,7 +501,7 @@ namespace Pqsql
 		//     The System.Data.Common.DbParameter object at the specified index in the collection.
 		protected override DbParameter GetParameter(int i)
 		{
-			Contract.Assume(i >= 0);
+			Contract.Assume(i >= 0 && i < Count);
 			return this[i];
 		}
 		//
@@ -555,6 +555,7 @@ namespace Pqsql
 		public override int IndexOf(string param)
 		{
 			Contract.Ensures(Contract.Result<int>() >= -1);
+			Contract.Ensures(Contract.Result<int>() < Count);
 
 			if (!string.IsNullOrEmpty(param))
 			{
@@ -590,7 +591,7 @@ namespace Pqsql
 		public override void Insert(int index, object value)
 		{
 			Contract.Requires<ArgumentNullException>(value != null);
-			Contract.Requires<ArgumentOutOfRangeException>(index >= 0);
+			Contract.Assert(index >= 0);
 			Contract.Assume(index < mParamList.Count);
 
 			PqsqlParameter val = value as PqsqlParameter;
@@ -638,7 +639,7 @@ namespace Pqsql
 		//     The index where the System.Data.Common.DbParameter object is located.
 		public override void RemoveAt(int index)
 		{
-			Contract.Requires<ArgumentOutOfRangeException>(index >= 0 && index < Count);
+			Contract.Assert(index >= 0);
 			Contract.Assume(index < mParamList.Count);
 
 			PqsqlParameter old = mParamList[index];
@@ -689,6 +690,7 @@ namespace Pqsql
 		protected override void SetParameter(int index, DbParameter value)
 		{
 			Contract.Assume(index >= 0);
+			Contract.Assume(index < Count);
 			this[index] = (PqsqlParameter) value;
 		}
 		//

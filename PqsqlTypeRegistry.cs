@@ -18,7 +18,7 @@ namespace Pqsql
 
 #endregion
 
-		public sealed class PqsqlTypeName
+		internal sealed class PqsqlTypeName
 		{
 			public string DataTypeName { get; set; }
 			public TypeCode TypeCode { get; set; }
@@ -711,18 +711,24 @@ namespace Pqsql
 		};
 
 		// for PqsqlDataReader and PqsqlParameterCollection
-		public static PqsqlTypeName Get(PqsqlDbType oid)
+		internal static PqsqlTypeName Get(PqsqlDbType oid)
 		{
+			Contract.Ensures(Contract.Result<PqsqlTypeName>() == null || Contract.Result<PqsqlTypeName>().GetValue != null);
+			Contract.Ensures(Contract.Result<PqsqlTypeName>() == null || Contract.Result<PqsqlTypeName>().DataTypeName != null);
+			Contract.Ensures(Contract.Result<PqsqlTypeName>() == null || Contract.Result<PqsqlTypeName>().ProviderType != null);
 			PqsqlTypeName result;
 			return mPqsqlDbTypeDict.TryGetValue(oid, out result) ? result : null;
 		}
 
 		// for PqsqlDataReader
-		public static PqsqlTypeName FetchType(PqsqlDbType oid, string connstring)
+		internal static PqsqlTypeName FetchType(PqsqlDbType oid, string connstring)
 		{
 			Contract.Requires<ArgumentOutOfRangeException>(oid != 0, "Datatype with oid=0 (InvalidOid) not supported");
 			Contract.Requires<ArgumentNullException>(connstring != null);
 			Contract.Ensures(Contract.Result<PqsqlTypeName>() != null);
+			Contract.Ensures(Contract.Result<PqsqlTypeName>().GetValue != null);
+			Contract.Ensures(Contract.Result<PqsqlTypeName>().DataTypeName != null);
+			Contract.Ensures(Contract.Result<PqsqlTypeName>().ProviderType != null);
 
 			// try to guess the type mapping
 			using (PqsqlConnection conn = new PqsqlConnection(connstring))

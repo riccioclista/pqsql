@@ -31,6 +31,13 @@ namespace Pqsql
 		private UpdateRowSource mUpdateRowSource = UpdateRowSource.Both;
 
 
+		[ContractInvariantMethod]
+		private void ClassInvariant()
+		{
+			Contract.Invariant(mParams != null);
+		}
+
+
 		// Summary:
 		//     Constructs an instance of the System.Data.Common.DbCommand object.
 		public PqsqlCommand()
@@ -574,6 +581,7 @@ namespace Pqsql
 		// sets application_name of the current session
 		private void SetApplicationName()
 		{
+			Contract.Assume(mConn != null);
 			string appname = mConn.ApplicationName;
 			if (!string.IsNullOrEmpty(appname))
 			{

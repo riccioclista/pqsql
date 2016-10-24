@@ -45,6 +45,13 @@ namespace Pqsql
 		#endregion
 
 
+		[ContractInvariantMethod]
+		private void ClassInvariant()
+		{
+			Contract.Invariant(mConnectionStringBuilder != null);
+		}
+
+
 		#region ctors and dtors
 
 		public PqsqlConnection(string connectionString)
