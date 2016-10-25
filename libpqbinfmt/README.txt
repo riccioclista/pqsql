@@ -57,11 +57,15 @@ Unsupported features
 Unsupported datatypes
 =====================
 
-bit
-"char"
-timetz
-timestamptz
-uuid
+bit					src/backend/utils/adt/varbit.c
+"char"			src/backend/utils/adt/char.c
+cidr				src/backend/utils/adt/network.c
+inet				src/backend/utils/adt/network.c
+macaddr			src/backend/utils/adt/mac.c
+timetz			src/backend/utils/adt/timestamp.c
+timestamptz	src/backend/utils/adt/timestamp.c
+uuid				src/backend/utils/adt/uuid.c
+xid					src/backend/utils/adt/xid.c
 ...
 
 
