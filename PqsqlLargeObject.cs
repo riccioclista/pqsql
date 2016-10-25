@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Data;
+using System.ComponentModel;
 using System.Diagnostics.Contracts;
 using System.IO;
 
@@ -25,17 +25,15 @@ namespace Pqsql
 		{
 			Contract.Requires<ArgumentNullException>(conn != null);
 
-			mConn = conn;
-
-			switch (conn.State)
+			// All large object manipulation using these functions must take place within an SQL transaction block,
+			// since large object file descriptors are only valid for the duration of a transaction.
+			// https://www.postgresql.org/docs/current/static/lo-interfaces.html
+			if (conn.TransactionStatus != PGTransactionStatusType.PQTRANS_INTRANS)
 			{
-			case ConnectionState.Broken:
-				throw new PqsqlException("PqsqlConnection.State is broken");
-			case ConnectionState.Closed:
-				mConn.Open();
-				break;
+				throw new PqsqlException("PqsqlLargeObject manipulation must take place within an SQL transaction");
 			}
 
+			mConn = conn;
 			mPGConn = conn.PGConnection;
 			if (mPGConn == IntPtr.Zero)
 			{
@@ -302,6 +300,7 @@ namespace Pqsql
 			}
 		}
 
+		[Browsable(false)]
 		public override long Length
 		{
 			get
@@ -315,6 +314,7 @@ namespace Pqsql
 			}
 		}
 
+		[Browsable(false)]
 		public override long Position
 		{
 			get
