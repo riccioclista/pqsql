@@ -253,6 +253,9 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 			{
 				Contract.Assert(mConn != null);
 
+				if (mClosing)
+					return true;
+
 				ConnectionState s = mConn.State;
 
 				if (s == ConnectionState.Closed || (s & ConnectionState.Broken) > 0)
