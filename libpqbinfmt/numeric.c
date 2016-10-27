@@ -25,7 +25,9 @@
 #include <math.h>
 
 #include <stdint.h>
+#ifdef _WIN32
 #include <windows.h>
+#endif /* _WIN32 */
 #include <assert.h>
 #include <stdio.h>
 
@@ -557,14 +559,14 @@ pqbf_get_numeric(const char *ptr, int32_t typmod)
 
 	for (i = 0; i < len; i++)
 	{
-		NumericDigit d = (int16_t) BYTESWAP2(*((int16_t *) p)); // pq_getmsgint(buf, sizeof(NumericDigit));
+		NumericDigit numdig = (int16_t) BYTESWAP2(*((int16_t *) p)); // pq_getmsgint(buf, sizeof(NumericDigit));
 
-		if (d < 0 || d >= NBASE)
+		if (numdig < 0 || numdig >= NBASE)
 			return 0;
 ///			ereport(ERROR,
 ///					(errcode(ERRCODE_INVALID_BINARY_REPRESENTATION),
 ///					 errmsg("invalid digit in external \"numeric\" value")));
-		value.digits[i] = d;
+		value.digits[i] = numdig;
 
 		p += sizeof(int16_t);
 	}

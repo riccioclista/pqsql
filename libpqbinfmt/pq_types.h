@@ -1,5 +1,8 @@
 // this is an excerpt from server/catalog/pq_types.h
 
+#ifndef __PQ_TYPES_H
+#define __PQ_TYPES_H
+
 /*
  * Keep the following ordered by OID so that later changes can be made more
  * easily.
@@ -157,3 +160,4 @@
 #define FDW_HANDLEROID	3115
 #define ANYRANGEOID		3831
 
+#endif /* __PQ_TYPES_H */

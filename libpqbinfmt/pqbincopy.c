@@ -14,7 +14,6 @@ static const char NullValue[4] = "\377\377\377\377";
 DECLSPEC pqcopy_buffer *
 pqcb_create(PGconn *conn, int num_cols)
 {
-	uint32_t i = 0;
 	pqcopy_buffer *buf;
 
 	BAILWITHVALUEIFNULL(conn, NULL);
@@ -101,7 +100,7 @@ static int
 pqcb_put_buf(pqcopy_buffer *p, char* v, uint32_t len)
 {
 	int remainder = len;
-	int ret = 1;
+	int ret;
 
 	do
 	{
@@ -114,7 +113,8 @@ pqcb_put_buf(pqcopy_buffer *p, char* v, uint32_t len)
 			p->pos += remainder;
 			return 1;
 		}
-		else if (free > 0)
+
+		if (free > 0)
 		{
 			/* exactly free bytes left in p->buffer */
 			memcpy(&p->buffer[p->pos], v, free);

@@ -1,4 +1,7 @@
+
+#ifdef _WIN32
 #include <windows.h>
+#endif /* _WIN32 */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -362,7 +365,6 @@ pqbf_free_unicode_text(wchar_t *p)
 	if (p)
 	{
 		free(p);
-		p = NULL;
 	}
 }
 

@@ -135,7 +135,7 @@ isinf(double x)
 double
 float8in(char* num)
 {
-	char	   *orig_num;
+	//char	   *orig_num;
 	double		val;
 	char	   *endptr;
 
@@ -144,7 +144,7 @@ float8in(char* num)
 	 * as a valid floating point number. orig_num points to the original input
 	 * string.
 	 */
-	orig_num = num;
+	//orig_num = num;
 
 	/* skip leading whitespace */
 	while (*num != '\0' && isspace((unsigned char) *num))
