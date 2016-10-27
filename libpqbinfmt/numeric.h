@@ -11,6 +11,14 @@
  *
  *-------------------------------------------------------------------------
  */
+/**
+ * @file numeric.h
+ * @brief encode/decode numeric binary format to native datatype for PQgetvalue() and pqparam_buffer
+ * @date 2015-09-30 
+ * @author Thomas Krennwallner <krennwallner@ximes.com>
+ * @see https://www.postgresql.org/docs/current/static/libpq-exec.html
+ */
+
 #ifndef _PG_NUMERIC_H_
 #define _PG_NUMERIC_H_
 

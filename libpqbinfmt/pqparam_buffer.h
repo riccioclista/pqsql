@@ -1,3 +1,12 @@
+/**
+ * @file pqparam_buffer.h
+ * @brief binary input parameter format handling for PQexecParams()
+ * @date 2015-09-30 
+ * @author Thomas Krennwallner <krennwallner@ximes.com>
+ * @copyright Copyright (c) 2015-2016, XIMES GmbH
+ * @see https://www.postgresql.org/docs/current/static/libpq-exec.html
+ */
+
 #ifndef __PQPARAM_BUFFER_H
 #define __PQPARAM_BUFFER_H
 

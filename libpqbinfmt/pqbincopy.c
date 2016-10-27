@@ -1,3 +1,13 @@
+/**
+ * @file pqbincopy.c
+ * @brief frontend to PQputCopyData() and PQputCopyEnd() (COPY FROM STDIN BINARY)
+ * @date 2015-11-03
+ * @author Thomas Krennwallner <krennwallner@ximes.com>
+ * @see https://www.postgresql.org/docs/current/static/libpq-copy.html
+ * @see https://www.postgresql.org/docs/current/static/sql-copy.html#AEN77709
+ * @note postgresql source src/backend/commands/copy.c
+ */
+
 #include <stdlib.h>
 #include <string.h>
 

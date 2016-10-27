@@ -1,7 +1,36 @@
-// this is an excerpt from server/catalog/pq_types.h
+/*-------------------------------------------------------------------------
+ *
+ * pg_type.h
+ *	  definition of the system "type" relation (pg_type)
+ *	  along with the relation's initial contents.
+ *
+ *
+ * Portions Copyright (c) 1996-2014, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1994, Regents of the University of California
+ *
+ * src/include/catalog/pg_type.h
+ *
+ * NOTES
+ *	  the genbki.pl script reads this file and generates .bki
+ *	  information from the DATA() statements.
+ *
+ *-------------------------------------------------------------------------
+ */
+/**
+ * @file pq_types.h
+ * @brief this is an excerpt from server/catalog/pq_type.h
+ * @date 2015-10-01
+ * @author Thomas Krennwallner <krennwallner@ximes.com>
+ * @see https://www.postgresql.org/docs/current/static/catalog-pg-type.html
+ */
 
 #ifndef __PQ_TYPES_H
 #define __PQ_TYPES_H
+
+/* ----------------
+ *		initial contents of pg_type
+ * ----------------
+ */
 
 /*
  * Keep the following ordered by OID so that later changes can be made more

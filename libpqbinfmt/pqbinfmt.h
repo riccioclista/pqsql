@@ -1,3 +1,12 @@
+/**
+ * @file pqbinfmt.h
+ * @brief encode/decode postgresql binary format to native datatype for PQgetvalue() and pqparam_buffer
+ * @date 2015-09-30
+ * @author Thomas Krennwallner <krennwallner@ximes.com>
+ * @copyright Copyright (c) 2015-2016, XIMES GmbH
+ * @see https://www.postgresql.org/docs/current/static/libpq-exec.html
+ */
+
 #ifndef __PQ_BINFMT_H
 #define __PQ_BINFMT_H
 

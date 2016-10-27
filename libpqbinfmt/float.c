@@ -12,6 +12,14 @@
  *
  *-------------------------------------------------------------------------
  */
+/**
+ * @file float.c
+ * @brief encode/decode float binary format to native datatype for PQgetvalue() and pqparam_buffer
+ * @date 2015-09-30 
+ * @author Thomas Krennwallner <krennwallner@ximes.com>
+ * @see https://www.postgresql.org/docs/current/static/libpq-exec.html
+ * @note postgresql source src/backend/utils/adt/float.c
+ */
 
 #include <ctype.h>
 #include <float.h>
