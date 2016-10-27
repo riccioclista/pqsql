@@ -12,6 +12,8 @@ namespace Pqsql
 	// ConnectionString, Database, DataSource, ServerVersion, and State.
 	public sealed class PqsqlConnection : DbConnection
 	{
+		private static readonly byte[] mTimeZoneParameter = PqsqlUTF8Statement.CreateUTF8Statement("TimeZone");
+
 		#region libpq connection
 
 		/// <summary>
@@ -244,6 +246,41 @@ namespace Pqsql
 					mServerVersion = PqsqlWrapper.PQserverVersion(mConnection);
 				}
 				return mServerVersion.ToString(); 
+			}
+		}
+
+		//
+		// Summary:
+		//     Gets the current TimeZone parameter setting of the server.
+		//
+		// Returns:
+		//     Certain parameter values are reported by the server automatically at connection startup or whenever their values change.
+		//     set timezone="TIMEZONENAME" will update this parameter setting. The default value is an empty string.
+		public string TimeZone
+		{
+			get
+			{
+				Contract.Ensures(Contract.Result<System.String>() != null);
+
+				if (mConnection == IntPtr.Zero)
+					return string.Empty;
+
+				string tz;
+
+				unsafe
+				{
+					fixed (byte* timezone = mTimeZoneParameter)
+					{
+						sbyte* tzb = PqsqlWrapper.PQparameterStatus(mConnection, timezone);
+
+						if (tzb == null)
+							tz = string.Empty;
+						else
+							tz = new string(tzb); // TODO UTF-8 encoding ignored here!
+					}
+				}
+
+				return tz;
 			}
 		}
 
