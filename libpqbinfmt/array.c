@@ -6,7 +6,7 @@
 #include "pqbinfmt.h"
 
 
-DECLSPEC const char * __fastcall
+DECLSPEC const char *
 pqbf_get_array(const char* p,
 								int32_t* ndim, int32_t* flags, uint32_t* o,
 								int* dim[MAXDIM],	int* lbound[MAXDIM])
@@ -47,7 +47,7 @@ pqbf_get_array(const char* p,
 
 
 
-DECLSPEC const char * __fastcall
+DECLSPEC const char *
 pqbf_get_array_value(const char* p, int32_t* itemlen)
 {
 	if (p == NULL) /* null values are encoded with itemlen=-1 */
@@ -82,7 +82,7 @@ pqbf_get_array_value(const char* p, int32_t* itemlen)
 	} while(0)
 
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_set_array(PQExpBuffer s,
 								int32_t ndim, int32_t flags, uint32_t oid,
 								int dim[MAXDIM],	int lbound[MAXDIM])
@@ -94,7 +94,7 @@ pqbf_set_array(PQExpBuffer s,
 
 
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_set_array_itemlength(PQExpBuffer a, int32_t itemlen)
 {
 	BAILIFNULL(a);
@@ -103,7 +103,7 @@ pqbf_set_array_itemlength(PQExpBuffer a, int32_t itemlen)
 	/* next comes array item */
 }
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_update_array_itemlength(PQExpBuffer a, ptrdiff_t offset, int32_t itemlen)
 {
 	BAILIFNULL(a);
@@ -113,7 +113,7 @@ pqbf_update_array_itemlength(PQExpBuffer a, ptrdiff_t offset, int32_t itemlen)
 	/* next comes array item */
 }
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_add_array(pqparam_buffer *pb, PQExpBuffer a, uint32_t oid)
 {
 	size_t len;

@@ -10,7 +10,7 @@ extern "C" {
 #endif
 
 
-DECLSPEC pqparam_buffer * __fastcall
+DECLSPEC pqparam_buffer *
 pqpb_create(void)
 {
 	pqparam_buffer *b = (pqparam_buffer*) malloc(sizeof(pqparam_buffer));
@@ -37,7 +37,7 @@ pqpb_create(void)
 
 #define XFREE(p) do { if(p) { free(p); p = NULL; } } while(0)
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqpb_free(pqparam_buffer *b)
 {
 	if (b)
@@ -54,7 +54,7 @@ pqpb_free(pqparam_buffer *b)
 	}
 }
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqpb_reset(pqparam_buffer *b)
 {
 	if (b)
@@ -85,7 +85,7 @@ pqpb_reset(pqparam_buffer *b)
 		} } while(0)
 
 
-void __fastcall
+void
 pqpb_add(pqparam_buffer *b, Oid typ, size_t len)
 {
 	int ret = 0;
@@ -116,7 +116,7 @@ pqpb_add(pqparam_buffer *b, Oid typ, size_t len)
 	b->num_param++;
 }
 
-DECLSPEC int __fastcall
+DECLSPEC int
 pqpb_get_num(pqparam_buffer *b)
 {
 	if (b)
@@ -127,7 +127,7 @@ pqpb_get_num(pqparam_buffer *b)
 	return -1;
 }
 
-DECLSPEC Oid * __fastcall
+DECLSPEC Oid *
 pqpb_get_types(pqparam_buffer *b)
 {
 	if (b)
@@ -138,7 +138,7 @@ pqpb_get_types(pqparam_buffer *b)
 	return NULL;
 }
 
-DECLSPEC char ** __fastcall
+DECLSPEC char **
 pqpb_get_vals(pqparam_buffer *b)
 {
 	if (b)
@@ -171,7 +171,7 @@ pqpb_get_vals(pqparam_buffer *b)
 	return NULL;
 }
 
-DECLSPEC int * __fastcall
+DECLSPEC int *
 pqpb_get_lens(pqparam_buffer *b)
 {
 	if (b)
@@ -182,7 +182,7 @@ pqpb_get_lens(pqparam_buffer *b)
 	return NULL;
 }
 
-DECLSPEC int * __fastcall
+DECLSPEC int *
 pqpb_get_frms(pqparam_buffer *b)
 {
 	if (b)
@@ -193,7 +193,7 @@ pqpb_get_frms(pqparam_buffer *b)
 	return NULL;
 }
 
-DECLSPEC uint32_t __fastcall
+DECLSPEC uint32_t
 pqpb_get_type(pqparam_buffer *b, int i)
 {
 	if (b && i >= 0 && i < b->num_param)
@@ -204,7 +204,7 @@ pqpb_get_type(pqparam_buffer *b, int i)
 	return UINT32_MAX;
 }
 
-DECLSPEC char * __fastcall
+DECLSPEC char *
 pqpb_get_val(pqparam_buffer *b, int i)
 {
 	if (b && i >= 0 && i < b->num_param)
@@ -216,7 +216,7 @@ pqpb_get_val(pqparam_buffer *b, int i)
 	return NULL;
 }
 
-DECLSPEC int __fastcall
+DECLSPEC int
 pqpb_get_len(pqparam_buffer *b, int i)
 {
 	if (b && i >= 0 && i < b->num_param)

@@ -507,7 +507,7 @@ numeric_out(Numeric num)
  * External format is a sequence of int16's:
  * ndigits, weight, sign, dscale, NumericDigits.
  */
-DECLSPEC double __fastcall
+DECLSPEC double
 pqbf_get_numeric(const char *ptr, int32_t typmod)
 {
 	NumericVar	value;
@@ -614,7 +614,7 @@ pqbf_get_numeric(const char *ptr, int32_t typmod)
 		} \
 	} while(0)
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_set_numeric(PQExpBuffer s, double d)
 {
 	Numeric n;
@@ -634,7 +634,7 @@ pqbf_set_numeric(PQExpBuffer s, double d)
 	free(n);
 }
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_add_numeric(pqparam_buffer *pb, double d)
 {
 	size_t len;

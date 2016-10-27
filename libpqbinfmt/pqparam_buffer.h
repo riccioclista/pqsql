@@ -35,21 +35,21 @@ typedef struct pqparam_buffer
 	char **param_vals;
 } pqparam_buffer;
 
-extern DECLSPEC pqparam_buffer * __fastcall pqpb_create(void);
-extern DECLSPEC void __fastcall pqpb_free(pqparam_buffer *p);
-extern DECLSPEC void __fastcall pqpb_reset(pqparam_buffer *p);
+extern DECLSPEC pqparam_buffer * pqpb_create(void);
+extern DECLSPEC void pqpb_free(pqparam_buffer *p);
+extern DECLSPEC void pqpb_reset(pqparam_buffer *p);
 
-extern void __fastcall pqpb_add(pqparam_buffer *buf, Oid typ, size_t len);
+extern void pqpb_add(pqparam_buffer *buf, Oid typ, size_t len);
 
-extern DECLSPEC int __fastcall pqpb_get_num(pqparam_buffer *p);
-extern DECLSPEC Oid * __fastcall pqpb_get_types(pqparam_buffer *p);
-extern DECLSPEC char ** __fastcall pqpb_get_vals(pqparam_buffer *p);
-extern DECLSPEC int * __fastcall pqpb_get_lens(pqparam_buffer *p);
-extern DECLSPEC int * __fastcall pqpb_get_frms(pqparam_buffer *p);
+extern DECLSPEC int pqpb_get_num(pqparam_buffer *p);
+extern DECLSPEC Oid * pqpb_get_types(pqparam_buffer *p);
+extern DECLSPEC char ** pqpb_get_vals(pqparam_buffer *p);
+extern DECLSPEC int * pqpb_get_lens(pqparam_buffer *p);
+extern DECLSPEC int * pqpb_get_frms(pqparam_buffer *p);
 
-extern DECLSPEC Oid __fastcall pqpb_get_type(void *p, int i);
-extern DECLSPEC char * __fastcall pqpb_get_val(void *p, int i);
-extern DECLSPEC int __fastcall pqpb_get_len(void *p, int i);
+extern DECLSPEC Oid pqpb_get_type(void *p, int i);
+extern DECLSPEC char * pqpb_get_val(void *p, int i);
+extern DECLSPEC int pqpb_get_len(void *p, int i);
 
 #ifdef  __cplusplus
 }

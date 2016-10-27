@@ -11,7 +11,7 @@ static const char BinarySignature[11] = "PGCOPY\n\377\r\n\0";
 static const char NullValue[4] = "\377\377\377\377";
 
 
-DECLSPEC pqcopy_buffer * __fastcall
+DECLSPEC pqcopy_buffer *
 pqcb_create(PGconn *conn, int num_cols)
 {
 	uint32_t i = 0;
@@ -36,7 +36,7 @@ pqcb_create(PGconn *conn, int num_cols)
 }
 
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqcb_free(pqcopy_buffer *p)
 {
 	if (p)
@@ -46,7 +46,7 @@ pqcb_free(pqcopy_buffer *p)
 }
 
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqcb_reset(pqcopy_buffer *buf, int num_cols)
 {
 	if (buf && num_cols > 0)
@@ -74,7 +74,7 @@ pqcb_reset(pqcopy_buffer *buf, int num_cols)
 
 
 /* flush buffer in case buffer is full or force = 1 */
-static int __fastcall
+static int
 pqcb_flush_buf(pqcopy_buffer *p, int force)
 {
 	int ret = 1;
@@ -97,7 +97,7 @@ pqcb_flush_buf(pqcopy_buffer *p, int force)
 /* add len bytes starting from v to p->buffer.
  * flushes buffer if p->buffer is getting full during copying
  */
-static int __fastcall
+static int
 pqcb_put_buf(pqcopy_buffer *p, char* v, uint32_t len)
 {
 	int remainder = len;
@@ -132,7 +132,7 @@ pqcb_put_buf(pqcopy_buffer *p, char* v, uint32_t len)
 
 
 /* add val to pqcopy_buffer, potentially flushing */
-DECLSPEC int __fastcall
+DECLSPEC int
 pqcb_put_col(pqcopy_buffer *p, const char* val, uint32_t len)
 {
 	int ret;
@@ -202,7 +202,7 @@ pqcb_put_col(pqcopy_buffer *p, const char* val, uint32_t len)
 
 
 /* flush pqcopy_buffer and send trailer */
-DECLSPEC int __fastcall
+DECLSPEC int
 pqcb_put_end(pqcopy_buffer *p)
 {
 	BAILWITHVALUEIFNULL(p, -1);

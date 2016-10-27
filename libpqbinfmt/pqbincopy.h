@@ -29,12 +29,12 @@ typedef struct pqcopy_buffer
 } pqcopy_buffer;
 
 
-extern DECLSPEC pqcopy_buffer * __fastcall pqcb_create(PGconn *conn, int num_cols);
-extern DECLSPEC void __fastcall pqcb_free(pqcopy_buffer *p);
-extern DECLSPEC void __fastcall pqcb_reset(pqcopy_buffer *p, int num_cols);
+extern DECLSPEC pqcopy_buffer *pqcb_create(PGconn *conn, int num_cols);
+extern DECLSPEC void pqcb_free(pqcopy_buffer *p);
+extern DECLSPEC void pqcb_reset(pqcopy_buffer *p, int num_cols);
 
-extern DECLSPEC int __fastcall pqcb_put_col(pqcopy_buffer *buf, const char* val, uint32_t len);
-extern DECLSPEC int __fastcall pqcb_put_end(pqcopy_buffer *buf);
+extern DECLSPEC int pqcb_put_col(pqcopy_buffer *buf, const char* val, uint32_t len);
+extern DECLSPEC int pqcb_put_end(pqcopy_buffer *buf);
 
 #ifdef  __cplusplus
 }

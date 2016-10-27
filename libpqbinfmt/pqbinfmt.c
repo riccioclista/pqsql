@@ -22,14 +22,13 @@ extern "C" {
 #endif
 
 
-
-DECLSPEC size_t __fastcall
+DECLSPEC size_t
 pqbf_get_buflen(PQExpBuffer s)
 {
 	return s->len;
 }
 
-DECLSPEC char * __fastcall
+DECLSPEC char *
 pqbf_get_bufval(PQExpBuffer s)
 {
 	return s->data;
@@ -38,7 +37,7 @@ pqbf_get_bufval(PQExpBuffer s)
 /*
  * add NULL value parameter of specified type
  */
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_add_null(pqparam_buffer *pb, uint32_t o)
 {
 	BAILIFNULL(pb);
@@ -48,7 +47,7 @@ pqbf_add_null(pqparam_buffer *pb, uint32_t o)
 /*
  * get single byte from result
  */
-DECLSPEC unsigned char __fastcall
+DECLSPEC unsigned char
 pqbf_get_byte(const char *p)
 {
 	BAILWITHVALUEIFNULL(p, 0);
@@ -58,7 +57,7 @@ pqbf_get_byte(const char *p)
 /*
  * oid 16: bool
  */
-DECLSPEC int __fastcall
+DECLSPEC int
 pqbf_get_bool(const char *p)
 {
 	BAILWITHVALUEIFNULL(p, 0);
@@ -67,14 +66,14 @@ pqbf_get_bool(const char *p)
 
 #define pqbf_encode_bool(s,b) do { appendPQExpBufferChar(s, (char) b & 0x1); } while(0)
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_set_bool(PQExpBuffer s, int b)
 {
 	BAILIFNULL(s);
 	pqbf_encode_bool(s, b);
 }
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_add_bool(pqparam_buffer *pb, int b)
 {
 	BAILIFNULL(pb);
@@ -89,7 +88,7 @@ pqbf_add_bool(pqparam_buffer *pb, int b)
 /*
  * oid 17:   bytea
  */
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_get_bytea(const char *p, char* buf, size_t len)
 {
 	BAILIFNULL(p);
@@ -101,14 +100,14 @@ pqbf_get_bytea(const char *p, char* buf, size_t len)
 
 #define pqbf_encode_bytea(s,buf,buflen) do { appendBinaryPQExpBuffer(s, buf, buflen); } while(0)
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_set_bytea(PQExpBuffer s, const char* buf, size_t buflen)
 {
 	BAILIFNULL(s);
 	pqbf_encode_bytea(s, buf, buflen);
 }
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_add_bytea(pqparam_buffer *pb, const char* buf, size_t buflen)
 {
 	BAILIFNULL(pb);
@@ -128,7 +127,7 @@ pqbf_add_bytea(pqparam_buffer *pb, const char* buf, size_t buflen)
  * - pq_sendint64(StringInfo buf, int64 i)
  * from src/backend/libpq/pqformat.c
  */
-DECLSPEC int64_t __fastcall
+DECLSPEC int64_t
 pqbf_get_int8(const char *p)
 {
 	BAILWITHVALUEIFNULL(p, INT64_MIN);
@@ -137,14 +136,14 @@ pqbf_get_int8(const char *p)
 
 #define pqbf_encode_int8(s,i) do { i = BYTESWAP8(i); appendBinaryPQExpBuffer(s, (const char*) &i, sizeof(i)); } while(0)
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_set_int8(PQExpBuffer s, int64_t i)
 {
 	BAILIFNULL(s);
 	pqbf_encode_int8(s, i);
 }
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_add_int8(pqparam_buffer *pb, int64_t i)
 {
 	BAILIFNULL(pb);
@@ -165,7 +164,7 @@ pqbf_add_int8(pqparam_buffer *pb, int64_t i)
  * from src/backend/libpq/pqformat.c
  */
 
-DECLSPEC int16_t __fastcall
+DECLSPEC int16_t
 pqbf_get_int2(const char *p)
 {
 	BAILWITHVALUEIFNULL(p, INT16_MIN);
@@ -174,14 +173,14 @@ pqbf_get_int2(const char *p)
 
 #define pqbf_encode_int2(s,i) do { i = BYTESWAP2(i); appendBinaryPQExpBuffer(s, (const char*) &i, sizeof(i)); } while(0)
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_set_int2(PQExpBuffer s, int16_t i)
 {
 	BAILIFNULL(s);
 	pqbf_encode_int2(s, i);
 }
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_add_int2(pqparam_buffer *pb, int16_t i)
 {
 	BAILIFNULL(pb);
@@ -201,7 +200,7 @@ pqbf_add_int2(pqparam_buffer *pb, int16_t i)
  * from src/backend/libpq/pqformat.c
  */
 
-DECLSPEC int32_t __fastcall
+DECLSPEC int32_t
 pqbf_get_int4(const char *p)
 {
 	BAILWITHVALUEIFNULL(p, INT32_MIN);
@@ -210,14 +209,14 @@ pqbf_get_int4(const char *p)
 
 #define pqbf_encode_int4(s,i) do { i = BYTESWAP4(i); appendBinaryPQExpBuffer(s, (const char*) &i, sizeof(i)); } while(0)
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_set_int4(PQExpBuffer s, int32_t i)
 {
 	BAILIFNULL(s);
 	pqbf_encode_int4(s, i);
 }
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_add_int4(pqparam_buffer *pb, int32_t i)
 {
 	BAILIFNULL(pb);
@@ -241,7 +240,7 @@ pqbf_add_int4(pqparam_buffer *pb, int32_t i)
  * from src/backend/libpq/pqformat.c
  */
 
-DECLSPEC const char* __fastcall
+DECLSPEC const char*
 pqbf_get_text(const char *p, size_t *len)
 {
 	BAILWITHVALUEIFNULL(p, NULL);
@@ -258,14 +257,14 @@ pqbf_get_text(const char *p, size_t *len)
 
 #define pqbf_encode_text(s,t) do { appendPQExpBufferStr(s, t); } while(0)
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_set_text(PQExpBuffer s, const char *t)
 {
 	BAILIFNULL(s);
 	pqbf_encode_text(s, t);
 }
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_add_text(pqparam_buffer *pb, const char *t, uint32_t oid)
 {
 	size_t len;
@@ -287,7 +286,7 @@ pqbf_add_text(pqparam_buffer *pb, const char *t, uint32_t oid)
  */
 #ifdef _WIN32
 
-DECLSPEC wchar_t* __fastcall
+DECLSPEC wchar_t*
 pqbf_get_unicode_text(const char *p, size_t *utf16_len)
 {
 	wchar_t *obuf;
@@ -357,7 +356,7 @@ pqbf_get_unicode_text(const char *p, size_t *utf16_len)
 }
 
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_free_unicode_text(wchar_t *p)
 {
 	if (p)
@@ -391,7 +390,7 @@ pqbf_free_unicode_text(wchar_t *p)
 		free(obuf); \
 	} while(0)
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_set_unicode_text(PQExpBuffer s, const wchar_t *t)
 {
 	if (s == NULL || t == NULL) /* use pqbf_set_null for NULL parameters */
@@ -399,7 +398,7 @@ pqbf_set_unicode_text(PQExpBuffer s, const wchar_t *t)
 	pqbf_encode_unicode_text(s, t);
 }
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_add_unicode_text(pqparam_buffer *pb, const wchar_t *t, uint32_t oid)
 {
 	size_t len;
@@ -423,21 +422,21 @@ pqbf_add_unicode_text(pqparam_buffer *pb, const wchar_t *t, uint32_t oid)
  * see pq_sendint(StringInfo buf, int i, int b) from src/backend/libpq/pqformat.c
  */
 
-DECLSPEC uint32_t __fastcall
+DECLSPEC uint32_t
 pqbf_get_oid(const char *p)
 {
 	BAILWITHVALUEIFNULL(p, UINT32_MAX);
 	return BYTESWAP4(*((uint32_t *) p));
 }
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_set_oid(PQExpBuffer s, uint32_t i)
 {
 	BAILIFNULL(s);
 	pqbf_encode_int4(s, i);
 }
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_add_oid(pqparam_buffer *pb, uint32_t i)
 {
 	BAILIFNULL(pb);
@@ -463,7 +462,7 @@ union float_swap
 	uint32_t i;
 };
 
-DECLSPEC float __fastcall
+DECLSPEC float
 pqbf_get_float4(const char *p)
 {
 	union float_swap swap;
@@ -484,14 +483,14 @@ pqbf_get_float4(const char *p)
 		appendBinaryPQExpBuffer(s, (const char*) &swap.i, sizeof(swap.i)); \
 	} while(0)
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_set_float4(PQExpBuffer s, float f)
 {
 	BAILIFNULL(s);
 	pqbf_encode_float4(s,f);
 }
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_add_float4(pqparam_buffer *pb, float f)
 {
 	BAILIFNULL(pb);
@@ -518,7 +517,7 @@ union double_swap
 	uint64_t i;
 };
 
-DECLSPEC double __fastcall
+DECLSPEC double
 pqbf_get_float8(const char *p)
 {
 	union double_swap swap;
@@ -538,14 +537,14 @@ pqbf_get_float8(const char *p)
 		appendBinaryPQExpBuffer(s, (const char*) &swap.i, sizeof(swap.i)); \
 	} while(0)
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_set_float8(PQExpBuffer s, double f)
 {
 	BAILIFNULL(s);
 	pqbf_encode_float8(s,f);
 }
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_add_float8(pqparam_buffer *pb, double f)
 {
 	BAILIFNULL(pb);
@@ -562,21 +561,21 @@ pqbf_add_float8(pqparam_buffer *pb, double f)
  *
  * TODO check
  */
-DECLSPEC int32_t __fastcall
+DECLSPEC int32_t
 pqbf_get_date(const char *p)
 {
 	BAILWITHVALUEIFNULL(p, 0);
 	return BYTESWAP4(*((uint32_t *) p));
 }
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_set_date(PQExpBuffer s, int32_t t)
 {
 	BAILIFNULL(s);
 	pqbf_encode_int4(s, t);
 }
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_add_date(pqparam_buffer *pb, int32_t t)
 {
 	BAILIFNULL(pb);
@@ -597,7 +596,7 @@ pqbf_add_date(pqparam_buffer *pb, int32_t t)
 #define POSTGRES_MEGA 1000000
 #define POSTGRES_TICKS_PER_MILLISECOND 10000
 
-DECLSPEC time_t __fastcall
+DECLSPEC time_t
 pqbf_get_time(const char *p)
 {
 	uint64_t i;
@@ -618,14 +617,14 @@ pqbf_get_time(const char *p)
 		appendBinaryPQExpBuffer(s, (const char*) &t, sizeof(t)); \
 	} while(0)
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_set_time(PQExpBuffer s, time_t t)
 {
 	BAILIFNULL(s);
 	pqbf_encode_time(s, t);
 }
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_add_time(pqparam_buffer *pb, time_t t)
 {
 	BAILIFNULL(pb);
@@ -639,7 +638,7 @@ pqbf_add_time(pqparam_buffer *pb, time_t t)
 /*
  * oid 1114: timestamp
  */
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_get_timestamp(const char *p, time_t *sec, int *usec)
 {
 	uint64_t i;
@@ -666,14 +665,14 @@ pqbf_get_timestamp(const char *p, time_t *sec, int *usec)
 		appendBinaryPQExpBuffer(s, (const char*) &sec, sizeof(sec)); \
 	} while(0)
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_set_timestamp(PQExpBuffer s, time_t sec, int usec)
 {
 	BAILIFNULL(s);
 	pqbf_encode_timestamp(s, sec, usec);
 }
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_add_timestamp(pqparam_buffer *pb, time_t sec, int usec)
 {
 	BAILIFNULL(pb);
@@ -689,7 +688,7 @@ pqbf_add_timestamp(pqparam_buffer *pb, time_t sec, int usec)
  *
  * TODO: adapt to local timezone
  */
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_get_timestamptz(const char *p, time_t *sec, time_t *usec)
 {
 	uint64_t i;
@@ -708,14 +707,14 @@ pqbf_get_timestamptz(const char *p, time_t *sec, time_t *usec)
 	*usec = i % POSTGRES_MEGA;
 }
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_set_timestamptz(PQExpBuffer s, time_t sec, int usec)
 {
 	BAILIFNULL(s);
 	pqbf_encode_timestamp(s, sec, usec);
 }
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_add_timestamptz(pqparam_buffer *pb, time_t sec, int usec)
 {
 	BAILIFNULL(pb);
@@ -731,7 +730,7 @@ pqbf_add_timestamptz(pqparam_buffer *pb, time_t sec, int usec)
  * see timestamp_recv() from src/backend/utils/adt/timestamp.c
  */
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_get_interval(const char *ptr, int64_t *offset, int32_t *day, int32_t *month)
 {
 	char *p;
@@ -763,14 +762,14 @@ pqbf_get_interval(const char *ptr, int64_t *offset, int32_t *day, int32_t *month
 		appendBinaryPQExpBuffer(s, (const char*) &month, sizeof(month)); \
 	} while(0)
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_set_interval(PQExpBuffer s, int64_t offset, int32_t day, int32_t month)
 {
 	BAILIFNULL(s);
 	pqbf_encode_interval(s,offset,day,month);
 }
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_add_interval(pqparam_buffer *pb, int64_t offset, int32_t day, int32_t month)
 {
 	BAILIFNULL(pb);
@@ -786,7 +785,7 @@ pqbf_add_interval(pqparam_buffer *pb, int64_t offset, int32_t day, int32_t month
  * TODO: adapt to local timezone
  */
 
-DECLSPEC time_t __fastcall
+DECLSPEC time_t
 pqbf_get_timetz(const char *p)
 {
 	// TODO
@@ -795,7 +794,7 @@ pqbf_get_timetz(const char *p)
 	return 0;
 }
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_set_timetz(PQExpBuffer s, time_t t)
 {
 	// TODO
@@ -803,7 +802,7 @@ pqbf_set_timetz(PQExpBuffer s, time_t t)
 	pqbf_encode_int8(s, t);
 }
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_add_timetz(pqparam_buffer *pb, time_t t)
 {
 	BAILIFNULL(pb);
@@ -816,14 +815,14 @@ pqbf_add_timetz(pqparam_buffer *pb, time_t t)
 /*
  * oid 1560: bit
  */
-DECLSPEC int __fastcall
+DECLSPEC int
 pqbf_get_bit(const char *p)
 {
 	BAILWITHVALUEIFNULL(p, 0);
 	return ((int)*p) & 0x1;
 }
 
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_set_bit(pqparam_buffer *pb, int b)
 {
 	BAILIFNULL(pb);
@@ -843,7 +842,7 @@ pqbf_set_bit(pqparam_buffer *pb, int b)
 /*
  * oid 2950: uuid
  */
-DECLSPEC void __fastcall
+DECLSPEC void
 pqbf_get_uuid(const char *ptr, char *b[])
 {
 	// TODO
