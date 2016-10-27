@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Data;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Pqsql;
@@ -72,6 +73,51 @@ namespace PqsqlTests
 
 			Assert.AreEqual(ConnectionState.Closed, mConnection.State);
 			Assert.AreEqual(true, reader.IsClosed);
+		}
+
+		[TestMethod]
+		public void PqsqlDataReaderTest3()
+		{
+			mCmd.CommandText = "select datid,datname,pid,application_name,backend_start,waiting,query from pg_stat_activity";
+			PqsqlDataReader reader = mCmd.ExecuteReader(CommandBehavior.CloseConnection);
+			Assert.AreEqual(false, reader.IsClosed);
+			Assert.AreEqual(-1, reader.RecordsAffected);
+
+			int ordinal = reader.GetOrdinal("application_name");
+
+			// application_name is the 4th column
+			Assert.AreEqual(3, ordinal);
+
+			reader.Close();
+
+			Assert.AreEqual(ConnectionState.Closed, mConnection.State);
+			Assert.AreEqual(true, reader.IsClosed);
+		}
+
+		[TestMethod]
+		public void PqsqlDataReaderTest4()
+		{
+			mCmd.CommandText = "select :arr";
+
+			PqsqlParameter arr = new PqsqlParameter
+			{
+				ParameterName = ":arr",
+				PqsqlDbType = PqsqlDbType.Array | PqsqlDbType.Boolean,
+				Value = new bool[] { true, true, false, false }
+			};
+
+			mCmd.Parameters.Add(arr);
+
+			using (PqsqlDataReader reader = mCmd.ExecuteReader(CommandBehavior.CloseConnection))
+			{
+				bool read = reader.Read();
+				Assert.IsTrue(read);
+				object o = reader.GetValue(0);
+
+				// postgres returns 1-based array bool[1..4] in o
+				// whereas arr.Value is 0-based array bool[]
+				CollectionAssert.AreEqual((ICollection) arr.Value, (ICollection) o);// round trip succeeded
+			}
 		}
 	}
 }
