@@ -115,7 +115,6 @@
     <ClInclude Include="pqexpbuffer.h" />
     <ClInclude Include="pqparam_buffer.h" />
     <ClInclude Include="pq_types.h" />
-    <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="libpqbinfmt.rc" />
