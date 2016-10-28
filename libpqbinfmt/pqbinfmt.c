@@ -13,8 +13,6 @@
  * @todo cidr					src/backend/utils/adt/network.c
  * @todo inet					src/backend/utils/adt/network.c
  * @todo macaddr			src/backend/utils/adt/mac.c
- * @todo timetz				src/backend/utils/adt/timestamp.c
- * @todo timestamptz	src/backend/utils/adt/timestamp.c
  * @todo uuid					src/backend/utils/adt/uuid.c
  * @todo xid					src/backend/utils/adt/xid.c
  */
@@ -611,6 +609,7 @@ pqbf_add_date(pqparam_buffer *pb, int32_t t)
 
 /*
  * oid 1083: time
+ * oid 1266: timetz
  */
 
 /* January 1, 2000, 00:00:00 UTC (in Unix epoch seconds) */
@@ -659,6 +658,7 @@ pqbf_add_time(pqparam_buffer *pb, time_t t)
 
 /*
  * oid 1114: timestamp
+ * oid 1184: timestamptz
  */
 DECLSPEC void
 pqbf_get_timestamp(const char *p, time_t *sec, int *usec)
@@ -704,47 +704,6 @@ pqbf_add_timestamp(pqparam_buffer *pb, time_t sec, int usec)
 	pqpb_add(pb, TIMESTAMPOID, sizeof(sec));
 }
 
-
-/*
- * oid 1184: timestamptz
- *
- * TODO: adapt to local timezone
- */
-DECLSPEC void
-pqbf_get_timestamptz(const char *p, time_t *sec, time_t *usec)
-{
-	uint64_t i;
-
-	if (p == NULL)
-	{
-		*sec = 0;
-		*usec = 0;
-		return;
-	}
-
-	/* decode 64bit timestamp into sec and usec part */
-	i = BYTESWAP8( *( (uint64_t *)p ) );
-		
-	*sec = POSTGRES_EPOCH_DATE + (int64_t) (i / POSTGRES_MEGA);
-	*usec = i % POSTGRES_MEGA;
-}
-
-DECLSPEC void
-pqbf_set_timestamptz(PQExpBuffer s, time_t sec, int usec)
-{
-	BAILIFNULL(s);
-	pqbf_encode_timestamp(s, sec, usec);
-}
-
-DECLSPEC void
-pqbf_add_timestamptz(pqparam_buffer *pb, time_t sec, int usec)
-{
-	BAILIFNULL(pb);
-
-	pqbf_encode_timestamp(pb->payload, sec, usec);
-
-	pqpb_add(pb, TIMESTAMPTZOID, sizeof(sec));
-}
 
 /*
  * oid 1186: interval
@@ -801,38 +760,6 @@ pqbf_add_interval(pqparam_buffer *pb, int64_t offset, int32_t day, int32_t month
 	pqpb_add(pb, INTERVALOID, 16);
 }
 
-/*
- * oid 1266: timetz
- *
- * TODO: adapt to local timezone
- */
-
-DECLSPEC time_t
-pqbf_get_timetz(const char *p)
-{
-	// TODO
-	BAILWITHVALUEIFNULL(p, 0);
-
-	return 0;
-}
-
-DECLSPEC void
-pqbf_set_timetz(PQExpBuffer s, time_t t)
-{
-	// TODO
-	BAILIFNULL(s);
-	pqbf_encode_int8(s, t);
-}
-
-DECLSPEC void
-pqbf_add_timetz(pqparam_buffer *pb, time_t t)
-{
-	BAILIFNULL(pb);
-
-	pqbf_encode_int8(pb->payload, t);
-
-	pqpb_add(pb, INTERVALOID, sizeof(t));
-}
 
 /*
  * oid 1560: bit

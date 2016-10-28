@@ -89,10 +89,6 @@ extern DECLSPEC void pqbf_get_timestamp(const char *p, time_t *sec, int *usec);
 extern DECLSPEC void pqbf_set_timestamp(PQExpBuffer s, time_t sec, int usec);
 extern DECLSPEC void pqbf_add_timestamp(pqparam_buffer *pb, time_t sec, int usec);
 
-extern DECLSPEC void pqbf_get_timestamptz(const char *p, time_t *sec, time_t *usec);
-extern DECLSPEC void pqbf_set_timestamptz(PQExpBuffer s, time_t sec, int usec);
-extern DECLSPEC void pqbf_add_timestamptz(pqparam_buffer *pb, time_t sec, int usec);
-
 extern DECLSPEC void pqbf_get_interval(const char *ptr, int64_t *offset, int32_t *day, int32_t *month);
 extern DECLSPEC void pqbf_set_interval(PQExpBuffer s, int64_t offset, int32_t day, int32_t month);
 extern DECLSPEC void pqbf_add_interval(pqparam_buffer *pb, int64_t offset, int32_t day, int32_t month);
@@ -100,10 +96,6 @@ extern DECLSPEC void pqbf_add_interval(pqparam_buffer *pb, int64_t offset, int32
 extern DECLSPEC time_t pqbf_get_time(const char *p);
 extern DECLSPEC void pqbf_set_time(PQExpBuffer s, time_t t);
 extern DECLSPEC void pqbf_add_time(pqparam_buffer *pb, time_t t);
-
-extern DECLSPEC time_t pqbf_get_timetz(const char *p);
-extern DECLSPEC void pqbf_set_timetz(PQExpBuffer s, time_t t);
-extern DECLSPEC void pqbf_add_timetz(pqparam_buffer *pb, time_t t);
 
 extern DECLSPEC int32_t pqbf_get_date(const char *p);
 extern DECLSPEC void pqbf_set_date(PQExpBuffer s, int32_t t);
