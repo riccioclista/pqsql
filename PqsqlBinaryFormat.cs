@@ -94,7 +94,7 @@ namespace Pqsql
 		public static extern void pqbf_add_interval(IntPtr pbb, long offset, int day, int month);
 
 		[DllImport("libpqbinfmt.dll")]
-		public static extern void pqbf_add_timestamp(IntPtr pbb, long sec, int usec);
+		public static extern void pqbf_add_timestamp(IntPtr pbb, long sec, int usec, uint oid);
 
 		[DllImport("libpqbinfmt.dll")]
 		public static extern void pqbf_add_array(IntPtr pbb, IntPtr a, uint oid);
