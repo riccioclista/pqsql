@@ -63,12 +63,20 @@ namespace PqsqlTests
 			TimeSpan ts = reader.GetTimeSpan(5);
 			reader.Close();
 
-			DateTime nowlocal0 = now0.ToLocalTime();
 			DateTime nowutc0 = now0.ToUniversalTime();
 
-			TimeZoneInfo newtzi = TimeZoneInfo.CreateCustomTimeZone(new_tz, ts, new_tz, new_tz);
+			TimeZoneInfo tzi_from_china_pgsql = TimeZoneInfo.CreateCustomTimeZone(new_tz, ts, new_tz, new_tz);
+			TimeZoneInfo tzi_from_china_sys = TimeZoneInfo.FindSystemTimeZoneById("China Standard Time");
 
-			DateTimeOffset off0 = TimeZoneInfo.ConvertTime(now0, newtzi, TimeZoneInfo.Local);
+			TimeSpan china_off = tzi_from_china_sys.GetUtcOffset(nowutc0);
+			TimeSpan local_off = TimeZoneInfo.Local.GetUtcOffset(nowutc0);
+			DateTimeOffset nowlocal0 = (nowutc0 + local_off - china_off).ToLocalTime();
+
+			DateTimeOffset dto_from_pgsql_to_sys = TimeZoneInfo.ConvertTime(now0, tzi_from_china_pgsql, tzi_from_china_sys);
+			DateTimeOffset dto_from_pgsql_to_localtime = TimeZoneInfo.ConvertTime(now0, tzi_from_china_pgsql, TimeZoneInfo.Local);
+
+			Assert.AreEqual(nowutc0, dto_from_pgsql_to_sys);
+			Assert.AreEqual(nowlocal0, dto_from_pgsql_to_localtime);
 
 			tran.Rollback();
 		}
@@ -183,5 +191,76 @@ namespace PqsqlTests
 			}
 		}
 
+		[TestMethod]
+		public void PqsqlTypeRegistryTest5()
+		{
+			mCmd.CommandText = "select :ts0,:ts1,:ts2,:ts3,:ts4";
+			mCmd.CommandType = CommandType.Text;
+
+			PqsqlParameter p0 = new PqsqlParameter("ts0", DbType.DateTimeOffset, new DateTimeOffset(2016, 1, 1, 0, 0, 0, 0, TimeSpan.Zero));
+			mCmd.Parameters.Add(p0);
+
+			PqsqlParameter p1 = new PqsqlParameter
+			{
+				ParameterName = "ts1",
+				PqsqlDbType = PqsqlDbType.Unknown, // let PqsqlParameterCollection guess the type
+				Value = new DateTimeOffset(new DateTime(2016, 1, 1, 0, 0, 0, 0, DateTimeKind.Local))
+			};
+			mCmd.Parameters.Add(p1);
+
+			PqsqlParameter p2 = new PqsqlParameter("ts2", DbType.DateTime, new DateTime(2016, 1, 1, 0, 0, 0, 0, DateTimeKind.Local));
+			mCmd.Parameters.Add(p2);
+
+			PqsqlParameter p3 = new PqsqlParameter("ts3", DbType.DateTime, new DateTime(2016, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc));
+			mCmd.Parameters.Add(p3);
+
+			PqsqlParameter p4 = new PqsqlParameter("ts4", DbType.DateTime, new DateTime(2016, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+			mCmd.Parameters.Add(p4);
+
+			PqsqlDataReader reader = mCmd.ExecuteReader();
+
+			bool read = reader.Read();
+			Assert.IsTrue(read);
+
+			DateTime ts0 = reader.GetDateTime(0);
+			DateTimeOffset tstz0 = reader.GetDateTimeOffset(0);
+			DateTimeOffset tsutc0 = tstz0.ToUniversalTime();
+			DateTimeOffset tslocal0 = tstz0.ToLocalTime();
+
+			Assert.AreEqual(ts0, tsutc0.DateTime);
+
+			DateTime ts1 = reader.GetDateTime(1);
+			DateTimeOffset tstz1 = reader.GetDateTimeOffset(1);
+			DateTimeOffset tsutc1 = tstz1.ToUniversalTime();
+			DateTimeOffset tslocal1 = tstz1.ToLocalTime();
+
+			DateTime ts2 = reader.GetDateTime(2);
+			DateTimeOffset tstz2 = reader.GetDateTimeOffset(2);
+			DateTimeOffset tsutc2 = tstz2.ToUniversalTime();
+			DateTimeOffset tslocal2 = tstz2.ToLocalTime();
+
+			Assert.AreEqual(ts2, tsutc2.UtcDateTime);
+			Assert.AreEqual(ts2.ToLocalTime(), tstz2.LocalDateTime);
+			Assert.AreEqual(ts2.ToLocalTime(), tsutc2.LocalDateTime);
+
+			DateTime ts3 = reader.GetDateTime(3);
+			DateTimeOffset tstz3 = reader.GetDateTimeOffset(3);
+			DateTimeOffset tsutc3 = tstz3.ToUniversalTime();
+			DateTimeOffset tslocal3 = tstz3.ToLocalTime();
+
+			Assert.AreEqual(ts3, tstz3.UtcDateTime);
+			Assert.AreEqual(ts3, tsutc3.DateTime);
+
+			DateTime ts4 = reader.GetDateTime(4);
+			DateTimeOffset tstz4 = reader.GetDateTimeOffset(4);
+			DateTimeOffset tsutc4 = tstz4.ToUniversalTime();
+			DateTimeOffset tslocal4 = tstz4.ToLocalTime();
+
+			Assert.AreEqual(ts4, tstz4.UtcDateTime);
+			Assert.AreEqual(ts4, tsutc4.DateTime);
+
+			read = reader.Read();
+			Assert.IsFalse(read);
+		}
 	}
 }
