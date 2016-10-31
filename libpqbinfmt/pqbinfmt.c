@@ -59,10 +59,10 @@ pqbf_get_bufval(PQExpBuffer s)
  * add NULL value parameter of specified type
  */
 DECLSPEC void
-pqbf_add_null(pqparam_buffer *pb, uint32_t o)
+pqbf_add_null(pqparam_buffer *pb, uint32_t oid)
 {
 	BAILIFNULL(pb);
-	pqpb_add(pb, o, 0);
+	pqpb_add(pb, oid, 0);
 }
 
 /*
@@ -695,13 +695,13 @@ pqbf_set_timestamp(PQExpBuffer s, time_t sec, int usec)
 }
 
 DECLSPEC void
-pqbf_add_timestamp(pqparam_buffer *pb, time_t sec, int usec)
+pqbf_add_timestamp(pqparam_buffer *pb, time_t sec, int usec, uint32_t oid)
 {
 	BAILIFNULL(pb);
 
 	pqbf_encode_timestamp(pb->payload, sec, usec);
 
-	pqpb_add(pb, TIMESTAMPOID, sizeof(sec));
+	pqpb_add(pb, oid, sizeof(sec));
 }
 
 
