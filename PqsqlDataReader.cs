@@ -1612,6 +1612,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 			Contract.Assume(mConn.ConnectionString != null);
 
 			// create fresh connection, we are already active in an executing connection
+			// TODO when we have query pipelining, we might not need to open a fresh connection here https://commitfest.postgresql.org/10/634/ http://2ndquadrant.github.io/postgres/libpq-batch-mode.html 
 			using (PqsqlConnection schemaconn = new PqsqlConnection(mConn.ConnectionString))
 			using (PqsqlCommand c = new PqsqlCommand(CatalogColumnByTableOid, schemaconn))
 			{
@@ -1824,6 +1825,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 			mStmtNum++; // set next statement
 			mPopulateAndFill = true; // next Read() below will get fresh row information
 
+			// TODO when we have query pipelining, we might be able to send all statements at once https://commitfest.postgresql.org/10/634/ http://2ndquadrant.github.io/postgres/libpq-batch-mode.html
 			if (Execute() == false)
 			{
 				string err = mConn.GetErrorMessage();
