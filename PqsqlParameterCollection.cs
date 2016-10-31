@@ -89,12 +89,33 @@ namespace Pqsql
 					object v = p.Value;
 					TypeCode vtc = Convert.GetTypeCode(v);
 
-					if (oid == PqsqlDbType.Unknown) // no PqsqlDbType set, try to infer datatype from Value and set new oid
+					if (oid == PqsqlDbType.Unknown) // no PqsqlDbType set by the user, try to infer datatype from Value and set new oid
 					{
-						oid = InferValueType(vtc);
+						if (vtc != TypeCode.Object)
+						{
+							oid = InferValueType(vtc);
+						}
+						else if (v is DateTimeOffset)
+						{
+							oid = PqsqlDbType.TimestampTZ;
+						}
+						else if (v is byte[])
+						{
+							oid = PqsqlDbType.Bytea;
+						}
+						else if (v is Guid)
+						{
+							oid = PqsqlDbType.Uuid;
+						}
+						else if (v is TimeSpan)
+						{
+							oid = PqsqlDbType.Interval;
+						}
 
-						if (oid == PqsqlDbType.Unknown)
-							throw new PqsqlException(string.Format("Could not infer datatype for PqsqlParameter {0} (TypeCode={1})", p.ParameterName, vtc));
+						if (oid == PqsqlDbType.Unknown) // cannot resolve oid for v
+						{
+								throw new PqsqlException(string.Format("Could not infer datatype for PqsqlParameter {0} (TypeCode={1})", p.ParameterName, vtc));
+						}
 					}
 
 					PqsqlTypeRegistry.PqsqlTypeName tn = PqsqlTypeRegistry.Get(oid & ~PqsqlDbType.Array);
@@ -111,7 +132,7 @@ namespace Pqsql
 
 						if (vtc != TypeCode.Empty && vtc != tc)
 						{
-							v = ConvertParameterValue(v, vtc, tc);
+							v = ConvertParameterValue(v, vtc, tc, oid);
 						}
 					}
 
@@ -144,8 +165,8 @@ namespace Pqsql
 			}
 		}
 
-		// convert v of typecode vtc to typecode tc
-		private object ConvertParameterValue(object v, TypeCode vtc, TypeCode tc)
+		// convert v of typecode vtc to typecode dtc
+		private object ConvertParameterValue(object v, TypeCode vtc, TypeCode dtc, PqsqlDbType oid)
 		{
 			if (vtc == TypeCode.String && string.IsNullOrEmpty(v as string))
 			{
@@ -154,9 +175,16 @@ namespace Pqsql
 				return null;
 			}
 
+			if (dtc == TypeCode.DateTime && oid == PqsqlDbType.TimestampTZ)
+			{
+				// use UTC in case we want to convert DateTimeOffset to DateTime
+				DateTimeOffset off = (DateTimeOffset) v;
+				v = off.UtcDateTime;
+			}
+
 			// in case we would have an invalid cast from object to target type
 			// we try to convert v to the registered ProviderType next
-			return Convert.ChangeType(v, tc);
+			return Convert.ChangeType(v, dtc);
 		}
 
 		// try to infer PqsqlDbType from TypeCode
@@ -196,6 +224,15 @@ namespace Pqsql
 			case TypeCode.Int64:
 				oid = PqsqlDbType.Int8;
 				break;
+
+			//case TypeCode.Empty:
+			//case TypeCode.Object:
+			//case TypeCode.DBNull:
+			//case TypeCode.Char:
+			//case TypeCode.Byte:
+			//case TypeCode.UInt16:
+			//case TypeCode.UInt32:
+			//case TypeCode.UInt64:
 			default:
 				oid = PqsqlDbType.Unknown;
 				break;
