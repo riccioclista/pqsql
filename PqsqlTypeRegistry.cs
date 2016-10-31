@@ -76,6 +76,36 @@ namespace Pqsql
 			PqsqlBinaryFormat.pqbf_update_array_itemlength(a, -len, len - 4);
 		};
 
+		private static Action<IntPtr, object, PqsqlDbType> setTimestamp = (pb, val, oid) =>
+		{
+			DateTime dt = (DateTime) val;
+
+			if (dt.Kind == DateTimeKind.Local)
+			{
+				dt = dt.ToUniversalTime();
+			}
+
+			long ticks = dt.Ticks - PqsqlBinaryFormat.UnixEpochTicks;
+			long sec = ticks / TimeSpan.TicksPerSecond;
+			int usec = (int) (ticks % TimeSpan.TicksPerSecond / 10);
+			PqsqlBinaryFormat.pqbf_add_timestamp(pb, sec, usec, (uint) oid);
+		};
+
+		private static Action<IntPtr, object> setTimestampArray = (a, o) =>
+		{
+			DateTime dt = (DateTime) o;
+			
+			if (dt.Kind == DateTimeKind.Local)
+			{
+				dt = dt.ToUniversalTime();
+			}
+
+			long ticks = dt.Ticks - PqsqlBinaryFormat.UnixEpochTicks;
+			long sec = ticks / TimeSpan.TicksPerSecond;
+			int usec = (int) (ticks % TimeSpan.TicksPerSecond / 10);
+			PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 8);
+			PqsqlBinaryFormat.pqbf_set_timestamp(a, sec, usec);
+		};
 
 		// maps PqsqlDbType to PqsqlTypeName
 		static readonly Dictionary<PqsqlDbType, PqsqlTypeName> mPqsqlDbTypeDict = new Dictionary<PqsqlDbType, PqsqlTypeName>
@@ -291,9 +321,9 @@ namespace Pqsql
 					ProviderType=typeof(DateTime),
 					DbType=DbType.Date,
 					ArrayDbType=PqsqlDbType.Array, // TODO
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetDate(res,row,ord),
+					GetValue=(res, row, ord, typmod) => new DateTime(PqsqlDataReader.GetDate(res,row,ord)),
 					SetValue=null, // TODO (IntPtr pb,object val) => { PqsqlBinaryFormat.pqbf_add_date(pb, (DateTime) val); }
-					SetArrayItem = null
+					SetArrayItem = null // TODO
 				}
 			},
 			{ PqsqlDbType.Time,
@@ -303,9 +333,9 @@ namespace Pqsql
 					ProviderType=typeof(DateTime),
 					DbType=DbType.Time,
 					ArrayDbType=PqsqlDbType.Array, // TODO
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetTime(res,row,ord),
+					GetValue=(res, row, ord, typmod) => new DateTime(PqsqlDataReader.GetTime(res,row,ord)),
 					SetValue=null, // TODO (IntPtr pb,object val) => { PqsqlBinaryFormat.pqbf_add_time(pb, (DateTime) val); }
-					SetArrayItem = null
+					SetArrayItem = null // TODO
 				}
 			},
 			{ PqsqlDbType.Timestamp,
@@ -315,22 +345,9 @@ namespace Pqsql
 					ProviderType=typeof(DateTime),
 					DbType=DbType.DateTime,
 					ArrayDbType=PqsqlDbType.TimestampArray,
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetDateTime(res,row,ord),
-					SetValue=(pb, val, oid) => {
-						DateTime dt = (DateTime) val;
-						long ticks = dt.Ticks - PqsqlBinaryFormat.UnixEpochTicks;
-						long sec = ticks / TimeSpan.TicksPerSecond;
-						int usec = (int) (ticks % TimeSpan.TicksPerSecond / 10);
-						PqsqlBinaryFormat.pqbf_add_timestamp(pb, sec, usec);
-					},
-					SetArrayItem = (a, o) => {
-						DateTime dt = (DateTime) o;
-						long ticks = dt.Ticks - PqsqlBinaryFormat.UnixEpochTicks;
-						long sec = ticks / TimeSpan.TicksPerSecond;
-						int usec = (int) (ticks % TimeSpan.TicksPerSecond / 10);
-						PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 8);
-						PqsqlBinaryFormat.pqbf_set_timestamp(a, sec, usec);
-					}
+					GetValue=(res, row, ord, typmod) => new DateTime(PqsqlDataReader.GetDateTime(res,row,ord)),
+					SetValue = setTimestamp,
+					SetArrayItem = setTimestampArray
 				}
 			},
 			{ PqsqlDbType.TimestampTZ,
@@ -339,29 +356,10 @@ namespace Pqsql
 					TypeCode=TypeCode.DateTime,
 					ProviderType=typeof(DateTime),
 					DbType=DbType.DateTimeOffset,
-					ArrayDbType=PqsqlDbType.TimestampTZArray, // TODO timezone?
+					ArrayDbType=PqsqlDbType.TimestampTZArray,
 					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetDateTime(res,row,ord),
-					SetValue=(pb, val, oid) => { // TODO timezone?
-						DateTime dt = (DateTime) val;
-
-            if (dt.Kind == DateTimeKind.Local)
-						{
-							dt = dt.ToUniversalTime();
-						}
-		       
-			      long ticks = dt.Ticks - PqsqlBinaryFormat.UnixEpochTicks;
-						long sec = ticks / TimeSpan.TicksPerSecond;
-						int usec = (int) (ticks % TimeSpan.TicksPerSecond / 10);
-						PqsqlBinaryFormat.pqbf_add_timestamp(pb, sec, usec);
-					},
-					SetArrayItem = (a, o) => { // TODO timezone?
-						DateTime dt = (DateTime) o;
-						long ticks = dt.Ticks - PqsqlBinaryFormat.UnixEpochTicks;
-						long sec = ticks / TimeSpan.TicksPerSecond;
-						int usec = (int) (ticks % TimeSpan.TicksPerSecond / 10);
-						PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 8);
-						PqsqlBinaryFormat.pqbf_set_timestamp(a, sec, usec);
-					}
+					SetValue = setTimestamp,
+					SetArrayItem = setTimestampArray
 				}
 			},
 			{ PqsqlDbType.Interval,
@@ -595,12 +593,12 @@ namespace Pqsql
 					ProviderType=typeof(Array),
 					DbType=DbType.Object,
 					ArrayDbType=PqsqlDbType.TimestampTZArray,
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Timestamp, typeof(DateTime?), typeof(DateTime), (x, len) => { // TODO timezone?
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.TimestampTZ, typeof(DateTimeOffset?), typeof(DateTimeOffset), (x, len) => {
 						long sec;
 						int usec;
 						unsafe { PqsqlBinaryFormat.pqbf_get_timestamp(x, &sec, &usec); }
 						long ticks = PqsqlBinaryFormat.UnixEpochTicks + sec * TimeSpan.TicksPerSecond + usec * 10;
-						DateTime dt = new DateTime(ticks);
+						DateTimeOffset dt = new DateTimeOffset(ticks, TimeSpan.Zero);
 						return dt;
 					}),
 					SetValue=null,
@@ -731,6 +729,8 @@ namespace Pqsql
 			Contract.Ensures(Contract.Result<PqsqlTypeName>().ProviderType != null);
 
 			// try to guess the type mapping
+			// we must open a new connection here, since we have already a running query when we call FetchType
+			// TODO when we have query pipelining, we might not need to open fresh connections here https://commitfest.postgresql.org/10/634/ http://2ndquadrant.github.io/postgres/libpq-batch-mode.html 
 			using (PqsqlConnection conn = new PqsqlConnection(connstring))
 			using (PqsqlCommand cmd = new PqsqlCommand(TypeCategoryByTypeOid, conn))
 			{
