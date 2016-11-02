@@ -8,7 +8,7 @@ namespace Pqsql
 	internal static class PqsqlConnectionPool
 	{
 		// to send when releasing a connection
-		private static byte[] DiscardAllStatement = PqsqlUTF8Statement.CreateUTF8Statement("DISCARD ALL");
+		private static readonly byte[] DiscardAllStatement = PqsqlUTF8Statement.CreateUTF8Statement("DISCARD ALL");
 
 		// ConnectionInfo pool object
 		private class ConnectionInfo
@@ -22,7 +22,7 @@ namespace Pqsql
 		// maps connection strings to connection queues
 		private static readonly Dictionary<PqsqlConnectionStringBuilder, Queue<ConnectionInfo>> mPooledConns = new Dictionary<PqsqlConnectionStringBuilder, Queue<ConnectionInfo>>();
 
-		private static object mPooledConnsLock = new object();
+		private static readonly object mPooledConnsLock = new object();
 
 		// 30 sec idle timeout
 		const int IdleTimeout = 30000;

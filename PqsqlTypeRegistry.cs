@@ -20,17 +20,33 @@ namespace Pqsql
 
 		internal sealed class PqsqlTypeName
 		{
+			// used in PqsqlDataReader.GetDataTypeName / PqsqlDataReader.FillSchemaTableColumns
 			public string DataTypeName { get; set; }
+
+			// used in PqsqlParameterCollection.CreateParameterBuffer
 			public TypeCode TypeCode { get; set; }
+
+			// used in PqsqlDataReader.GetFieldType / PqsqlDataReader.FillSchemaTableColumns
 			public Type ProviderType { get; set; }
+
+			// used in PqsqlParameter.PqsqlDbType
 			public DbType DbType { get; set; }
+
+			// used in PqsqlTypeRegistry.SetArrayValue
 			public PqsqlDbType ArrayDbType { get; set; }
+
+			// used in PqsqlDataReader.GetValue
 			public Func<IntPtr, int, int, int, object> GetValue { get; set; }
+
+			// used in PqsqlParameterCollection.AddParameterValue
 			public Action<IntPtr, object, PqsqlDbType> SetValue { get; set; }
+
+			// used in PqsqlParameterCollection.AddParameterValue
 			public Action<IntPtr, object> SetArrayItem { get; set; }
 		}
 
-		private static Action<IntPtr, object> setNumericArray = (a, o) =>
+		// adds o as double array element to PQExpBuffer a
+		private static readonly Action<IntPtr, object> setNumericArray = (a, o) =>
 		{
 			double d = Convert.ToDouble(o);
 
@@ -44,7 +60,9 @@ namespace Pqsql
 			PqsqlBinaryFormat.pqbf_update_array_itemlength(a, -len, len - 4);
 		};
 
-		private static Action<IntPtr, object, PqsqlDbType> setText = (pb, val, oid) =>
+		// sets val as string with Oid oid (PqsqlDbType.BPChar, PqsqlDbType.Text, PqsqlDbType.Varchar, PqsqlDbType.Name, PqsqlDbType.Char)
+		// into pqparam_buffer pb
+		private static readonly Action<IntPtr, object, PqsqlDbType> setText = (pb, val, oid) =>
 		{
 			unsafe
 			{
@@ -53,9 +71,10 @@ namespace Pqsql
 					PqsqlBinaryFormat.pqbf_add_unicode_text(pb, t, (uint) oid);
 				}
 			}
-		}; 
+		};
 
-		private static Action<IntPtr, object> setTextArray = (a, o) =>
+		// adds o as string array element to PQExpBuffer a
+		private static readonly Action<IntPtr, object> setTextArray = (a, o) =>
 		{
 			string v = (string) o;
 
@@ -76,7 +95,8 @@ namespace Pqsql
 			PqsqlBinaryFormat.pqbf_update_array_itemlength(a, -len, len - 4);
 		};
 
-		private static Action<IntPtr, object, PqsqlDbType> setTimestamp = (pb, val, oid) =>
+		// sets val as DateTime with Oid oid (PqsqlDbType.Timestamp, PqsqlDbType.TimestampTZ) into pqparam_buffer pb
+		private static readonly Action<IntPtr, object, PqsqlDbType> setTimestamp = (pb, val, oid) =>
 		{
 			DateTime dt = (DateTime) val;
 
@@ -91,7 +111,8 @@ namespace Pqsql
 			PqsqlBinaryFormat.pqbf_add_timestamp(pb, sec, usec, (uint) oid);
 		};
 
-		private static Action<IntPtr, object> setTimestampArray = (a, o) =>
+		// adds o as DateTime array element into PQExpBuffer a
+		private static readonly Action<IntPtr, object> setTimestampArray = (a, o) =>
 		{
 			DateTime dt = (DateTime) o;
 			
@@ -708,7 +729,7 @@ namespace Pqsql
 			
 		};
 
-		// for PqsqlDataReader and PqsqlParameterCollection
+		// used in PqsqlDataReader.PopulateRowInfoAndOutputParameters and PqsqlParameterCollection.CreateParameterBuffer
 		internal static PqsqlTypeName Get(PqsqlDbType oid)
 		{
 			Contract.Ensures(Contract.Result<PqsqlTypeName>() == null || Contract.Result<PqsqlTypeName>().GetValue != null);
@@ -718,7 +739,7 @@ namespace Pqsql
 			return mPqsqlDbTypeDict.TryGetValue(oid, out result) ? result : null;
 		}
 
-		// for PqsqlDataReader
+		// used in PqsqlDataReader.PopulateRowInfoAndOutputParameters
 		internal static PqsqlTypeName FetchType(PqsqlDbType oid, string connstring)
 		{
 			Contract.Requires<ArgumentOutOfRangeException>(oid != 0, "Datatype with oid=0 (InvalidOid) not supported");
@@ -782,14 +803,14 @@ namespace Pqsql
 			throw new NotSupportedException("Datatype " + oid + " not supported");
 		}
 
-		// for PqsqlParameter
+		// used in PqsqlParameter.DbType
 		public static PqsqlDbType GetPqsqlDbType(DbType dbType)
 		{
 			Contract.Assume((int) dbType < mDbTypeArray.Length);
 			return mDbTypeArray[(int) dbType];
 		}
 
-		// for PqsqlParameter
+		// used in PqsqlParameter.PqsqlDbType
 		public static DbType GetDbType(PqsqlDbType oid)
 		{
 			PqsqlTypeName tn = Get(oid);
@@ -803,7 +824,7 @@ namespace Pqsql
 			return tn.DbType;
 		}
 
-		// for PqsqlParameterCollection
+		// used in PqsqlParameterCollection.AddParameterValue
 		public static Action<IntPtr, object> SetArrayValue(PqsqlDbType oid, PqsqlTypeName n)
 		{
 			Contract.Requires<ArgumentNullException>(n != null);
