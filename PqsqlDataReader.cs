@@ -480,6 +480,9 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 				}
 			}
 
+			if (ndim < 0 || ndim > maxdim)
+				throw new IndexOutOfRangeException("ndim");
+
 			dim = new int[ndim];
 			lbound = new int[ndim];
 
@@ -554,10 +557,16 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 				throw new InvalidCastException("Array has wrong datatype " + oid);
 			}
 
+			if (ndim != 1)
+			{
+				throw new NotImplementedException("Arrays with ndim != 1 not supported yet");
+			}
+
 			Array a = Array.CreateInstance(flags > 0 ? nullable : nonNullable, dim, lbound);
 
 #if CODECONTRACTS
 			Contract.Assume(a.Rank >= 1);
+			Contract.Assert(ndim == 1); // Arrays with ndim != 1 not supported yet
 #endif
 
 			FillArray(ref a, val, ndim, (x, len) => itemDelegate(x, len));
