@@ -1,5 +1,4 @@
 ﻿using System.Data.Common;
-using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Pqsql;
 
