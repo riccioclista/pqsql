@@ -2,7 +2,9 @@
 using System.Data.Common;
 using System.Data;
 using System.ComponentModel;
+#if CODECONTRACTS
 using System.Diagnostics.Contracts;
+#endif
 
 namespace Pqsql
 {
@@ -46,20 +48,25 @@ namespace Pqsql
 
 		#endregion
 
-
+#if CODECONTRACTS
 		[ContractInvariantMethod]
 		private void ClassInvariant()
 		{
 			Contract.Invariant(mConnectionStringBuilder != null);
 		}
-
+#endif
 
 		#region ctors and dtors
 
 		public PqsqlConnection(string connectionString)
 			: this(new PqsqlConnectionStringBuilder(connectionString))
 		{
+#if CODECONTRACTS
 			Contract.Requires<ArgumentNullException>(connectionString != null);
+#else
+			if (connectionString == null)
+				throw new ArgumentNullException("connectionString");
+#endif
 		}
 
 		public PqsqlConnection()
@@ -69,7 +76,13 @@ namespace Pqsql
 
 		public PqsqlConnection(PqsqlConnectionStringBuilder builder)
 		{
+#if CODECONTRACTS
 			Contract.Requires<ArgumentNullException>(builder != null);
+#else
+			if (builder == null)
+				throw new ArgumentNullException("builder");
+#endif
+
 			Init();
 			mConnectionStringBuilder = builder;
 		}
@@ -124,7 +137,10 @@ namespace Pqsql
 		{
 			get
 			{
+#if CODECONTRACTS
 				Contract.Ensures(Contract.Result<System.String>() != null);
+#endif
+
 				return mConnectionStringBuilder.ConnectionString;
 			}
 			set
@@ -260,7 +276,9 @@ namespace Pqsql
 		{
 			get
 			{
+#if CODECONTRACTS
 				Contract.Ensures(Contract.Result<System.String>() != null);
+#endif
 
 				if (mConnection == IntPtr.Zero)
 					return string.Empty;
@@ -386,7 +404,9 @@ namespace Pqsql
 		//     An object representing the new transaction.
 		protected override DbTransaction BeginDbTransaction(IsolationLevel isolationLevel)
 		{
+#if CODECONTRACTS
 			Contract.Assume(isolationLevel != IsolationLevel.Chaos);
+#endif
 			return BeginTransaction(isolationLevel);
 		}
 
@@ -398,7 +418,10 @@ namespace Pqsql
 		//     An object representing the new transaction.
 		public new PqsqlTransaction BeginTransaction()
 		{
+#if CODECONTRACTS
 			Contract.Ensures(Contract.Result<PqsqlTransaction>() != null);
+#endif
+
 			return BeginTransaction(IsolationLevel.Unspecified);
 		}
 
@@ -414,8 +437,13 @@ namespace Pqsql
 		//     An object representing the new transaction.
 		public new PqsqlTransaction BeginTransaction(IsolationLevel isolationLevel)
 		{
+#if CODECONTRACTS
 			Contract.Requires<ArgumentException>(isolationLevel != IsolationLevel.Chaos);
 			Contract.Ensures(Contract.Result<PqsqlTransaction>() != null);
+#else
+			if (isolationLevel == IsolationLevel.Chaos)
+				throw new ArgumentException("isolationLevel == IsolationLevel.Chaos");
+#endif
 
 			if (mConnection == IntPtr.Zero)
 			{
@@ -496,7 +524,10 @@ namespace Pqsql
 		//     A System.Data.Common.DbCommand object.
 		public new PqsqlCommand CreateCommand()
 		{
+#if CODECONTRACTS
 			Contract.Ensures(Contract.Result<PqsqlCommand>() != null);
+#endif
+
 			return new PqsqlCommand(this);
 		}
 
@@ -620,7 +651,9 @@ namespace Pqsql
 		// return current error message
 		internal string GetErrorMessage()
 		{
+#if CODECONTRACTS
 			Contract.Ensures(Contract.Result<string>() != null);
+#endif
 
 			string msg = string.Empty;
 

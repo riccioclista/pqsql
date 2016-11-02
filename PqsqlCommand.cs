@@ -3,7 +3,9 @@ using System.Text;
 using System.Data.Common;
 using System.ComponentModel;
 using System.Data;
+#if CODECONTRACTS
 using System.Diagnostics.Contracts;
+#endif
 
 namespace Pqsql
 {
@@ -30,13 +32,13 @@ namespace Pqsql
 
 		private UpdateRowSource mUpdateRowSource = UpdateRowSource.Both;
 
-
+#if CODECONTRACTS
 		[ContractInvariantMethod]
 		private void ClassInvariant()
 		{
 			Contract.Invariant(mParams != null);
 		}
-
+#endif
 
 		// Summary:
 		//     Constructs an instance of the System.Data.Common.DbCommand object.
@@ -251,7 +253,10 @@ namespace Pqsql
 		{
 			get
 			{
+#if CODECONTRACTS
 				Contract.Ensures(Contract.Result<PqsqlParameterCollection>() != null);
+#endif
+
 				return mParams;
 			}
 		}
@@ -370,7 +375,10 @@ namespace Pqsql
 		//     A System.Data.Common.DbParameter object.
 		public new PqsqlParameter CreateParameter()
 		{
+#if CODECONTRACTS
 			Contract.Ensures(Contract.Result<PqsqlParameter>() != null);
+#endif
+
 			return new PqsqlParameter();
 		}
 
@@ -428,7 +436,10 @@ namespace Pqsql
 		//     A System.Data.Common.DbDataReader object.
 		public new PqsqlDataReader ExecuteReader()
 		{
+#if CODECONTRACTS
 			Contract.Ensures(Contract.Result<PqsqlDataReader>() != null);
+#endif
+
 			return ExecuteReader(CommandBehavior.Default);
 		}
 
@@ -446,7 +457,9 @@ namespace Pqsql
 		//     An System.Data.Common.DbDataReader object.
 		public new PqsqlDataReader ExecuteReader(CommandBehavior behavior)
 		{
+#if CODECONTRACTS
 			Contract.Ensures(Contract.Result<PqsqlDataReader>() != null);
+#endif
 
 			string[] statements;
 
@@ -474,14 +487,18 @@ namespace Pqsql
 					throw new InvalidEnumArgumentException("unknown CommandType");
 			}
 
+#if CODECONTRACTS
 			Contract.Assert(statements != null);
+#endif
 
 			if (statements.Length < 2)
 				behavior |= CommandBehavior.SingleResult;
 
 			CheckOpen();
 
+#if CODECONTRACTS
 			Contract.Assert(mConn != null);
+#endif
 
 			SetStatementTimeout();
 
@@ -494,7 +511,9 @@ namespace Pqsql
 
 		private string[] BuildTableStatement()
 		{
+#if CODECONTRACTS
 			Contract.Ensures(Contract.Result<string[]>() != null);
+#endif
 
 			string[] statements = new string[1];
 
@@ -508,7 +527,9 @@ namespace Pqsql
 
 		private string[] BuildStoredProcStatement()
 		{
+#if CODECONTRACTS
 			Contract.Ensures(Contract.Result<string[]>() != null);
+#endif
 
 			string[] statements = new string[1];
 
@@ -544,7 +565,9 @@ namespace Pqsql
 		// open connection if it is closed or broken
 		private void CheckOpen()
 		{
+#if CODECONTRACTS
 			Contract.Assume(mConn != null);
+#endif
 
 			ConnectionState s = mConn.State;
 
@@ -557,7 +580,9 @@ namespace Pqsql
 		// executes SET parameter=value
 		private void SetSessionParameter(string parameter, object value, bool quote)
 		{
+#if CODECONTRACTS
 			Contract.Assume(mConn != null);
+#endif
 
 			StringBuilder sb = new StringBuilder();
 			sb.Append("set ");
@@ -581,7 +606,10 @@ namespace Pqsql
 		// sets application_name of the current session
 		private void SetApplicationName()
 		{
+#if CODECONTRACTS
 			Contract.Assume(mConn != null);
+#endif
+
 			string appname = mConn.ApplicationName;
 			if (!string.IsNullOrEmpty(appname))
 			{
@@ -635,9 +663,17 @@ namespace Pqsql
 		// resize statements to i+1, and set i to sb
 		private void ResizeAndSetStatements(ref StringBuilder statement, ref string[] statements, int i)
 		{
+#if CODECONTRACTS
 			Contract.Requires<ArgumentNullException>(statements != null);
 			Contract.Requires<ArgumentNullException>(statement != null);
 			Contract.Requires<ArgumentNullException>(i >= 0);
+#else
+			if (statements == null || statement == null)
+				throw new ArgumentNullException();
+
+			if (i < 0)
+				throw new IndexOutOfRangeException("i");
+#endif
 
 			Array.Resize(ref statements, i + 1);
 			statements[i] = statement.ToString().TrimStart();
@@ -647,9 +683,14 @@ namespace Pqsql
 		// replace parameter name with $ index in statement
 		private void ReplaceParameter(ref StringBuilder statement, ref StringBuilder paramName, ref StringBuilder paramIndex)
 		{
+#if CODECONTRACTS
 			Contract.Requires<ArgumentNullException>(statement != null);
 			Contract.Requires<ArgumentNullException>(paramName != null);
 			Contract.Requires<ArgumentNullException>(paramIndex != null);
+#else
+			if (statement == null || paramName == null || paramIndex == null)
+				throw new ArgumentNullException();
+#endif
 
 			string p = paramName.ToString();
 			int j = mParams.IndexOf(p);
@@ -670,7 +711,9 @@ namespace Pqsql
 		/// <returns></returns>
 		private string[] ParseStatements()
 		{
+#if CODECONTRACTS
 			Contract.Ensures(Contract.Result<string[]>() != null);
+#endif
 
 			string[] statements = new string[0];
 
@@ -684,7 +727,9 @@ namespace Pqsql
 			StringBuilder paramIndex = new StringBuilder(); // $i
 			paramIndex.Append('$');
 
+#if CODECONTRACTS
 			Contract.Assume(CommandText != null);
+#endif
 
 			//
 			// parse multiple statements separated by ';'
@@ -723,7 +768,9 @@ namespace Pqsql
 					}
 					else // we probably ran into :: or :=
 					{
+#if CODECONTRACTS
 						Contract.Assume(stmt != null);
+#endif
 						stmt.Append(':'); // take first : and put it back
 						stmt.Append(c); // take current character and put it back
 						paramName.Length = 1;
@@ -740,7 +787,9 @@ namespace Pqsql
 					}
 
 					// replace parameter name with $ index
+#if CODECONTRACTS
 					Contract.Assume(stmt != null);
+#endif
 					ReplaceParameter(ref stmt, ref paramName, ref paramIndex);
 
 					// now continue with parsing statement(s)
@@ -787,7 +836,9 @@ namespace Pqsql
 						  continue;
 
 						case ';':
+#if CODECONTRACTS
 							Contract.Assume(stmt != null);
+#endif
 							ResizeAndSetStatements(ref stmt, ref statements, stmtNum++);
 							continue;
 					}
@@ -797,7 +848,9 @@ namespace Pqsql
 				stmt.Append(c);
 			}
 
+#if CODECONTRACTS
 			Contract.Assume(stmt != null);
+#endif
 			if (stmt.Length > 0) // add last statement not terminated by ';'
 			{
 				if (paramName.Length > 1) // did not finish replacing parameter name

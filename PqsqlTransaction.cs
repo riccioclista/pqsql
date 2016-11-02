@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Data.Common;
 using System.Data;
+#if CODECONTRACTS
 using System.Diagnostics.Contracts;
+#endif
 
 namespace Pqsql
 {
@@ -26,13 +28,26 @@ namespace Pqsql
 		internal PqsqlTransaction(PqsqlConnection conn)
 			: this(conn, IsolationLevel.ReadCommitted)
 		{
-			Contract.Requires(conn != null);
+#if CODECONTRACTS
+			Contract.Requires<ArgumentNullException>(conn != null);
+#else
+			if (conn == null)
+				throw new ArgumentNullException("conn");
+#endif
 		}
 
 		internal PqsqlTransaction(PqsqlConnection conn, IsolationLevel isolationLevel)
 		{
-			Contract.Requires(conn != null);
-			Contract.Requires(isolationLevel != IsolationLevel.Chaos);
+#if CODECONTRACTS
+			Contract.Requires<ArgumentNullException>(conn != null);
+			Contract.Requires<ArgumentException>(isolationLevel != IsolationLevel.Chaos);
+#else
+			if (conn == null)
+				throw new ArgumentNullException("conn");
+
+			if (isolationLevel == IsolationLevel.Chaos)
+				throw new ArgumentException("isolationLevel");
+#endif
 
 			switch (isolationLevel)
 			{

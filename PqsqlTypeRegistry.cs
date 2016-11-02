@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+#if CODECONTRACTS
 using System.Diagnostics.Contracts;
+#endif
 
 namespace Pqsql
 {
@@ -732,9 +734,12 @@ namespace Pqsql
 		// used in PqsqlDataReader.PopulateRowInfoAndOutputParameters and PqsqlParameterCollection.CreateParameterBuffer
 		internal static PqsqlTypeName Get(PqsqlDbType oid)
 		{
+#if CODECONTRACTS
 			Contract.Ensures(Contract.Result<PqsqlTypeName>() == null || Contract.Result<PqsqlTypeName>().GetValue != null);
 			Contract.Ensures(Contract.Result<PqsqlTypeName>() == null || Contract.Result<PqsqlTypeName>().DataTypeName != null);
 			Contract.Ensures(Contract.Result<PqsqlTypeName>() == null || Contract.Result<PqsqlTypeName>().ProviderType != null);
+#endif
+
 			PqsqlTypeName result;
 			return mPqsqlDbTypeDict.TryGetValue(oid, out result) ? result : null;
 		}
@@ -742,12 +747,20 @@ namespace Pqsql
 		// used in PqsqlDataReader.PopulateRowInfoAndOutputParameters
 		internal static PqsqlTypeName FetchType(PqsqlDbType oid, string connstring)
 		{
+#if CODECONTRACTS
 			Contract.Requires<ArgumentOutOfRangeException>(oid != 0, "Datatype with oid=0 (InvalidOid) not supported");
 			Contract.Requires<ArgumentNullException>(connstring != null);
+
 			Contract.Ensures(Contract.Result<PqsqlTypeName>() != null);
 			Contract.Ensures(Contract.Result<PqsqlTypeName>().GetValue != null);
 			Contract.Ensures(Contract.Result<PqsqlTypeName>().DataTypeName != null);
 			Contract.Ensures(Contract.Result<PqsqlTypeName>().ProviderType != null);
+#else
+			if (oid == 0)
+				throw new ArgumentOutOfRangeException("Datatype with oid=0 (InvalidOid) not supported");
+			if (connstring == null)
+				throw new ArgumentNullException("connstring");
+#endif
 
 			// try to guess the type mapping
 			// we must open a new connection here, since we have already a running query when we call FetchType
@@ -806,7 +819,9 @@ namespace Pqsql
 		// used in PqsqlParameter.DbType
 		public static PqsqlDbType GetPqsqlDbType(DbType dbType)
 		{
+#if CODECONTRACTS
 			Contract.Assume((int) dbType < mDbTypeArray.Length);
+#endif
 			return mDbTypeArray[(int) dbType];
 		}
 
@@ -827,7 +842,12 @@ namespace Pqsql
 		// used in PqsqlParameterCollection.AddParameterValue
 		public static Action<IntPtr, object> SetArrayValue(PqsqlDbType oid, PqsqlTypeName n)
 		{
+#if CODECONTRACTS
 			Contract.Requires<ArgumentNullException>(n != null);
+#else
+			if (n == null)
+				throw new ArgumentNullException("n");
+#endif
 
 			oid &= ~PqsqlDbType.Array; // remove Array flag
 			PqsqlDbType arrayoid = n.ArrayDbType;

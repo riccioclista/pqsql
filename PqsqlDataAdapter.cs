@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Data.Common;
+#if CODECONTRACTS
 using System.Diagnostics.Contracts;
+#endif
 
 namespace Pqsql
 {
@@ -40,8 +42,13 @@ namespace Pqsql
 		public PqsqlDataAdapter(String selectCommandText, String selectConnectionString)
 			: this(selectCommandText, new PqsqlConnection(selectConnectionString))
     {
+#if CODECONTRACTS
 			Contract.Requires<ArgumentNullException>(selectCommandText != null);
 			Contract.Requires<ArgumentNullException>(selectConnectionString != null);
+#else
+			if (selectCommandText == null || selectConnectionString == null)
+				throw new ArgumentNullException();
+#endif
 		}
 
 		/// <summary>

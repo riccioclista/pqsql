@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Data;
+#if CODECONTRACTS
 using System.Diagnostics.Contracts;
+#endif
 using System.Text;
 
 namespace Pqsql
@@ -77,7 +79,12 @@ namespace Pqsql
 
 		public void Start()
 		{
+#if CODECONTRACTS
 			Contract.Requires<ArgumentNullException>(!string.IsNullOrEmpty(Table), "Table property is null");
+#else
+			if (string.IsNullOrEmpty(Table))
+				throw new ArgumentNullException("Table property is null");
+#endif
 
 			// PQexec does not set field types in PQresult for COPY FROM statements,
 			// just retrieve 0 rows for the field types of Table
@@ -183,7 +190,9 @@ namespace Pqsql
 			IntPtr res;
 			string err = string.Empty;
 
+#if CODECONTRACTS
 			Contract.Assume(mConn != null);
+#endif
 			IntPtr conn = mConn.PGConnection;
 
 			if (mColBuf == IntPtr.Zero)
@@ -352,7 +361,9 @@ namespace Pqsql
 		// otherwise, value points to beginning of binary encoding with type_length bytes
 		private unsafe int PutColumn(sbyte* value, uint type_length)
 		{
+#if CODECONTRACTS
 			Contract.Ensures(mPos < mColumns);
+#endif
 
 			int ret = PqsqlBinaryFormat.pqcb_put_col(mColBuf, value, type_length);
 
@@ -398,8 +409,10 @@ namespace Pqsql
 
 			long begin = LengthCheckReset();
 
+#if CODECONTRACTS
 			Contract.Assume(mRowInfo != null);
 			Contract.Assume(mPos >= 0 && mPos < mRowInfo.Length);
+#endif
 
 			PqsqlColInfo ci = mRowInfo[mPos];
 			if (ci == null)
@@ -441,8 +454,10 @@ namespace Pqsql
 
 			long begin = LengthCheckReset();
 
+#if CODECONTRACTS
 			Contract.Assume(mRowInfo != null);
 			Contract.Assume(mPos >= 0 && mPos < mRowInfo.Length);
+#endif
 
 			PqsqlColInfo ci = mRowInfo[mPos];
 			if (ci == null)
@@ -485,8 +500,10 @@ namespace Pqsql
 
 			long begin = LengthCheckReset();
 
+#if CODECONTRACTS
 			Contract.Assume(mRowInfo != null);
 			Contract.Assume(mPos >= 0 && mPos < mRowInfo.Length);
+#endif
 
 			PqsqlColInfo ci = mRowInfo[mPos];
 			if (ci == null)

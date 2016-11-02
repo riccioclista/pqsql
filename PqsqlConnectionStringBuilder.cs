@@ -1,7 +1,9 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Data.Common;
+#if CODECONTRACTS
 using System.Diagnostics.Contracts;
+#endif
 
 namespace Pqsql
 {
@@ -160,7 +162,10 @@ namespace Pqsql
 		{
 			get
 			{
+#if CODECONTRACTS
 				Contract.Ensures(Contract.Result<string>() != null);
+#endif
+
 				return base.ConnectionString;
 			}
 
@@ -238,7 +243,13 @@ namespace Pqsql
 		// host=localhost; port=5432; user=postgres; password=P4$$word; dbname=postgres; connect_timeout=10
 		public PqsqlConnectionStringBuilder(string s)
 		{
+#if CODECONTRACTS
 			Contract.Requires<ArgumentNullException>(s != null); 
+#else
+			if (s == null)
+				throw new ArgumentNullException("s");
+#endif
+
 			ConnectionString = s;
 		}
 
@@ -253,7 +264,9 @@ namespace Pqsql
 
 		public override bool Equals(object o)
 		{
+#if CODECONTRACTS
 			Contract.Assume(o != null);
+#endif
 			if (o.GetType() != typeof(PqsqlConnectionStringBuilder))
 				return false;
 			return Equals((PqsqlConnectionStringBuilder) o);

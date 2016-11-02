@@ -2,7 +2,9 @@
 using System.Data.Common;
 using System.ComponentModel;
 using System.Data;
+#if CODECONTRACTS
 using System.Diagnostics.Contracts;
+#endif
 using System.Text;
 
 namespace Pqsql
@@ -144,7 +146,10 @@ namespace Pqsql
 		{
 			get
 			{
+#if CODECONTRACTS
 				Contract.Ensures(Contract.Result<System.String>() != null);
+#endif
+
 				return string.IsNullOrEmpty(mName) ? string.Empty : mName;
 			}
 			set
@@ -180,7 +185,12 @@ namespace Pqsql
 			}
 			set
 			{
+#if CODECONTRACTS
 				Contract.Requires<ArgumentException>(value >= 0, "Invalid property Size value < 0");
+#else
+				if (value < 0)
+					throw new ArgumentException("Invalid property Size value < 0");
+#endif
 				mSize = value;
 			}
 		}

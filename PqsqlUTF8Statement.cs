@@ -1,5 +1,7 @@
 using System;
+#if CODECONTRACTS
 using System.Diagnostics.Contracts;
+#endif
 using System.Text;
 
 namespace Pqsql
@@ -10,7 +12,13 @@ namespace Pqsql
 		// return static UTF8-encoded statement including trailing 0 byte
 		internal static byte[] CreateUTF8Statement(string s)
 		{
+#if CODECONTRACTS
 			Contract.Requires<ArgumentNullException>(s != null);
+#else
+			if (s == null)
+				throw new ArgumentNullException("s");
+#endif
+
 			byte[] b = Encoding.UTF8.GetBytes(s); // not null terminated
 			int blen = b.Length;
 			Array.Resize(ref b, blen + 1);
@@ -21,7 +29,13 @@ namespace Pqsql
 		// return static UTF8-encoded statement including trailing 0 byte
 		internal static byte[] CreateUTF8Statement(StringBuilder sb)
 		{
+#if CODECONTRACTS
 			Contract.Requires<ArgumentNullException>(sb != null);
+#else
+			if (sb == null)
+				throw new ArgumentNullException("sb");
+#endif
+
 			return CreateUTF8Statement(sb.ToString());
 		}
 
@@ -45,7 +59,9 @@ namespace Pqsql
 					{
 						buflen <<= 1; // exponential growth strategy
 						Array.Resize(ref buf, buflen);
+#if CODECONTRACTS
 						Contract.Assume(pos < buf.Length);
+#endif
 					}
 
 					buf[pos++] = *s++;

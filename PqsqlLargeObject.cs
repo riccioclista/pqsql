@@ -1,6 +1,8 @@
 ﻿using System;
 using System.ComponentModel;
+#if CODECONTRACTS
 using System.Diagnostics.Contracts;
+#endif
 using System.IO;
 
 namespace Pqsql
@@ -23,7 +25,12 @@ namespace Pqsql
 
 		public PqsqlLargeObject(PqsqlConnection conn)
 		{
+#if CODECONTRACTS
 			Contract.Requires<ArgumentNullException>(conn != null);
+#else
+			if (conn == null)
+				throw new ArgumentNullException("conn");
+#endif
 
 			// All large object manipulation using these functions must take place within an SQL transaction block,
 			// since large object file descriptors are only valid for the duration of a transaction.
@@ -123,7 +130,12 @@ namespace Pqsql
 
 		public int Open(uint oid, LoOpen mode)
 		{
+#if CODECONTRACTS
 			Contract.Requires<ArgumentException>(oid != 0, "Cannot open large object with InvalidOid (0)");
+#else
+			if (oid == 0)
+				throw new ArgumentException("Cannot open large object with InvalidOid (0)");
+#endif
 
 			mFd = PqsqlWrapper.lo_open(mPGConn, oid, (int) mode);
 
@@ -307,7 +319,11 @@ namespace Pqsql
 			{
 				long cur = mPos;
 				long ret = Seek(0, SeekOrigin.End);
+
+#if CODECONTRACTS
 				Contract.Assume(ret >= 0);
+#endif
+
 				if (ret != cur)
 					Seek(cur, SeekOrigin.Begin);
 				return ret;
@@ -319,7 +335,9 @@ namespace Pqsql
 		{
 			get
 			{
+#if CODECONTRACTS
 				Contract.Assume(mPos >= 0);
+#endif
 				return mPos;
 			}
 

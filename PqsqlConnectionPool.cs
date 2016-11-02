@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+#if CODECONTRACTS
 using System.Diagnostics.Contracts;
+#endif
 using System.Threading;
 
 namespace Pqsql
@@ -65,7 +67,12 @@ namespace Pqsql
 
 		private static void PoolService(object o)
 		{
+#if CODECONTRACTS
 			Contract.Requires<ArgumentNullException>(o != null);
+#else
+			if (o == null)
+				throw new ArgumentNullException("o");
+#endif
 
 			List<IntPtr> closeConnections = o as List<IntPtr>;
 
@@ -99,7 +106,9 @@ namespace Pqsql
 							int maxRelease = count/2 + 1;
 
 							ConnectionInfo i = queue.Peek();
+#if CODECONTRACTS
 							Contract.Assume(i != null);
+#endif
 							i.visited++;
 
 #if PQSQL_DEBUG
@@ -118,7 +127,9 @@ namespace Pqsql
 								{
 									// clean maxRelease connections
 									i = queue.Dequeue();
+#if CODECONTRACTS
 									Contract.Assume(i != null);
+#endif
 									closeConnections.Add(i.pgconn); // close connections outside of queue lock
 									maxRelease--;
 								}
@@ -140,7 +151,12 @@ namespace Pqsql
 
 		internal static IntPtr SetupPGConn(PqsqlConnectionStringBuilder connStringBuilder)
 		{
+#if CODECONTRACTS
 			Contract.Requires<ArgumentNullException>(connStringBuilder != null);
+#else
+			if (connStringBuilder == null)
+				throw new ArgumentNullException("connStringBuilder");
+#endif
 
 			// setup null-terminated key-value arrays for the connection
 			string[] keys = new string[connStringBuilder.Keys.Count + 1];
@@ -157,7 +173,12 @@ namespace Pqsql
 
 		public static IntPtr GetPGConn(PqsqlConnectionStringBuilder connStringBuilder)
 		{
+#if CODECONTRACTS
 			Contract.Requires<ArgumentNullException>(connStringBuilder != null);
+#else
+			if (connStringBuilder == null)
+				throw new ArgumentNullException("connStringBuilder");
+#endif
 
 			Queue<ConnectionInfo> queue;
 			IntPtr pgConn = IntPtr.Zero;
@@ -177,14 +198,18 @@ namespace Pqsql
 				if (count > 0)
 				{
 					ConnectionInfo i = queue.Dequeue();
+#if CODECONTRACTS
 					Contract.Assume(i != null);
+#endif
 					pgConn = i.pgconn;
 
 					if (count > 1)
 					{
 						// head of queue will inherit old visited count
 						ConnectionInfo j = queue.Peek();
+#if CODECONTRACTS
 						Contract.Assume(j != null);
+#endif
 						j.visited = i.visited;
 					}
 				}
@@ -282,7 +307,12 @@ namespace Pqsql
 
 		public static void ReleasePGConn(PqsqlConnectionStringBuilder connStringBuilder, IntPtr pgConnHandle)
 		{
+#if CODECONTRACTS
 			Contract.Requires<ArgumentNullException>(connStringBuilder != null);
+#else
+			if (connStringBuilder == null)
+				throw new ArgumentNullException("connStringBuilder");
+#endif
 
 			if (pgConnHandle == IntPtr.Zero)
 				return;

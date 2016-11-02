@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Data.Common;
 using System.Data;
+#if CODECONTRACTS
 using System.Diagnostics.Contracts;
+#endif
 
 namespace Pqsql
 {
@@ -186,9 +188,9 @@ namespace Pqsql
 			else
 			{
 				object o = row[PqsqlSchemaTableColumn.TypeOid];
-				
+#if CODECONTRACTS
 				Contract.Assume(o != null);
-
+#endif
 				pqp.PqsqlDbType = (PqsqlDbType) o;
 			}
 		}
@@ -214,7 +216,10 @@ namespace Pqsql
 		//     to perform deletions.
 		public new PqsqlCommand GetDeleteCommand()
 		{
+#if CODECONTRACTS
 			Contract.Ensures(Contract.Result<PqsqlCommand>() != null);
+#endif
+
 			return GetDeleteCommand(false);
 		}
 
@@ -234,7 +239,10 @@ namespace Pqsql
 		//     to perform deletions.
 		public new PqsqlCommand GetDeleteCommand(bool useColumnsForParameterNames)
 		{
+#if CODECONTRACTS
 			Contract.Ensures(Contract.Result<PqsqlCommand>() != null);
+#endif
+
 			PqsqlCommand cmd = (PqsqlCommand) base.GetDeleteCommand(useColumnsForParameterNames);
 			cmd.UpdatedRowSource = UpdateRowSource.None;
 			return cmd;
@@ -250,7 +258,10 @@ namespace Pqsql
 		//     to perform insertions.
 		public new PqsqlCommand GetInsertCommand()
 		{
+#if CODECONTRACTS
 			Contract.Ensures(Contract.Result<PqsqlCommand>() != null);
+#endif
+
 			return GetInsertCommand(false);
 		}
 
@@ -270,7 +281,10 @@ namespace Pqsql
 		//     to perform insertions.
 		public new PqsqlCommand GetInsertCommand(bool useColumnsForParameterNames)
 		{
+#if CODECONTRACTS
 			Contract.Ensures(Contract.Result<PqsqlCommand>() != null);
+#endif
+
 			PqsqlCommand cmd = (PqsqlCommand) base.GetInsertCommand(useColumnsForParameterNames);
 			cmd.UpdatedRowSource = UpdateRowSource.None;
 			return cmd;
@@ -333,7 +347,10 @@ namespace Pqsql
 		//     to perform updates.
 		public new PqsqlCommand GetUpdateCommand()
 		{
+#if CODECONTRACTS
 			Contract.Ensures(Contract.Result<PqsqlCommand>() != null);
+#endif
+
 			return GetUpdateCommand(false);
 		}
 
@@ -353,7 +370,10 @@ namespace Pqsql
 		//     to perform updates.
 		public new PqsqlCommand GetUpdateCommand(bool useColumnsForParameterNames)
 		{
+#if CODECONTRACTS
 			Contract.Ensures(Contract.Result<PqsqlCommand>() != null);
+#endif
+
 			PqsqlCommand cmd = (PqsqlCommand) base.GetUpdateCommand(useColumnsForParameterNames);
 			cmd.UpdatedRowSource = UpdateRowSource.None;
 			return cmd;

@@ -4,7 +4,9 @@ using System.Data.Common;
 using System.ComponentModel;
 using System.Collections;
 using System.Data;
+#if CODECONTRACTS
 using System.Diagnostics.Contracts;
+#endif
 using System.Text;
 
 namespace Pqsql
@@ -160,7 +162,10 @@ namespace Pqsql
 			}
 			else
 			{
+#if CODECONTRACTS
 				Contract.Assume(tn.SetValue != null);
+#endif
+
 				tn.SetValue(mPqPB, v, oid);
 			}
 		}
@@ -270,7 +275,10 @@ namespace Pqsql
 		{
 			get
 			{
+#if CODECONTRACTS
 				Contract.Ensures(Contract.Result<bool>() == false);
+#endif
+
 				return false;
 			}
 		}
@@ -287,7 +295,10 @@ namespace Pqsql
 		{
 			get
 			{
+#if CODECONTRACTS
 				Contract.Ensures(Contract.Result<bool>() == false);
+#endif
+
 				return false;
 			}
 		}
@@ -341,15 +352,31 @@ namespace Pqsql
 		{
 			get
 			{
+#if CODECONTRACTS
 				Contract.Requires<IndexOutOfRangeException>(index >= 0);
+#else
+				if (index < 0)
+					throw new ArgumentException("index");
+#endif
+
+#if CODECONTRACTS
 				Contract.Assume(index < mParamList.Count);
+#endif
 
 				return mParamList[index];
 			}
 			set
 			{
+#if CODECONTRACTS
 				Contract.Requires<IndexOutOfRangeException>(index >= 0);
+#else
+				if (index < 0)
+					throw new ArgumentException("index");
+#endif
+
+#if CODECONTRACTS
 				Contract.Assume(index < mParamList.Count);
+#endif
 
 				PqsqlParameter old = mParamList[index];
 
@@ -362,7 +389,10 @@ namespace Pqsql
 
 				lookup.Remove(old.ParameterName);
 
+#if CODECONTRACTS
 				Contract.Assume(value.ParameterName != null);
+#endif
+
 				lookup.Add(value.ParameterName, index);
 
 				mChanged = true;
@@ -418,7 +448,9 @@ namespace Pqsql
 		//     The index of the System.Data.Common.DbParameter object in the collection.
 		public override int Add(object value)
 		{
+#if CODECONTRACTS
 			Contract.Ensures(Contract.Result<int>() >= -1);
+#endif
 
 			PqsqlParameter p = value as PqsqlParameter;
 			
@@ -428,7 +460,9 @@ namespace Pqsql
 			int i;
 			string s = p.ParameterName;
 
+#if CODECONTRACTS
 			Contract.Assume(s != null);
+#endif
 
 			if (!lookup.TryGetValue(s, out i))
 			{
@@ -509,7 +543,9 @@ namespace Pqsql
 		//     The index in the collection to copy the items.
 		public override void CopyTo(Array array, int index)
 		{
+#if CODECONTRACTS
 			Contract.Assume(index <= array.Length - mParamList.Count);
+#endif
 			(mParamList as ICollection).CopyTo(array, index);
 		}
 		//
@@ -538,7 +574,9 @@ namespace Pqsql
 		//     The System.Data.Common.DbParameter object at the specified index in the collection.
 		protected override DbParameter GetParameter(int i)
 		{
+#if CODECONTRACTS
 			Contract.Assume(i >= 0 && i < Count);
+#endif
 			return this[i];
 		}
 		//
@@ -591,8 +629,10 @@ namespace Pqsql
 		//     name.
 		public override int IndexOf(string param)
 		{
+#if CODECONTRACTS
 			Contract.Ensures(Contract.Result<int>() >= -1);
 			Contract.Ensures(Contract.Result<int>() < Count);
+#endif
 
 			if (!string.IsNullOrEmpty(param))
 			{
@@ -627,9 +667,17 @@ namespace Pqsql
 		//     The System.Data.Common.DbParameter object to insert into the collection.
 		public override void Insert(int index, object value)
 		{
+#if CODECONTRACTS
 			Contract.Requires<ArgumentNullException>(value != null);
+#else
+			if (value == null)
+				throw new ArgumentNullException("value");
+#endif
+
+#if CODECONTRACTS
 			Contract.Assert(index >= 0);
 			Contract.Assume(index < mParamList.Count);
+#endif
 
 			PqsqlParameter val = value as PqsqlParameter;
 
@@ -657,8 +705,13 @@ namespace Pqsql
 		//     The System.Data.Common.DbParameter object to remove.
 		public override void Remove(object value)
 		{
+#if CODECONTRACTS
 			Contract.Requires<ArgumentNullException>(value != null);
-			
+#else
+			if (value == null)
+				throw new ArgumentNullException("value");
+#endif
+
 			int i = IndexOf(value);
 			if (i >= 0)
 			{
@@ -676,8 +729,10 @@ namespace Pqsql
 		//     The index where the System.Data.Common.DbParameter object is located.
 		public override void RemoveAt(int index)
 		{
+#if CODECONTRACTS
 			Contract.Assert(index >= 0);
 			Contract.Assume(index < mParamList.Count);
+#endif
 
 			PqsqlParameter old = mParamList[index];
 
@@ -698,7 +753,9 @@ namespace Pqsql
 		//     The name of the System.Data.Common.DbParameter object to remove.
 		public override void RemoveAt(string parameterName)
 		{
+#if CODECONTRACTS
 			Contract.Assume(parameterName != null);
+#endif
 
 			int i = IndexOf(parameterName);
 
@@ -726,8 +783,11 @@ namespace Pqsql
 		//     The new System.Data.Common.DbParameter value.
 		protected override void SetParameter(int index, DbParameter value)
 		{
+#if CODECONTRACTS
 			Contract.Assume(index >= 0);
 			Contract.Assume(index < Count);
+#endif
+
 			this[index] = (PqsqlParameter) value;
 		}
 		//

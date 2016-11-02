@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Data.Common;
+#if CODECONTRACTS
 using System.Diagnostics.Contracts;
+#endif
 
 namespace Pqsql
 {
@@ -62,7 +64,10 @@ namespace Pqsql
 		{
 			get
 			{
+#if CODECONTRACTS
 				Contract.Ensures(Contract.Result<string>() != null);
+#endif
+
 				char[] err = new char[5];
 				int code = ErrorCode;
 				for (int j = 0; j < 5; j++)
