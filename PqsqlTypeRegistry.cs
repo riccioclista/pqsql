@@ -357,7 +357,7 @@ namespace Pqsql
 					ProviderType=typeof(DateTime),
 					DbType=DbType.DateTimeOffset,
 					ArrayDbType=PqsqlDbType.TimestampTZArray,
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetDateTime(res,row,ord),
+					GetValue=(res, row, ord, typmod) => new DateTimeOffset(PqsqlDataReader.GetDateTime(res,row,ord), TimeSpan.Zero),
 					SetValue = setTimestamp,
 					SetArrayItem = setTimestampArray
 				}
