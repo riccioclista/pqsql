@@ -33,11 +33,6 @@ namespace Pqsql
 		// only cleanup connections if the oldest one had been visited more than VisitedThreshold times
 		const int VisitedThreshold = 2;
 
-		// busy wait 500msec until we have received the empty result
-		const int EmptyBusyWait = 500;
-		// maximum number of retries waiting for the empty result
-		const int EmptyMaxRetry = 20;
-
 		// global timer for cleaning connections
 		private static readonly Timer mTimer;
 
@@ -185,6 +180,8 @@ namespace Pqsql
 
 			lock (mPooledConnsLock)
 			{
+				// connStringBuilder guarantees that we only get "compatible" connections from our internal
+				// connection pool, e.g., application_name will be the same
 				if (!mPooledConns.TryGetValue(connStringBuilder, out queue))
 				{
 					queue = new Queue<ConnectionInfo>();
@@ -247,29 +244,8 @@ namespace Pqsql
 				}
 			}
 
-			// wait for empty result: after sending query, we might have to wait for the result for too long
-			// (network device down or server has just died)
-			int retry = 0;
-			while (retry < EmptyMaxRetry)
-			{
-				if (PqsqlWrapper.PQconsumeInput(pgConn) == 0)
-					goto broken;
-
-				if (PqsqlWrapper.PQisBusy(pgConn) == 1) // PQgetResult will block 
-				{
-					retry++;
-					Thread.Sleep(EmptyBusyWait);
-				}
-				else // done receiving empty result, PQgetResult will not block 
-				{
-					break;
-				}
-			}
-
-			if (retry >= EmptyMaxRetry) // timeout reading empty result
-				goto broken;
-			
-			// Reading empty result: consume and clear remaining results until we reach the NULL result
+			// Reading result: consume and clear remaining results until we reach the NULL result.
+			// PQgetResult will block here
 			IntPtr res;
 			ExecStatusType st = ExecStatusType.PGRES_EMPTY_QUERY;
 			while ((res = PqsqlWrapper.PQgetResult(pgConn)) != IntPtr.Zero)
