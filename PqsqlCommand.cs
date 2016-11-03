@@ -11,16 +11,16 @@ namespace Pqsql
 {
 	public sealed class PqsqlCommand : DbCommand
 	{
-		const string mStatementTimeoutString = "statement_timeout";
-		const string mApplicationNameString = "application_name";
-		const string mStoredProcString = "select * from ";
-		const string mTableString = "table ";
+		private const string mStatementTimeoutString = "statement_timeout";
+
+		private const string mStoredProcString = "select * from ";
+
+		private const string mTableString = "table ";
 
 		private string mCmdText;
 
+		// negative values or 0 => session will be kept as is
 		private int mCmdTimeout;
-
-		private bool mCmdTimeoutSet;
 
 		private CommandType mCmdType;
 
@@ -63,7 +63,6 @@ namespace Pqsql
 		{
 			mCmdText = q;
 			mCmdTimeout = -1;
-			mCmdTimeoutSet = false;
 			mCmdType = CommandType.Text;
 		}
 
@@ -134,12 +133,8 @@ namespace Pqsql
 			get	{	return mCmdTimeout; }
 			set
 			{
-				int newTimeout = value*1000;
-				if (mCmdTimeout != newTimeout)
-				{
-					mCmdTimeout = newTimeout;
-					mCmdTimeoutSet = false;
-				}
+				int newTimeout = value * 1000; // mCmdTimeout is in msecs
+				mCmdTimeout = newTimeout;
 			}
 		}
 		//
@@ -500,9 +495,22 @@ namespace Pqsql
 			Contract.Assert(mConn != null);
 #endif
 
-			SetStatementTimeout();
+			// always set application_name, after a DISCARD ALL (usually issued by pgbouncer)
+			// the session information is gone forever, and the shared connection will drop
+			// application_name
+			string appname = mConn.ApplicationName;
+			if (!string.IsNullOrEmpty(appname))
+			{
+				SetSessionParameter(PqsqlConnectionStringBuilder.application_name, appname, true);
+			}
 
-			SetApplicationName();
+			// always try to set statement_timeout, the session started 
+			// with the PqsqlDataReader below will then have this timeout
+			// until we return
+			if (mCmdTimeout > 0)
+			{
+				SetSessionParameter(mStatementTimeoutString, CommandTimeout, false);
+			}
 
 			PqsqlDataReader reader = new PqsqlDataReader(this, behavior, statements);
 			reader.NextResult(); // always execute first command
@@ -600,29 +608,6 @@ namespace Pqsql
 			{
 				string err = mConn.GetErrorMessage();
 				throw new PqsqlException("Could not set " + parameter + " to «" + value + "»: " + err);
-			}
-		}
-
-		// sets application_name of the current session
-		private void SetApplicationName()
-		{
-#if CODECONTRACTS
-			Contract.Assume(mConn != null);
-#endif
-
-			string appname = mConn.ApplicationName;
-			if (!string.IsNullOrEmpty(appname))
-			{
-				SetSessionParameter(mApplicationNameString, appname, true);
-			}
-		}
-
-		// sets statement_timeout of the current session
-		private void SetStatementTimeout()
-		{
-			if (mCmdTimeout > 0 && mCmdTimeoutSet == false)
-			{
-				SetSessionParameter(mStatementTimeoutString, CommandTimeout, false);
 			}
 		}
 
