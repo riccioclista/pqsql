@@ -35,7 +35,9 @@ namespace Pqsql
 			// All large object manipulation using these functions must take place within an SQL transaction block,
 			// since large object file descriptors are only valid for the duration of a transaction.
 			// https://www.postgresql.org/docs/current/static/lo-interfaces.html
-			if (conn.TransactionStatus != PGTransactionStatusType.PQTRANS_INTRANS)
+			PGTransactionStatusType transactionStatus = conn.TransactionStatus;
+			if (transactionStatus != PGTransactionStatusType.PQTRANS_INTRANS &&
+					transactionStatus != PGTransactionStatusType.PQTRANS_ACTIVE)
 			{
 				throw new PqsqlException("PqsqlLargeObject manipulation must take place within an SQL transaction");
 			}
