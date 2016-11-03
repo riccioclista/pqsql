@@ -559,7 +559,7 @@ namespace Pqsql
 					string err = GetErrorMessage();
 					PqsqlWrapper.PQfinish(mConnection); // force release of mConnection memory
 					Init();
-					throw new PqsqlException("Could not reset connection with connection string «" + mConnectionStringBuilder.ConnectionString + "»: " + err);
+					throw new PqsqlException("Could not reset connection with connection string «" + mConnectionStringBuilder.ConnectionString + "»: " + err, (int) PqsqlState.CONNECTION_FAILURE);
 				}
 
 				// successfully reestablished connection

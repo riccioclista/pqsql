@@ -605,7 +605,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 #endif
 
 			if (PqsqlDbType.Boolean != mRowInfo[ordinal].Oid)
-				throw new IndexOutOfRangeException("Row datatype accessed with wrong datatype");
+				throw new PqsqlException("Row datatype accessed with wrong datatype", (int) PqsqlState.DATATYPE_MISMATCH);
 
 			return GetBoolean(mResult, mRowNum, ordinal);
 		}
@@ -694,7 +694,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 #endif
 
 			if (PqsqlDbType.Bytea != mRowInfo[ordinal].Oid)
-				throw new IndexOutOfRangeException("Row datatype accessed with wrong datatype");
+				throw new PqsqlException("Row datatype accessed with wrong datatype", (int) PqsqlState.DATATYPE_MISMATCH);
 
 			return GetBytes(mResult, mRowNum, ordinal, dataOffset, buffer, bufferOffset, length);
 		}
@@ -1008,7 +1008,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 #endif
 
 			if (PqsqlDbType.Interval != mRowInfo[ordinal].Oid)
-				throw new IndexOutOfRangeException("Row datatype accessed with wrong datatype");
+				throw new PqsqlException("Row datatype accessed with wrong datatype", (int) PqsqlState.DATATYPE_MISMATCH);
 
 			return GetInterval(mResult, mRowNum, ordinal);
 		}
@@ -1106,7 +1106,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 #endif
 
 			if (PqsqlDbType.Numeric != mRowInfo[ordinal].Oid)
-				throw new IndexOutOfRangeException("Row datatype accessed with wrong datatype");
+				throw new PqsqlException("Row datatype accessed with wrong datatype", (int) PqsqlState.DATATYPE_MISMATCH);
 
 			return (decimal) GetNumeric(mResult, mRowNum, ordinal, mRowInfo[ordinal].Modifier);
 		}
@@ -1249,7 +1249,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 #endif
 
 			if (PqsqlDbType.Float4 != mRowInfo[ordinal].Oid)
-				throw new IndexOutOfRangeException("Row datatype accessed with wrong datatype");
+				throw new PqsqlException("Row datatype accessed with wrong datatype", (int) PqsqlState.DATATYPE_MISMATCH);
 
 			return GetFloat(mResult, mRowNum, ordinal);
 		}
@@ -1291,7 +1291,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 #endif
 
 			if (PqsqlDbType.Uuid != mRowInfo[ordinal].Oid)
-				throw new IndexOutOfRangeException("Row datatype accessed with wrong datatype");
+				throw new PqsqlException("Row datatype accessed with wrong datatype", (int) PqsqlState.DATATYPE_MISMATCH);
 
 			return GetGuid(mResult, mRowNum, ordinal);
 		}
@@ -1333,7 +1333,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 #endif
 
 			if (PqsqlDbType.Int2 != mRowInfo[ordinal].Oid)
-				throw new IndexOutOfRangeException("Row datatype accessed with wrong datatype");
+				throw new PqsqlException("Row datatype accessed with wrong datatype", (int) PqsqlState.DATATYPE_MISMATCH);
 
 			return GetInt16(mResult, mRowNum, ordinal);
 		}
@@ -1375,7 +1375,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 #endif
 
 			if (PqsqlDbType.Int4 != mRowInfo[ordinal].Oid)
-				throw new IndexOutOfRangeException("Row datatype accessed with wrong datatype");
+				throw new PqsqlException("Row datatype accessed with wrong datatype", (int) PqsqlState.DATATYPE_MISMATCH);
 
 			return GetInt32(mResult, mRowNum, ordinal);
 		}
@@ -1403,7 +1403,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 #endif
 
 			if (PqsqlDbType.Oid != mRowInfo[ordinal].Oid)
-				throw new IndexOutOfRangeException("Row datatype accessed with wrong datatype");
+				throw new PqsqlException("Row datatype accessed with wrong datatype", (int) PqsqlState.DATATYPE_MISMATCH);
 
 			return GetOid(mResult, mRowNum, ordinal);
 		}
@@ -1688,7 +1688,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 				}
 
 				if (colInfo == null)
-					throw new PqsqlException("SchemaTableColumnInfo is null for ColumnName " + name);
+					throw new PqsqlException("SchemaTableColumnInfo is null for ColumnName " + name, (int) PqsqlState.INTERNAL_ERROR);
 
 				row.SetField(j++, ci.Oid); // TypeOid
 				row.SetField(j++, !colInfo.Item4); // AllowDBNull

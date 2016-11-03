@@ -681,7 +681,7 @@ namespace Pqsql
 			int j = mParams.IndexOf(p);
 
 			if (j < 0)
-				throw new PqsqlException("Could not find parameter «" + p + "» in PqsqlCommand.Parameters");
+				throw new PqsqlException("Could not find parameter «" + p + "» in PqsqlCommand.Parameters", (int) PqsqlState.UNDEFINED_PARAMETER);
 
 			paramIndex.Append(j + 1);
 			statement.Append(paramIndex);

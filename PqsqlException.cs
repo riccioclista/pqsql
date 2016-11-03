@@ -16,6 +16,10 @@ namespace Pqsql
 			: base(message)
 		{ }
 
+		public PqsqlException(string message, int errorCode)
+			: base(message, errorCode)
+		{ }
+
 		public PqsqlException(string message, Exception innerException)
 			: base(message, innerException)
 		{ }
