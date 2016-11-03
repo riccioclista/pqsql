@@ -1444,8 +1444,8 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 			Contract.Assume(ordinal < mRowInfo.Length);
 #endif
 
-			if (PqsqlDbType.Int8 == mRowInfo[ordinal].Oid)
-				throw new IndexOutOfRangeException("Row datatype accessed with wrong datatype");
+			if (PqsqlDbType.Int8 != mRowInfo[ordinal].Oid)
+				throw new PqsqlException("Row datatype accessed with wrong datatype", (int) PqsqlState.DATATYPE_MISMATCH);
 
 			return GetInt64(mResult, mRowNum, ordinal);
 		}
