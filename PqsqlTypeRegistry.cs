@@ -102,11 +102,7 @@ namespace Pqsql
 		{
 			DateTime dt = (DateTime) val;
 
-			if (dt.Kind == DateTimeKind.Local)
-			{
-				dt = dt.ToUniversalTime();
-			}
-
+            // we always interpret dt as Utc timestamp and ignore DateTime.Kind value
 			long ticks = dt.Ticks - PqsqlBinaryFormat.UnixEpochTicks;
 			long sec = ticks / TimeSpan.TicksPerSecond;
 			int usec = (int) (ticks % TimeSpan.TicksPerSecond / 10);
@@ -117,12 +113,8 @@ namespace Pqsql
 		private static readonly Action<IntPtr, object> setTimestampArray = (a, o) =>
 		{
 			DateTime dt = (DateTime) o;
-			
-			if (dt.Kind == DateTimeKind.Local)
-			{
-				dt = dt.ToUniversalTime();
-			}
 
+            // we always interpret dt as Utc timestamp and ignore DateTime.Kind value
 			long ticks = dt.Ticks - PqsqlBinaryFormat.UnixEpochTicks;
 			long sec = ticks / TimeSpan.TicksPerSecond;
 			int usec = (int) (ticks % TimeSpan.TicksPerSecond / 10);
