@@ -501,6 +501,8 @@ namespace Pqsql
 			PqsqlConnectionPool.ReleasePGConn(mConnectionStringBuilder, mConnection);
 
 			Init(); // reset state, next Open() call might end up at a different server / db
+
+			OnStateChange(new StateChangeEventArgs(ConnectionState.Open, ConnectionState.Closed));
 		}
 
 		//
@@ -562,6 +564,8 @@ namespace Pqsql
 					throw new PqsqlException("Could not reset connection with connection string «" + mConnectionStringBuilder.ConnectionString + "»: " + err, (int) PqsqlState.CONNECTION_FAILURE);
 				}
 
+				OnStateChange(new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open));
+
 				// successfully reestablished connection
 				return;
 			}
@@ -591,6 +595,8 @@ namespace Pqsql
 			{
 				throw new PqsqlException("libpq: unable to allocate struct PGconn");
 			}
+
+			OnStateChange(new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open));
 		}
 
 		// call PQexec and immediately discard PGresult struct
