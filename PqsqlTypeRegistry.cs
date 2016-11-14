@@ -632,7 +632,18 @@ namespace Pqsql
 					SetArrayItem = null
 				}
 			},
-
+			{ PqsqlDbType.Void,
+				new PqsqlTypeName { 
+					DataTypeName="void",
+					TypeCode=TypeCode.Object,
+					ProviderType=typeof(object),
+					DbType=DbType.Object,
+					ArrayDbType=PqsqlDbType.Array, // TODO
+					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
+					SetValue= (pb, val, oid) => { throw new  InvalidOperationException("Cannot set void parameter"); },
+					SetArrayItem = (a, o) => { throw new InvalidOperationException("Cannot set void array parameter"); }
+				}
+			},
     };
 
 		// maps DbType to PqsqlDbType
@@ -650,7 +661,7 @@ namespace Pqsql
 			PqsqlDbType.Boolean,
 
 			// DbType.Currency = 4,
-			PqsqlDbType.Money,
+			PqsqlDbType.Cash,
 			
 			// DbType.Date = 5,
 			PqsqlDbType.Date,
