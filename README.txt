@@ -90,5 +90,5 @@ TODO
   └──────┴──────────────────┴──────────┴─────────────────────┴──────────────────────┴────────────┴─────────┘
 
 - PqsqlConnection.GetSchema() and friends
-- PqsqlConnection.EnlistTransaction()
-- PqsqlConnection.StateChange
+- PqsqlConnection.EnlistTransaction() (see https://www.postgresql.org/docs/current/static/sql-prepare-transaction.html)
+- PqsqlCommand.Prepare() (see PQsendPrepare, PQsendQueryPrepared, PQsendDescribePrepared)
