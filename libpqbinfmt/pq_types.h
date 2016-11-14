@@ -5,7 +5,7 @@
  *	  along with the relation's initial contents.
  *
  *
- * Portions Copyright (c) 1996-2014, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2016, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * src/include/catalog/pg_type.h
@@ -18,7 +18,7 @@
  */
 /**
  * @file pq_types.h
- * @brief this is an excerpt from server/catalog/pq_type.h
+ * @brief this is an excerpt from src/include/catalog/pg_type.h
  * @date 2015-10-01
  * @author Thomas Krennwallner <krennwallner@ximes.com>
  * @see https://www.postgresql.org/docs/current/static/catalog-pg-type.html
@@ -140,6 +140,38 @@
 #define REGTYPEOID		2206
 #define REGTYPEARRAYOID 2211
 
+/*
+ * pseudo-types
+ *
+ * types with typtype='p' represent various special cases in the type system.
+ *
+ * These cannot be used to define table columns, but are valid as function
+ * argument and result types (if supported by the function's implementation
+ * language).
+ *
+ * Note: cstring is a borderline case; it is still considered a pseudo-type,
+ * but there is now support for it in records and arrays.  Perhaps we should
+ * just treat it as a regular base type?
+ */
+#define RECORDOID		2249
+#define RECORDARRAYOID	2287
+#define CSTRINGOID		2275
+#define ANYOID			2276
+#define ANYARRAYOID		2277
+#define VOIDOID			2278
+#define TRIGGEROID		2279
+#define EVTTRIGGEROID		3838
+#define LANGUAGE_HANDLEROID		2280
+#define INTERNALOID		2281
+#define OPAQUEOID		2282
+#define ANYELEMENTOID	2283
+#define ANYNONARRAYOID	2776
+#define ANYENUMOID		3500
+#define FDW_HANDLEROID	3115
+#define INDEX_AM_HANDLEROID 325
+#define TSM_HANDLEROID	3310
+#define ANYRANGEOID		3831
+
 /* uuid */
 #define UUIDOID 2950
 
@@ -188,5 +220,41 @@
 #define ANYENUMOID		3500
 #define FDW_HANDLEROID	3115
 #define ANYRANGEOID		3831
+
+
+/*
+ * macros
+ */
+#define  TYPTYPE_BASE		'b' /* base type (ordinary scalar type) */
+#define  TYPTYPE_COMPOSITE	'c' /* composite (e.g., table's rowtype) */
+#define  TYPTYPE_DOMAIN		'd' /* domain over another type */
+#define  TYPTYPE_ENUM		'e' /* enumerated type */
+#define  TYPTYPE_PSEUDO		'p' /* pseudo-type */
+#define  TYPTYPE_RANGE		'r' /* range type */
+
+#define  TYPCATEGORY_INVALID	'\0'	/* not an allowed category */
+#define  TYPCATEGORY_ARRAY		'A'
+#define  TYPCATEGORY_BOOLEAN	'B'
+#define  TYPCATEGORY_COMPOSITE	'C'
+#define  TYPCATEGORY_DATETIME	'D'
+#define  TYPCATEGORY_ENUM		'E'
+#define  TYPCATEGORY_GEOMETRIC	'G'
+#define  TYPCATEGORY_NETWORK	'I'		/* think INET */
+#define  TYPCATEGORY_NUMERIC	'N'
+#define  TYPCATEGORY_PSEUDOTYPE 'P'
+#define  TYPCATEGORY_RANGE		'R'
+#define  TYPCATEGORY_STRING		'S'
+#define  TYPCATEGORY_TIMESPAN	'T'
+#define  TYPCATEGORY_USER		'U'
+#define  TYPCATEGORY_BITSTRING	'V'		/* er ... "varbit"? */
+#define  TYPCATEGORY_UNKNOWN	'X'
+
+/* Is a type OID a polymorphic pseudotype?	(Beware of multiple evaluation) */
+#define IsPolymorphicType(typid)  \
+	((typid) == ANYELEMENTOID || \
+	 (typid) == ANYARRAYOID || \
+	 (typid) == ANYNONARRAYOID || \
+	 (typid) == ANYENUMOID || \
+	 (typid) == ANYRANGEOID)
 
 #endif /* __PQ_TYPES_H */
