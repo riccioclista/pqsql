@@ -12,6 +12,7 @@ namespace PqsqlTests
 	[TestClass]
 	public class PqsqlConnectionTests
 	{
+
 		[TestMethod]
 		public void PqsqlConnectionTest1()
 		{
@@ -75,10 +76,10 @@ namespace PqsqlTests
 
 			connection.Open();
 			Assert.AreEqual(ConnectionState.Open, connection.State, "wrong connection state");
-			
+
 			IntPtr conn_attempt1 = connection.PGConnection;
 
-			int sock1 = PqsqlWrapper.PQsocket(conn_attempt1);	
+			int sock1 = PqsqlWrapper.PQsocket(conn_attempt1);
 			Assert.AreNotEqual(-1, sock1, "wrong socket");
 			IntPtr sockhandle1 = (IntPtr) sock1;
 
@@ -125,7 +126,7 @@ namespace PqsqlTests
 		public void PqsqlConnectionTest6()
 		{
 			PqsqlConnection connection = new PqsqlConnection("host=localhost; port=5432; user=postgres; dbname=postgres; connect_timeout=3");
-			
+
 			connection.Open();
 			Assert.AreEqual(ConnectionState.Open, connection.State, "wrong connection state");
 
@@ -137,7 +138,9 @@ namespace PqsqlTests
 			Assert.AreEqual(connection, cmd.Connection, "wrong command connection");
 			Assert.AreEqual(null, cmd.Transaction, "wrong command transaction");
 
-			cmd.CommandText = "select pg_terminate_backend(pg_backend_pid())";
+			cmd.CommandText = "select pg_terminate_backend(pg_backend_pid()); select pg_sleep(5);";
+
+			cmd.ExecuteNonQuery();
 
 			cmd.ExecuteNonQuery();
 
@@ -146,6 +149,52 @@ namespace PqsqlTests
 			cmd.CommandText = "";
 
 			cmd.ExecuteNonQuery();
+		}
+
+		[TestMethod]
+		public void PqsqlConnectionTest7()
+		{
+			PqsqlConnection connection = new PqsqlConnection("host=localhost; port=5432; user=postgres; dbname=postgres; connect_timeout=3");
+
+			bool opened = false;
+			bool closed = true;
+
+			connection.StateChange += (sender, args) =>
+			{
+				if (args.CurrentState == ConnectionState.Closed)
+				{
+					opened = false;
+					closed = true;
+				}
+
+				if (args.CurrentState == ConnectionState.Open)
+				{
+					opened = true;
+					closed = false;
+				}
+			};
+
+			connection.Open();
+			Assert.AreEqual(ConnectionState.Open, connection.State, "wrong connection state");
+
+			Assert.AreEqual(true, opened);
+			Assert.AreEqual(false, closed);
+
+			try
+			{
+				PqsqlCommand cmd = connection.CreateCommand();
+				cmd.CommandText = "select pg_terminate_backend(pg_backend_pid()); select pg_sleep(5);";
+				cmd.ExecuteNonQuery();
+				cmd.ExecuteNonQuery();
+			}
+			catch (Exception)
+			{
+				// ignored
+				connection.Close();
+			}
+
+			Assert.AreEqual(false, opened);
+			Assert.AreEqual(true, closed);
 		}
 	}
 }
