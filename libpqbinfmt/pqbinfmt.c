@@ -37,12 +37,6 @@
 #include "pqparam_buffer.h"
 
 
-
-#ifdef  __cplusplus
-extern "C" {
-#endif
-
-
 DECLSPEC size_t
 pqbf_get_buflen(PQExpBuffer s)
 {
@@ -796,7 +790,3 @@ pqbf_get_uuid(const char *ptr, char *b[])
 {
 	// TODO
 }
-
-#ifdef  __cplusplus
-}
-#endif

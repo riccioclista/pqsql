@@ -13,11 +13,7 @@
 #include <stdint.h>
 #include <libpq-fe.h>
 
-#if defined DLL_EXPORT
-#define DECLSPEC __declspec(dllexport)
-#else
-#define DECLSPEC __declspec(dllimport)
-#endif
+#include "pqbinfmt_config.h"
 
 #ifdef  __cplusplus
 extern "C" {

@@ -12,6 +12,7 @@
 #include <stdint.h>
 
 #define DLL_EXPORT
+#include "pqbinfmt_config.h"
 #include "pqparam_buffer.h"
 
 #ifdef  __cplusplus

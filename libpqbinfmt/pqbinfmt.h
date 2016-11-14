@@ -13,25 +13,15 @@
 #include <stdint.h>
 #include "pqparam_buffer.h"
 
-#if defined DLL_EXPORT
-#define DECLSPEC __declspec(dllexport)
-#else
-#define DECLSPEC __declspec(dllimport)
+#ifndef _WIN32
+#include <sys/time.h>
 #endif
+
+#include "pqbinfmt_config.h"
 
 #ifdef  __cplusplus
 extern "C" {
 #endif
-
-#define BAILIFNULL(p) do { if (p == NULL) return; } while(0)
-#define BAILWITHVALUEIFNULL(p,val) do { if (p == NULL) return val; } while(0)
-
-/* BYTESWAP for network byte order */
-#ifdef _WIN32
-#define BYTESWAP2(x) _byteswap_ushort(x)
-#define BYTESWAP4(x) _byteswap_ulong(x)
-#define BYTESWAP8(x) _byteswap_uint64(x)
-#endif /* _WIN32 */
 
 extern DECLSPEC size_t pqbf_get_buflen(PQExpBuffer s);
 extern DECLSPEC char * pqbf_get_bufval(PQExpBuffer s);

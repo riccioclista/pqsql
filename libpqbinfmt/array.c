@@ -11,8 +11,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stddef.h>
+
+#ifndef _WIN32
+#include <sys/time.h>
+#endif /* _WIN32 */
 
 #define DLL_EXPORT
+#include "pqbinfmt_config.h"
 #include "pqbinfmt.h"
 
 

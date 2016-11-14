@@ -10,6 +10,8 @@
 #ifndef __PQPARAM_BUFFER_H
 #define __PQPARAM_BUFFER_H
 
+#include <stddef.h>
+
 /*
  * Oid datatype
  */
@@ -20,11 +22,7 @@
  */
 #include "pqexpbuffer.h"
 
-#if defined DLL_EXPORT
-#define DECLSPEC __declspec(dllexport)
-#else
-#define DECLSPEC __declspec(dllimport)
-#endif
+#include "pqbinfmt_config.h"
 
 #ifdef  __cplusplus
 extern "C" {
@@ -56,9 +54,9 @@ extern DECLSPEC char ** pqpb_get_vals(pqparam_buffer *p);
 extern DECLSPEC int * pqpb_get_lens(pqparam_buffer *p);
 extern DECLSPEC int * pqpb_get_frms(pqparam_buffer *p);
 
-extern DECLSPEC Oid pqpb_get_type(void *p, int i);
-extern DECLSPEC char * pqpb_get_val(void *p, int i);
-extern DECLSPEC int pqpb_get_len(void *p, int i);
+extern DECLSPEC Oid pqpb_get_type(pqparam_buffer *p, int i);
+extern DECLSPEC char * pqpb_get_val(pqparam_buffer *p, int i);
+extern DECLSPEC int pqpb_get_len(pqparam_buffer *p, int i);
 
 #ifdef  __cplusplus
 }

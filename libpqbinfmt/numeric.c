@@ -35,15 +35,26 @@
 #include <stdint.h>
 #ifdef _WIN32
 #include <windows.h>
+#else
+#include <string.h>
 #endif /* _WIN32 */
 #include <assert.h>
 #include <stdio.h>
 
 #define DLL_EXPORT
+#include "pqbinfmt_config.h"
 #include "numeric.h"
 #include "pqparam_buffer.h"
 #include "pq_types.h"
 #include "pqbinfmt.h"
+
+#ifndef TRUE
+#define TRUE 1
+#endif
+
+#ifndef FALSE
+#define FALSE 0
+#endif
 
 /* ----------
  * Uncomment the following to enable compilation of dump_numeric()

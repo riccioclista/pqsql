@@ -32,12 +32,6 @@
 #ifndef __PQEXPBUFFER_H
 #define __PQEXPBUFFER_H
 
-#if defined DLL_EXPORT
-#define DECLSPEC __declspec(dllexport)
-#else
-#define DECLSPEC __declspec(dllimport)
-#endif
-
 #ifdef  __cplusplus
 extern "C" {
 #endif
