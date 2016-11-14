@@ -144,7 +144,7 @@ namespace Pqsql
 		}
 
 
-		internal static IntPtr SetupPGConn(PqsqlConnectionStringBuilder connStringBuilder)
+		internal static IntPtr SetupPGConn(PqsqlConnectionStringBuilder connStringBuilder, out ConnStatusType connStatus, out PGTransactionStatusType tranStatus)
 		{
 #if CODECONTRACTS
 			Contract.Requires<ArgumentNullException>(connStringBuilder != null);
@@ -162,11 +162,24 @@ namespace Pqsql
 			connStringBuilder.Values.CopyTo(vals, 0);
 
 			// now create connection
-			return PqsqlWrapper.PQconnectdbParams(keys, vals, 0);
+			IntPtr conn = PqsqlWrapper.PQconnectdbParams(keys, vals, 0);
+
+			if (conn != IntPtr.Zero)
+			{
+				connStatus = PqsqlWrapper.PQstatus(conn);
+				tranStatus = PqsqlWrapper.PQtransactionStatus(conn);
+			}
+			else
+			{
+				connStatus = ConnStatusType.CONNECTION_BAD;
+				tranStatus = PGTransactionStatusType.PQTRANS_UNKNOWN;
+			}
+
+			return conn;
 		}
 
 
-		public static IntPtr GetPGConn(PqsqlConnectionStringBuilder connStringBuilder)
+		public static IntPtr GetPGConn(PqsqlConnectionStringBuilder connStringBuilder, out ConnStatusType connStatus, out PGTransactionStatusType tranStatus)
 		{
 #if CODECONTRACTS
 			Contract.Requires<ArgumentNullException>(connStringBuilder != null);
@@ -212,25 +225,31 @@ namespace Pqsql
 				}
 			}
 
-			if (!CheckOrRelease(pgConn))
+			if (!CheckOrRelease(pgConn, out connStatus, out tranStatus))
 			{
-				pgConn = SetupPGConn(connStringBuilder);
+				pgConn = SetupPGConn(connStringBuilder, out connStatus, out tranStatus);
 			}
 
 			return pgConn;
 		}
 
-		private static bool CheckOrRelease(IntPtr pgConn)
+		private static bool CheckOrRelease(IntPtr pgConn, out ConnStatusType connStatus, out PGTransactionStatusType tranStatus)
 		{
 			if (pgConn == IntPtr.Zero)
+			{
+				connStatus = ConnStatusType.CONNECTION_BAD;
+				tranStatus = PGTransactionStatusType.PQTRANS_UNKNOWN;
 				return false;
+			}
 
 			// is connection reusable?
-			ConnStatusType s = PqsqlWrapper.PQstatus(pgConn);
-			if (s != ConnStatusType.CONNECTION_OK) goto broken;
+			connStatus = PqsqlWrapper.PQstatus(pgConn);
+			if (connStatus != ConnStatusType.CONNECTION_OK)
+				goto broken;
 
-			PGTransactionStatusType ts = PqsqlWrapper.PQtransactionStatus(pgConn);
-			if (ts != PGTransactionStatusType.PQTRANS_IDLE) goto broken;
+			tranStatus = PqsqlWrapper.PQtransactionStatus(pgConn);
+			if (tranStatus != PGTransactionStatusType.PQTRANS_IDLE)
+				goto broken;
 
 			// send empty query to test whether we are really connected (tcp keepalive might have closed socket)
 			unsafe
@@ -268,12 +287,16 @@ namespace Pqsql
 			// reconnect with current connection setting
 			PqsqlWrapper.PQreset(pgConn);
 
-			s = PqsqlWrapper.PQstatus(pgConn);
-			if (s == ConnStatusType.CONNECTION_OK)
+			connStatus = PqsqlWrapper.PQstatus(pgConn);
+			if (connStatus == ConnStatusType.CONNECTION_OK)
 			{
-				ts = PqsqlWrapper.PQtransactionStatus(pgConn);
-				if (ts == PGTransactionStatusType.PQTRANS_IDLE)
+				tranStatus = PqsqlWrapper.PQtransactionStatus(pgConn);
+				if (tranStatus == PGTransactionStatusType.PQTRANS_IDLE)
 					return true; // successfully reconnected
+			}
+			else
+			{
+				tranStatus = PGTransactionStatusType.PQTRANS_UNKNOWN;
 			}
 
 			// could not reconnect: finally give up and clean up memory

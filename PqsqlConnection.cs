@@ -576,25 +576,21 @@ namespace Pqsql
 			}
 
 			// check connection pool for a connection
-			mConnection = PqsqlConnectionPool.GetPGConn(mConnectionStringBuilder);
+			mConnection = PqsqlConnectionPool.GetPGConn(mConnectionStringBuilder, out mStatus, out mTransStatus);
 
-			if (mConnection != IntPtr.Zero)
-			{
-				// update connection and transaction status
-				if (Status == ConnStatusType.CONNECTION_BAD || TransactionStatus != PGTransactionStatusType.PQTRANS_IDLE)
-				{
-					string err = GetErrorMessage();
-					PqsqlWrapper.PQfinish(mConnection); // force release of mConnection memory
-					Init();
-					throw new PqsqlException("Could not create connection with connection string «" + mConnectionStringBuilder.ConnectionString + "»: " + err);
-				}
-
-				mNewConnectionString = false;
-			}
-			else
-			{
+			if (mConnection == IntPtr.Zero)
 				throw new PqsqlException("libpq: unable to allocate struct PGconn");
+
+			// check connection and transaction status
+			if (mStatus == ConnStatusType.CONNECTION_BAD || mTransStatus != PGTransactionStatusType.PQTRANS_IDLE)
+			{
+				string err = GetErrorMessage();
+				PqsqlWrapper.PQfinish(mConnection); // force release of mConnection memory
+				Init();
+				throw new PqsqlException("Could not create connection with connection string «" + mConnectionStringBuilder.ConnectionString + "»: " + err);
 			}
+
+			mNewConnectionString = false;
 
 			OnStateChange(new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open));
 		}
