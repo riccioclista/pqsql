@@ -100,6 +100,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="PqsqlCommandBuilderTests.cs" />
+    <Compile Include="PqsqlCommandTests.cs" />
     <Compile Include="PqsqlConnectionStringBuilderTests.cs" />
     <Compile Include="PqsqlCopyFromTests.cs" />
     <Compile Include="PqsqlDataAdapterTests.cs" />
