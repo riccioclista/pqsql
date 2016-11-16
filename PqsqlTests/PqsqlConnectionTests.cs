@@ -13,6 +13,8 @@ namespace PqsqlTests
 	public class PqsqlConnectionTests
 	{
 
+		private static readonly string connectionstring = "host=localhost; port=5432; user=postgres; dbname=postgres; connect_timeout=3";
+
 		[TestMethod]
 		public void PqsqlConnectionTest1()
 		{
@@ -27,7 +29,7 @@ namespace PqsqlTests
 		[TestMethod]
 		public void PqsqlConnectionTest2()
 		{
-			PqsqlConnection connection = new PqsqlConnection("host=localhost; port=5432; user=postgres; dbname=postgres; connect_timeout=3");
+			PqsqlConnection connection = new PqsqlConnection(connectionstring);
 
 			Assert.AreEqual(ConnectionState.Closed, connection.State, "wrong connection state");
 			Assert.AreEqual("host=localhost;port=5432;user=postgres;dbname=postgres;connect_timeout=3", connection.ConnectionString, "wrong connection string");
@@ -46,7 +48,7 @@ namespace PqsqlTests
 		[TestMethod]
 		public void PqsqlConnectionTest3()
 		{
-			PqsqlConnection connection = new PqsqlConnection("host=localhost; port=5432; user=postgres; dbname=postgres; connect_timeout=3");
+			PqsqlConnection connection = new PqsqlConnection(connectionstring);
 
 			connection.Open();
 			Assert.AreEqual(ConnectionState.Open, connection.State, "wrong connection state");
@@ -72,7 +74,7 @@ namespace PqsqlTests
 		[TestMethod]
 		public void PqsqlConnectionTest4()
 		{
-			PqsqlConnection connection = new PqsqlConnection("host=localhost; port=5432; user=postgres; dbname=postgres; connect_timeout=3");
+			PqsqlConnection connection = new PqsqlConnection(connectionstring);
 
 			connection.Open();
 			Assert.AreEqual(ConnectionState.Open, connection.State, "wrong connection state");
@@ -108,7 +110,7 @@ namespace PqsqlTests
 		[TestMethod]
 		public void PqsqlConnectionTest5()
 		{
-			PqsqlConnection connection = new PqsqlConnection("host=localhost; port=5432; user=postgres; dbname=postgres; connect_timeout=3");
+			PqsqlConnection connection = new PqsqlConnection(connectionstring);
 
 			connection.Open();
 			Assert.AreEqual(ConnectionState.Open, connection.State, "wrong connection state");
@@ -125,7 +127,7 @@ namespace PqsqlTests
 		[ExpectedException(typeof(PqsqlException), "The connection should have been terminated.")]
 		public void PqsqlConnectionTest6()
 		{
-			PqsqlConnection connection = new PqsqlConnection("host=localhost; port=5432; user=postgres; dbname=postgres; connect_timeout=3");
+			PqsqlConnection connection = new PqsqlConnection(connectionstring);
 
 			connection.Open();
 			Assert.AreEqual(ConnectionState.Open, connection.State, "wrong connection state");
@@ -154,7 +156,7 @@ namespace PqsqlTests
 		[TestMethod]
 		public void PqsqlConnectionTest7()
 		{
-			PqsqlConnection connection = new PqsqlConnection("host=localhost; port=5432; user=postgres; dbname=postgres; connect_timeout=3");
+			PqsqlConnection connection = new PqsqlConnection(connectionstring);
 
 			bool opened = false;
 			bool closed = true;
@@ -195,6 +197,15 @@ namespace PqsqlTests
 
 			Assert.AreEqual(false, opened);
 			Assert.AreEqual(true, closed);
+		}
+
+		[TestMethod]
+		[ExpectedException(typeof(NotSupportedException), "PqsqlConnection.GetSchema")]
+		public void PqsqlConnectionTest8()
+		{
+			PqsqlConnection connection = new PqsqlConnection(connectionstring);
+			DataTable connschema = connection.GetSchema();
+			Assert.Fail();
 		}
 	}
 }
