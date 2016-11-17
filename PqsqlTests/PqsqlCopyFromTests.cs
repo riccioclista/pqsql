@@ -1,4 +1,5 @@
-﻿using System.Data;
+﻿using System;
+using System.Data;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Pqsql;
 
@@ -83,5 +84,144 @@ namespace PqsqlTests
 
 			tran.Rollback();
 		}
+
+		[TestMethod]
+		public void PqsqlCopyFromTest2()
+		{
+			PqsqlTransaction tran = mConnection.BeginTransaction();
+			mCmd.Transaction = tran;
+
+			mCmd.CommandText = "CREATE TEMP TABLE temp (id int4, val int4, txt text)";
+			mCmd.CommandTimeout = 200;
+			mCmd.CommandType = CommandType.Text;
+
+			const int upperbound = 2000000;
+			const string text = "text value with ü and ä ";
+
+			int q = mCmd.ExecuteNonQuery();
+			Assert.AreEqual(0, q);
+
+			PqsqlCopyFrom copy = new PqsqlCopyFrom(mConnection)
+			{
+				Table = "temp",
+				CopyTimeout = 30
+			};
+
+			copy.Start();
+
+			for (int i = 0; i < upperbound; i++)
+			{
+				int j = copy.WriteInt4(i);
+				Assert.AreEqual(4, j);
+
+				j = copy.WriteInt4(i);
+				Assert.AreEqual(4, j);
+
+				j = copy.WriteText(text + i);
+				//Assert.AreEqual(-1, j);
+			}
+			copy.WriteNull();
+			copy.WriteNull();
+			copy.WriteNull();
+			copy.End();
+			copy.Close();
+
+			mCmd.CommandText = "select * from temp";
+			mCmd.CommandTimeout = 30;
+			mCmd.CommandType = CommandType.Text;
+
+			PqsqlDataReader r = mCmd.ExecuteReader();
+
+			int n = 0;
+			int k = 0;
+			while (r.Read())
+			{
+				if (n++ == upperbound)
+				{
+					Assert.IsTrue(r.IsDBNull(0));
+					Assert.IsTrue(r.IsDBNull(1));
+					Assert.IsTrue(r.IsDBNull(2));
+				}
+				else
+				{
+					Assert.AreEqual(k, r.GetInt32(0));
+					Assert.AreEqual(k, r.GetInt32(1));
+					Assert.AreEqual(text + k, r.GetString(2));
+					k++;
+				}
+			}
+
+			Assert.AreEqual(upperbound + 1, n);
+
+			r.Close();
+
+			tran.Rollback();
+		}
+
+		[TestMethod]
+		public void PqsqlCopyFromTest3()
+		{
+			PqsqlTransaction t = mConnection.BeginTransaction();
+
+			PqsqlCommand cmd = mConnection.CreateCommand();
+			cmd.Transaction = t;
+			cmd.CommandText = "CREATE TEMP TABLE testcopy (c0 int2, c1 int4, c2 int8, c3 bool, c4 text, c5 float4, c6 float8, c7 timestamp);";
+			cmd.CommandTimeout = 100;
+			cmd.CommandType = CommandType.Text;
+
+			cmd.ExecuteNonQuery();
+
+			PqsqlCopyFrom copy = new PqsqlCopyFrom(mConnection)
+			{
+				Table = "testcopy",
+				ColumnList = "c0,c1,c2,c3,c4,c5,c6,c7",
+				CopyTimeout = 5
+			};
+
+			copy.Start();
+
+			DateTime now = new DateTime(2001, 1, 1, 1, 2, 3, DateTimeKind.Utc);
+
+			for (int i = 0; i < 4; i++)
+			{
+				copy.WriteInt2((short) i);
+				copy.WriteInt4(i);
+				copy.WriteInt8(i);
+				copy.WriteBool(i > 0);
+				copy.WriteText(Convert.ToString(i));
+				copy.WriteFloat4((float) (i + 0.123));
+				copy.WriteFloat8(i + 0.123);
+				copy.WriteTimestamp(now.AddSeconds(i));
+			}
+
+			copy.End();
+			copy.Close();
+
+			cmd.Transaction = t;
+
+			cmd.CommandText = "testcopy";
+			cmd.CommandType = CommandType.TableDirect;
+
+			PqsqlDataReader r = cmd.ExecuteReader();
+
+			Assert.AreEqual(-1, r.RecordsAffected);
+
+			int j = 0;
+			foreach (IDataRecord row in r)
+			{
+				Assert.AreEqual((short)j, row.GetInt16(0));
+				Assert.AreEqual(j, row.GetInt32(1));
+				Assert.AreEqual(j, row.GetInt64(2));
+				Assert.AreEqual(j > 0, row.GetBoolean(3));
+				Assert.AreEqual(Convert.ToString(j), row.GetString(4));
+				Assert.AreEqual((float)(j+0.123), row.GetFloat(5));
+				Assert.AreEqual(j + 0.123, row.GetDouble(6));
+				Assert.AreEqual(now.AddSeconds(j), row.GetDateTime(7));
+				j++;
+			}
+
+			t.Rollback();
+		}
+
 	}
 }
