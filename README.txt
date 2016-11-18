@@ -89,6 +89,8 @@ TODO
   │ 3831 │ anyrange         │        0 │ anyrange_in         │ anyrange_out         │ -          │ -       │
   └──────┴──────────────────┴──────────┴─────────────────────┴──────────────────────┴────────────┴─────────┘
 
+- add support for PqsqlConnection.Notify event https://www.postgresql.org/docs/current/static/libpq-notify.html
+- add support for PqsqlConnection.Notice event https://www.postgresql.org/docs/current/static/libpq-notice-processing.html
 - PqsqlConnection.GetSchema() and friends
 - PqsqlConnection.EnlistTransaction() (see https://www.postgresql.org/docs/current/static/sql-prepare-transaction.html)
 - PqsqlCommand.Prepare() (see PQsendPrepare, PQsendQueryPrepared, PQsendDescribePrepared)
