@@ -1,0 +1,8 @@
+Ximes.snk
+obj/
+bin/
+libpqbinfmt/x64/
+.vs/
+TestResults/
+Pqsql-VS2015.VC.db
+Pqsql-VS2015.VC.VC.opendb
