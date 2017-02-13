@@ -24,6 +24,8 @@ namespace Pqsql
 
 		private CommandType mCmdType;
 
+		private CommandBehavior mCmdBehavior;
+
 		private PqsqlConnection mConn;
 
 		private readonly PqsqlParameterCollection mParams;
@@ -64,6 +66,7 @@ namespace Pqsql
 			mCmdText = q;
 			mCmdTimeout = -1;
 			mCmdType = CommandType.Text;
+			mCmdBehavior = CommandBehavior.Default;
 		}
 
 		~PqsqlCommand()
@@ -417,8 +420,52 @@ namespace Pqsql
 				r.Read(); // reading the first row will fill output parameters
 			}
 
-			int ra = r.RecordsAffected;
+			int ra = Math.Max(-1, r.RecordsAffected);
 			r.Consume(); // sync protocol: consume remaining rows
+
+			if ((mCmdBehavior & CommandBehavior.SingleResult) == CommandBehavior.SingleResult) // only one statement available
+			{
+				return ra;
+			}
+
+			// we have more than one statement
+			while (r.NextResult())
+			{
+				int n = r.RecordsAffected;
+
+				// accumulate positive RecordsAffected for each UPDATE / DELETE / INSERT / CREATE * / ... statement
+				if (n >= 0)
+				{
+					if (ra < 0)
+					{
+						ra = n;
+					}
+					else // ra >= 0
+					{
+						ra += n;
+					}
+				}
+
+				r.Consume(); // sync protocol: consume remaining rows
+			}
+
+			int last = r.RecordsAffected;
+
+			// accumulate positive RecordsAffected for each UPDATE / DELETE / INSERT / CREATE * / ... statement
+			if (last >= 0)
+			{
+				if (ra < 0)
+				{
+					ra = last;
+				}
+				else // ra >= 0
+				{
+					ra += last;
+				}
+			}
+
+			r.Consume(); // sync protocol: consume remaining rows
+
 			return ra;
 		}
 
@@ -511,6 +558,9 @@ namespace Pqsql
 			{
 				SetSessionParameter(mStatementTimeoutString, CommandTimeout, false);
 			}
+
+			// save behavior
+			mCmdBehavior = behavior;
 
 			PqsqlDataReader reader = new PqsqlDataReader(this, behavior, statements);
 			reader.NextResult(); // always execute first command
