@@ -142,9 +142,7 @@ namespace PqsqlTests
 
 			cmd.CommandText = "select pg_terminate_backend(pg_backend_pid()); select pg_sleep(5);";
 
-			cmd.ExecuteNonQuery();
-
-			cmd.ExecuteNonQuery();
+			cmd.ExecuteNonQuery(); // must execute both statements
 
 			cmd.Cancel();
 
@@ -186,8 +184,7 @@ namespace PqsqlTests
 			{
 				PqsqlCommand cmd = connection.CreateCommand();
 				cmd.CommandText = "select pg_terminate_backend(pg_backend_pid()); select pg_sleep(5);";
-				cmd.ExecuteNonQuery();
-				cmd.ExecuteNonQuery();
+				cmd.ExecuteNonQuery(); // must execute both statements
 			}
 			catch (Exception)
 			{
