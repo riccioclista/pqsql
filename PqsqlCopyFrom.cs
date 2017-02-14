@@ -7,7 +7,7 @@ using System.Text;
 
 namespace Pqsql
 {
-	public sealed class PqsqlCopyFrom
+	public sealed class PqsqlCopyFrom : IDisposable
 	{
 		// connection for COPY FROM
 		private PqsqlConnection mConn;
