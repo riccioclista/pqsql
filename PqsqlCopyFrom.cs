@@ -5,6 +5,9 @@ using System.Diagnostics.Contracts;
 #endif
 using System.Text;
 
+using PqsqlWrapper = Pqsql.UnsafeNativeMethods.PqsqlWrapper;
+using PqsqlBinaryFormat = Pqsql.UnsafeNativeMethods.PqsqlBinaryFormat;
+
 namespace Pqsql
 {
 	public sealed class PqsqlCopyFrom : IDisposable

@@ -5,6 +5,9 @@ using System.Data;
 using System.Diagnostics.Contracts;
 #endif
 
+using PqsqlWrapper = Pqsql.UnsafeNativeMethods.PqsqlWrapper;
+using PqsqlBinaryFormat = Pqsql.UnsafeNativeMethods.PqsqlBinaryFormat;
+
 namespace Pqsql
 {
 	/// <summary>

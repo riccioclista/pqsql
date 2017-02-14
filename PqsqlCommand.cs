@@ -7,6 +7,8 @@ using System.Data;
 using System.Diagnostics.Contracts;
 #endif
 
+using PqsqlWrapper = Pqsql.UnsafeNativeMethods.PqsqlWrapper;
+
 namespace Pqsql
 {
 	public sealed class PqsqlCommand : DbCommand

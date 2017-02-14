@@ -5,6 +5,8 @@ using System.Diagnostics.Contracts;
 #endif
 using System.Threading;
 
+using PqsqlWrapper = Pqsql.UnsafeNativeMethods.PqsqlWrapper;
+
 namespace Pqsql
 {
 	internal static class PqsqlConnectionPool

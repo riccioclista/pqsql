@@ -6,6 +6,8 @@ using System.ComponentModel;
 using System.Diagnostics.Contracts;
 #endif
 
+using PqsqlWrapper = Pqsql.UnsafeNativeMethods.PqsqlWrapper;
+
 namespace Pqsql
 {
 	// When you inherit from DbConnection, you must override the following members:

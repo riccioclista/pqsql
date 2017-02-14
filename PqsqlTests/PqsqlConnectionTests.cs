@@ -4,6 +4,8 @@ using System.Runtime.InteropServices;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Pqsql;
 
+using PqsqlWrapper = Pqsql.UnsafeNativeMethods.PqsqlWrapper;
+
 namespace PqsqlTests
 {
 	/// <summary>

@@ -5,6 +5,8 @@ using System.Diagnostics.Contracts;
 #endif
 using System.IO;
 
+using PqsqlWrapper = Pqsql.UnsafeNativeMethods.PqsqlWrapper;
+
 namespace Pqsql
 {
 	public sealed class PqsqlLargeObject : Stream

@@ -10,6 +10,9 @@ using System.Diagnostics.Contracts;
 using System.Globalization;
 using System.Runtime.InteropServices;
 
+using PqsqlWrapper = Pqsql.UnsafeNativeMethods.PqsqlWrapper;
+using PqsqlBinaryFormat = Pqsql.UnsafeNativeMethods.PqsqlBinaryFormat;
+
 // declare SchemaTable column information
 //
 // Item1: column position

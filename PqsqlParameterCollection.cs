@@ -9,6 +9,8 @@ using System.Diagnostics.Contracts;
 #endif
 using System.Text;
 
+using PqsqlBinaryFormat = Pqsql.UnsafeNativeMethods.PqsqlBinaryFormat;
+
 namespace Pqsql
 {
 	public sealed class PqsqlParameterCollection : DbParameterCollection, IDisposable

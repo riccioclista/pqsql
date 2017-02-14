@@ -1,5 +1,7 @@
 ﻿using System.Data.Common;
 
+using PqsqlWrapper = Pqsql.UnsafeNativeMethods.PqsqlWrapper;
+
 namespace Pqsql
 {
 	public sealed class PqsqlProviderFactory : DbProviderFactory

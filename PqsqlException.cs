@@ -4,6 +4,8 @@ using System.Data.Common;
 using System.Diagnostics.Contracts;
 #endif
 
+using PqsqlWrapper = Pqsql.UnsafeNativeMethods.PqsqlWrapper;
+
 namespace Pqsql
 {
 	public sealed class PqsqlException : DbException
