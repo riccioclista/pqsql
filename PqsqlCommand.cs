@@ -698,12 +698,14 @@ namespace Pqsql
 
 
 		// resize statements to i+1, and set i to sb
-		private void ResizeAndSetStatements(ref StringBuilder statement, ref string[] statements, int i)
+		private bool ResizeAndSetStatements(ref StringBuilder statement, ref string[] statements, int i)
 		{
 #if CODECONTRACTS
 			Contract.Requires<ArgumentNullException>(statements != null);
 			Contract.Requires<ArgumentNullException>(statement != null);
 			Contract.Requires<ArgumentNullException>(i >= 0);
+			Contract.Ensures(statement != null);
+			Contract.Ensures(statements != null);
 #else
 			if (statements == null || statement == null)
 				throw new ArgumentNullException();
@@ -712,9 +714,18 @@ namespace Pqsql
 				throw new IndexOutOfRangeException("i");
 #endif
 
-			Array.Resize(ref statements, i + 1);
-			statements[i] = statement.ToString().TrimStart();
+			string stm = statement.ToString().TrimStart();
+			bool isnonempty = !string.IsNullOrWhiteSpace(stm);
+
+			// ignore empty statements
+			if (isnonempty)
+			{
+				Array.Resize(ref statements, i + 1);
+				statements[i] = stm;
+			}
 			statement.Clear();
+
+			return isnonempty;
 		}
 
 		// replace parameter name with $ index in statement
@@ -724,6 +735,9 @@ namespace Pqsql
 			Contract.Requires<ArgumentNullException>(statement != null);
 			Contract.Requires<ArgumentNullException>(paramName != null);
 			Contract.Requires<ArgumentNullException>(paramIndex != null);
+			Contract.Ensures(statement != null);
+			Contract.Ensures(paramName != null);
+			Contract.Ensures(paramIndex != null);
 #else
 			if (statement == null || paramName == null || paramIndex == null)
 				throw new ArgumentNullException();
@@ -806,7 +820,7 @@ namespace Pqsql
 					else // we probably ran into :: or :=
 					{
 #if CODECONTRACTS
-						Contract.Assume(stmt != null);
+						Contract.Assert(stmt != null);
 #endif
 						stmt.Append(':'); // take first : and put it back
 						stmt.Append(c); // take current character and put it back
@@ -825,7 +839,9 @@ namespace Pqsql
 
 					// replace parameter name with $ index
 #if CODECONTRACTS
-					Contract.Assume(stmt != null);
+					Contract.Assert(stmt != null);
+					Contract.Assert(paramIndex != null);
+					Contract.Assert(paramName != null);
 #endif
 					ReplaceParameter(ref stmt, ref paramName, ref paramIndex);
 
@@ -874,9 +890,12 @@ namespace Pqsql
 
 						case ';':
 #if CODECONTRACTS
-							Contract.Assume(stmt != null);
+							Contract.Assert(stmt != null);
 #endif
-							ResizeAndSetStatements(ref stmt, ref statements, stmtNum++);
+							if (ResizeAndSetStatements(ref stmt, ref statements, stmtNum))
+							{
+								stmtNum++;
+							}
 							continue;
 					}
 				}
@@ -886,7 +905,8 @@ namespace Pqsql
 			}
 
 #if CODECONTRACTS
-			Contract.Assume(stmt != null);
+			Contract.Assert(stmt != null);
+			Contract.Assert(statements != null);
 #endif
 			if (stmt.Length > 0) // add last statement not terminated by ';'
 			{
@@ -895,6 +915,10 @@ namespace Pqsql
 
 				ResizeAndSetStatements(ref stmt, ref statements, stmtNum);
 			}
+
+#if CODECONTRACTS
+			Contract.Assert(Contract.ForAll(statements, s => !string.IsNullOrWhiteSpace(s)));
+#endif
 
 			return statements;
 		}
