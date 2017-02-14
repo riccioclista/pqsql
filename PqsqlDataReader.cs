@@ -431,6 +431,11 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 
 			if (disposing)
 			{
+				if (mSchemaTable != null)
+				{
+					mSchemaTable.Dispose();
+					mSchemaTable = null;
+				}
 				// always release mConnection (must not throw exception)
 				Close();
 			}
