@@ -39,11 +39,11 @@
 /* Visual C++ etc lacks NAN, and won't accept 0.0/0.0.  NAN definition from
  * http://msdn.microsoft.com/library/default.asp?url=/library/en-us/vclang/html/vclrfNotNumberNANItems.asp
  */
-//#if defined(WIN32) && !defined(NAN)
+#if defined(WIN32) && !defined(NAN)
 static const uint32_t nan[2] = {0xffffffff, 0x7fffffff};
 
 #define NAN (*(const double *) nan)
-//#endif
+#endif
 
 /* not sure what the following should be, but better to make it over-sufficient */
 #define MAXFLOATWIDTH	64
@@ -124,6 +124,10 @@ is_infinite(double val)
 		return -1;
 }
 
+/*
+ * Visual C++ sometimes misses isinf
+ */
+#if !defined(isinf)
 int
 isinf(double x)
 {
@@ -135,6 +139,7 @@ isinf(double x)
                 return -1;
         return 0;
 }
+#endif
 
 #define STRNCASECMP(s1,s2,c) _strnicmp(s1,s2,c) 
 /*
