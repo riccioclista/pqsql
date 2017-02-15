@@ -36,7 +36,7 @@ namespace Pqsql
 		const int VisitedThreshold = 2;
 
 		// global timer for cleaning connections
-		private static readonly Timer mTimer;
+		private static Timer mTimer;
 
 #if PQSQL_DEBUG
 		private static log4net.ILog mLogger;
@@ -429,5 +429,41 @@ namespace Pqsql
 			return true; // connection successfully resetted
 		}
 
+		internal static void Clear()
+		{
+			// shutdown pool service
+			WaitHandle h = new AutoResetEvent(false);
+			if (mTimer.Dispose(h) && !h.WaitOne(IdleTimeout))
+			{
+				throw new TimeoutException("Connection pool timer timeout");
+			}
+
+			// discard all pooled connections
+			lock (mPooledConnsLock)
+			{
+				foreach (KeyValuePair<PqsqlConnectionStringBuilder, Queue<ConnectionInfo>> kv in mPooledConns)
+				{
+					Queue<ConnectionInfo> queue = kv.Value;
+
+					if (queue == null)
+						continue;
+
+					lock (queue)
+					{
+						foreach (ConnectionInfo conninfo in queue)
+						{
+							DiscardConnection(conninfo.pgconn);
+						}
+						queue.Clear();
+					}
+				}
+
+				mPooledConns.Clear();
+			}
+
+			// restart pool service
+			mTimer = new Timer(PoolService, new List<IntPtr>(), Timeout.Infinite, Timeout.Infinite);
+			mTimer.Change(IdleTimeout, IdleTimeout);
+		}
 	}
 }
