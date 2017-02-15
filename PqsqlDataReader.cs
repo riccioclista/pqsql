@@ -123,6 +123,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 			Contract.Invariant(mStmtNum >= -1);
 			Contract.Invariant(mMaxRows >= -1);
 			Contract.Invariant(mRowNum >= -1);
+			Contract.Invariant(mConn != null);
 		}
 #endif
 
@@ -143,6 +144,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 		{
 #if CODECONTRACTS
 			Contract.Requires<ArgumentNullException>(command != null);
+			Contract.Ensures(mConn != null);
 #else
 			if (command == null)
 				throw new ArgumentNullException("command");
