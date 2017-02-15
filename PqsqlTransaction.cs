@@ -198,15 +198,6 @@ namespace Pqsql
 
 		#region Dispose
 
-		//
-		// Summary:
-		//     Releases the unmanaged resources used by the System.Data.Common.DbTransaction.
-		public new void Dispose()
-		{
-			Dispose(true);
-			GC.SuppressFinalize(this);
-		}
-
 		bool mDisposed;
 
 		//

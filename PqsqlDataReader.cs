@@ -403,17 +403,6 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 
 		#region Dispose
 
-		//
-		// Summary:
-		//     Releases all resources used by the current instance of the System.Data.Common.DbDataReader
-		//     class.
-		[EditorBrowsable(EditorBrowsableState.Never)]
-		public new void Dispose()
-		{
-			Dispose(true);
-			GC.SuppressFinalize(this);
-		}
-
 		bool mDisposed;
 
 		//

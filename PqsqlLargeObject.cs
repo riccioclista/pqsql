@@ -65,14 +65,7 @@ namespace Pqsql
 
 		#region Dispose
 
-		public new void Dispose()
-		{
-			Dispose(true);
-			GC.SuppressFinalize(this);
-		}
-
 		bool mDisposed;
-
 
 		/// <summary>
 		/// Releases the unmanaged resources used by the <see cref="T:System.IO.Stream"/> and optionally releases the managed resources.

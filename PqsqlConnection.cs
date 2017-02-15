@@ -102,11 +102,6 @@ namespace Pqsql
 			mServerVersion = -1;
 		}
 
-		~PqsqlConnection()
-		{
-			Dispose(false);
-		}
-
 		#endregion
 
 
@@ -681,12 +676,6 @@ namespace Pqsql
 
 
 		#region Dispose
-
-		public new void Dispose()
-		{
-			Dispose(true);
-			GC.SuppressFinalize(this);
-		}
 
 		bool mDisposed;
 

@@ -71,18 +71,7 @@ namespace Pqsql
 			mCmdBehavior = CommandBehavior.Default;
 		}
 
-		~PqsqlCommand()
-		{
-			Dispose(false);
-		}
-
 		#region Overrides of Component
-
-		public new void Dispose()
-		{
-			Dispose(true);
-			GC.SuppressFinalize(this);
-		}
 
 		private bool mDisposed;
 
