@@ -236,5 +236,24 @@ namespace PqsqlTests
 
 			Assert.AreEqual(3, n);
 		}
+
+		[TestMethod]
+		public void PqsqlCommandTest8()
+		{
+			PqsqlTransaction t = mConnection.BeginTransaction();
+
+			PqsqlCommand cmd = mConnection.CreateCommand();
+
+			cmd.Transaction = t;
+			cmd.CommandText = " ; create temp table temptab (c0 int4); ; insert into temptab values (1); insert into temptab values (2); insert into temptab values (3);";
+			cmd.CommandTimeout = 10;
+			cmd.CommandType = CommandType.Text;
+
+			int n = cmd.ExecuteNonQuery();
+
+			t.Rollback();
+
+			Assert.AreEqual(3, n);
+		}
 	}
 }
