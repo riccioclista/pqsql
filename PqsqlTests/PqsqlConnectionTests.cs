@@ -50,6 +50,8 @@ namespace PqsqlTests
 		[TestMethod]
 		public void PqsqlConnectionTest3()
 		{
+			PqsqlConnectionPool.Clear();
+
 			PqsqlConnection connection = new PqsqlConnection(connectionstring);
 
 			connection.Open();
