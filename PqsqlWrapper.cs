@@ -531,12 +531,12 @@ namespace Pqsql
 
 			#region blocking connection setup
 
-			[DllImport("libpq.dll")]
-			public static extern IntPtr PQconnectdb(string conninfo);
+			[DllImport("libpq.dll", CharSet = CharSet.Ansi, BestFitMapping = false, ThrowOnUnmappableChar = true)]
+			public static extern IntPtr PQconnectdb([MarshalAs(UnmanagedType.LPStr)] string conninfo);
 			// PGconn *PQconnectdb(const char *conninfo)
 
-			[DllImport("libpq.dll")]
-			public static extern IntPtr PQconnectdbParams(string[] keywords, string[] values, int expand_dbname);
+			[DllImport("libpq.dll", CharSet = CharSet.Ansi, BestFitMapping = false, ThrowOnUnmappableChar = true)]
+			public static extern IntPtr PQconnectdbParams([MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.LPStr)] string[] keywords, [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.LPStr)] string[] values, int expand_dbname);
 			// PGconn *PQconnectdbParams(const char * const *keywords, const char * const *values, int expand_dbname);
 
 			[DllImport("libpq.dll")]
@@ -547,12 +547,12 @@ namespace Pqsql
 
 			#region non-blocking connection setup
 
-			[DllImport("libpq.dll")]
-			public static extern IntPtr PQconnectStartParams(string[] keywords, string[] values, int expand_dbname);
+			[DllImport("libpq.dll", CharSet = CharSet.Ansi, BestFitMapping = false, ThrowOnUnmappableChar = true)]
+			public static extern IntPtr PQconnectStartParams([MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.LPStr)] string[] keywords, [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.LPStr)] string[] values, int expand_dbname);
 			// PGconn *PQconnectStartParams(const char * const *keywords, const char * const *values, int expand_dbname);
 
-			[DllImport("libpq.dll")]
-			public static extern IntPtr PQconnectStart(string conninfo);
+			[DllImport("libpq.dll", CharSet = CharSet.Ansi, BestFitMapping = false, ThrowOnUnmappableChar = true)]
+			public static extern IntPtr PQconnectStart([MarshalAs(UnmanagedType.LPStr)] string conninfo);
 			// PGconn *PQconnectStart(const char *conninfo);
 
 			[DllImport("libpq.dll")]
@@ -711,8 +711,8 @@ namespace Pqsql
 			public static extern int PQfsize(IntPtr res, int column_number);
 			// int PQfsize(const PGresult *res, int column_number);
 
-			[DllImport("libpq.dll")]
-			public static extern int PQfnumber(IntPtr res, string column_name);
+			[DllImport("libpq.dll", CharSet=CharSet.Ansi, BestFitMapping = false, ThrowOnUnmappableChar = true)]
+			public static extern int PQfnumber(IntPtr res, [MarshalAs(UnmanagedType.LPStr)] string column_name);
 			// int PQfnumber(const PGresult *res, const char *column_name);
 
 			[DllImport("libpq.dll")]
