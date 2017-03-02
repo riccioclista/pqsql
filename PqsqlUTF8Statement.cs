@@ -39,33 +39,28 @@ namespace Pqsql
 			return CreateUTF8Statement(sb.ToString());
 		}
 
-		// converts null-terminated sbyte* to string 
-		internal static string CreateStringFromUTF8(IntPtr sp)
+		// converts null-terminated byte* to string 
+		internal static unsafe string CreateStringFromUTF8(byte *p)
 		{
-			if (sp == IntPtr.Zero)
+			if (p == null)
 				return null;
 
 			int pos = 0;
 			int buflen = 64; // must be power of two
 			byte[] buf = new byte[buflen];
 
-			unsafe
+			while (*p != 0x0)
 			{
-				byte* s = (byte*) sp.ToPointer();
-
-				while (*s != 0x0)
+				if (pos >= buflen)
 				{
-					if (pos >= buflen)
-					{
-						buflen <<= 1; // exponential growth strategy
-						Array.Resize(ref buf, buflen);
+					buflen <<= 1; // exponential growth strategy
+					Array.Resize(ref buf, buflen);
 #if CODECONTRACTS
-						Contract.Assume(pos < buf.Length);
+					Contract.Assume(pos < buf.Length);
 #endif
-					}
-
-					buf[pos++] = *s++;
 				}
+
+				buf[pos++] = *p++;
 			}
 
 			return Encoding.UTF8.GetString(buf, 0, pos);

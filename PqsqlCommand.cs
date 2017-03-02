@@ -337,7 +337,7 @@ namespace Pqsql
 						if (cret == 1)
 							return;
 
-						err = PqsqlUTF8Statement.CreateStringFromUTF8(new IntPtr(b));
+						err = PqsqlUTF8Statement.CreateStringFromUTF8((byte*)b);
 					}
 				}
 

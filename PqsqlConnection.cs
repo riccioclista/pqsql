@@ -660,11 +660,11 @@ namespace Pqsql
 			{
 				unsafe
 				{
-					IntPtr err = new IntPtr(PqsqlWrapper.PQerrorMessage(mConnection));
+					byte *b = (byte*) PqsqlWrapper.PQerrorMessage(mConnection);
 
-					if (err != IntPtr.Zero)
+					if (b != null)
 					{
-						msg = PqsqlUTF8Statement.CreateStringFromUTF8(err);
+						msg = PqsqlUTF8Statement.CreateStringFromUTF8(b);
 					}
 				}
 			}

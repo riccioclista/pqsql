@@ -1854,8 +1854,17 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 		{
 			if (itemlen == 0)
 			{
-				// TODO pqbf_get_unicode_text sometimes fails to retrieve proper strlen(v) when itemlen==0
-				return PqsqlUTF8Statement.CreateStringFromUTF8(v);
+				if (v == IntPtr.Zero)
+				{
+					return null;
+				}
+
+				unsafe
+				{
+					// TODO pqbf_get_unicode_text sometimes fails to retrieve proper strlen(v) when itemlen==0
+					byte* s = (byte*) v.ToPointer();
+					return PqsqlUTF8Statement.CreateStringFromUTF8(s);
+				}
 			}
 
 			IntPtr utp;
@@ -2202,8 +2211,8 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 				string colName;
 				unsafe
 				{
-					sbyte* name = PqsqlWrapper.PQfname(mResult, o); // column name
-					colName = new string(name); // TODO UTF-8 encoding ignored here!
+					byte* name = (byte*) PqsqlWrapper.PQfname(mResult, o); // column name
+					colName = PqsqlUTF8Statement.CreateStringFromUTF8(name);
 				}
 
 				int size = PqsqlWrapper.PQfsize(mResult, o); // column datatype size
