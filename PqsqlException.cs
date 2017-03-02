@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Data.Common;
+using System.Runtime.Serialization;
 #if CODECONTRACTS
 using System.Diagnostics.Contracts;
 #endif
@@ -8,6 +9,7 @@ using PqsqlWrapper = Pqsql.UnsafeNativeMethods.PqsqlWrapper;
 
 namespace Pqsql
 {
+	[Serializable]
 	public sealed class PqsqlException : DbException
 	{
 		// hint string retrieved from query results
@@ -93,5 +95,14 @@ namespace Pqsql
 			set { if (value != null && value != mHint) mHint = value; }
 		}
 
+		#region Overrides of Exception
+
+		public override void GetObjectData(SerializationInfo info, StreamingContext context)
+		{
+			info.AddValue("mHint", mHint);
+			base.GetObjectData(info, context);
+		}
+
+		#endregion
 	}
 }
