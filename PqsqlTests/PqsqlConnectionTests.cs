@@ -208,5 +208,33 @@ namespace PqsqlTests
 			DataTable connschema = connection.GetSchema();
 			Assert.Fail();
 		}
+
+		[TestMethod]
+		public void PqsqlConnectionTest9()
+		{
+			PqsqlConnection connection = new PqsqlConnection(connectionstring);
+			string s = connection.GetErrorMessage();
+			Assert.AreEqual(string.Empty, s);
+
+			PqsqlCommand cmd = connection.CreateCommand();
+			cmd.CommandText = "foobar command";
+
+			try
+			{
+				cmd.ExecuteNonQuery();
+			}
+			catch (PqsqlException exception)
+			{
+				// SYNTAX_ERROR = 16801924, // 42601 (syntax_error)
+				//Assert.AreNotSame(string.Empty, exception.Hint);
+				Assert.AreEqual("42601", exception.SqlState);
+				Assert.AreEqual(16801924, exception.ErrorCode);
+			}
+			
+			s = connection.GetErrorMessage();
+			Assert.IsNotNull(s);
+			Assert.AreNotSame(string.Empty, s);
+		}
+		
 	}
 }
