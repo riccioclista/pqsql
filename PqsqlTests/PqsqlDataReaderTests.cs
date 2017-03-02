@@ -386,5 +386,23 @@ namespace PqsqlTests
 			}
 		}
 
+		[TestMethod]
+		public void PqsqlDataReaderTest7()
+		{
+			// test UTF-8 column names roundtrip
+			mCmd.CommandText = "select 12345 as \"€₺£$¥\", 67890 as \"⣿⣶⣤⣀⠀\"";
+
+			PqsqlDataReader reader = mCmd.ExecuteReader();
+
+			reader.Read();
+
+			string c0 = reader.GetName(0);
+			string c1 = reader.GetName(1);
+
+			Assert.AreEqual("€₺£$¥", c0);
+			Assert.AreEqual("⣿⣶⣤⣀⠀", c1);
+
+			reader.Close();
+		}
 	}
 }
