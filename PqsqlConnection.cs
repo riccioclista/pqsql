@@ -448,17 +448,31 @@ namespace Pqsql
 				Open();
 			}
 
-			PqsqlTransaction txn = new PqsqlTransaction(this, isolationLevel);
+			PqsqlTransaction t = null;
+			PqsqlTransaction txn;
 
-			// get transaction start command
-			byte[] txnString = txn.TransactionStart;
-
-			ExecStatusType s = Exec(txnString);
-
-			if (s != ExecStatusType.PGRES_COMMAND_OK)
+			try
 			{
-				string err = GetErrorMessage();
-				throw new PqsqlException("Transaction start failed: " + err);
+				t = new PqsqlTransaction(this, isolationLevel);
+
+				// get transaction start command
+				byte[] txnString = t.TransactionStart;
+
+				ExecStatusType s = Exec(txnString);
+
+				if (s != ExecStatusType.PGRES_COMMAND_OK)
+				{
+					string err = GetErrorMessage();
+					throw new PqsqlException("Transaction start failed: " + err);
+				}
+				
+				// swap t with txn
+				txn = t;
+				t = null;
+			}
+			finally
+			{
+				t?.Dispose(); // only dispose PqsqlTransaction if s != ExecStatusType.PGRES_COMMAND_OK
 			}
 
 			return txn;
