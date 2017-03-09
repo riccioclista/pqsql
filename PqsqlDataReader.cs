@@ -1956,6 +1956,9 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 		//     The number of instances of System.Object in the array.
 		public override int GetValues(object[] values)
 		{
+			if (values == null)
+				throw new ArgumentNullException(nameof(values));
+
 			int count = Math.Min(mColumns, values.Length);
 			for (int i = 0; i < count; i++)
 			{

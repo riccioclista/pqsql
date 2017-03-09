@@ -695,7 +695,7 @@ namespace Pqsql
 				throw new ArgumentNullException(nameof(value), "ParameterName is null");
 
 			PqsqlParameter old = mParamList[index];
-			if (old != null && old.ParameterName != null)
+			if (old?.ParameterName != null)
 			{
 				lookup.Remove(old.ParameterName);
 			}

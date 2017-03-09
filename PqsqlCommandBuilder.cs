@@ -182,6 +182,8 @@ namespace Pqsql
 			if (pqp == null)
 				throw new InvalidCastException(string.Format(CultureInfo.InvariantCulture, "{0} is not a {1}", nameof(p), nameof(PqsqlParameter)));
 
+			if (row == null)
+				throw new ArgumentNullException(nameof(row));
 
 			if (pqp.SourceColumnNullMapping)
 			{
