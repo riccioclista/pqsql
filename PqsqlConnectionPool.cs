@@ -36,7 +36,7 @@ namespace Pqsql
 		const int VisitedThreshold = 2;
 
 		// global timer for cleaning connections
-		private static Timer mTimer;
+		private static Timer mTimer = new Timer(PoolService, new List<IntPtr>(), IdleTimeout, IdleTimeout);
 
 #if PQSQL_DEBUG
 		private static log4net.ILog mLogger;
@@ -45,9 +45,6 @@ namespace Pqsql
 		// static constructor for log4net
 		static PqsqlConnectionPool()
 		{
-			mTimer = new Timer(PoolService, new List<IntPtr>(), Timeout.Infinite, Timeout.Infinite);
-			mTimer.Change(IdleTimeout, IdleTimeout);
-
 #if PQSQL_DEBUG
 			log4net.Layout.PatternLayout layout = new log4net.Layout.PatternLayout("%date{ISO8601} [%thread] %-5level %logger - %message%newline");
 			log4net.Appender.RollingFileAppender appender = new log4net.Appender.RollingFileAppender
@@ -470,8 +467,7 @@ namespace Pqsql
 			}
 
 			// restart pool service
-			mTimer = new Timer(PoolService, new List<IntPtr>(), Timeout.Infinite, Timeout.Infinite);
-			mTimer.Change(IdleTimeout, IdleTimeout);
+			mTimer = new Timer(PoolService, new List<IntPtr>(), IdleTimeout, IdleTimeout);
 		}
 	}
 }
