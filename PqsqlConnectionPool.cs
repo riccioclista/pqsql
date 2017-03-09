@@ -432,10 +432,18 @@ namespace Pqsql
 		internal static void Clear()
 		{
 			// shutdown pool service
-			WaitHandle h = new AutoResetEvent(false);
-			if (mTimer.Dispose(h) && !h.WaitOne(IdleTimeout))
+			WaitHandle h = null;
+			try
 			{
-				throw new TimeoutException("Connection pool timer timeout");
+				h = new AutoResetEvent(false);
+				if (mTimer.Dispose(h) && !h.WaitOne(IdleTimeout))
+				{
+					throw new TimeoutException("Connection pool timer timeout");
+				}
+			}
+			finally
+			{
+				h?.Dispose();
 			}
 
 			// discard all pooled connections
