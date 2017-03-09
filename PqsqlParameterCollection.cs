@@ -635,23 +635,23 @@ namespace Pqsql
 		// Returns:
 		//     The index of the System.Data.Common.DbParameter object with the specified
 		//     name.
-		public override int IndexOf(string param)
+		public override int IndexOf(string parameterName)
 		{
 #if CODECONTRACTS
 			Contract.Ensures(Contract.Result<int>() >= -1);
 			Contract.Ensures(Contract.Result<int>() < Count);
 #endif
 
-			if (!string.IsNullOrEmpty(param))
+			if (!string.IsNullOrEmpty(parameterName))
 			{
 				StringBuilder sb = new StringBuilder();
 
 				sb.Append(':'); // always prefix with :
 
-				if (param[0] != '"')
-					sb.Append(param.TrimStart(PqsqlParameter.TrimStart).TrimEnd().ToLowerInvariant());
+				if (parameterName[0] != '"')
+					sb.Append(parameterName.TrimStart(PqsqlParameter.TrimStart).TrimEnd().ToLowerInvariant());
 				else
-					sb.Append(param);
+					sb.Append(parameterName);
 
 				int ret;
 				if (lookup.TryGetValue(sb.ToString(), out ret))

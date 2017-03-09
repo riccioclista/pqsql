@@ -394,10 +394,10 @@ namespace Pqsql
 			}
 		}
 
-		public int WriteBool(bool b)
+		public int WriteBool(bool value)
 		{
 			long begin = LengthCheckReset();
-			PqsqlBinaryFormat.pqbf_set_bool(mExpBuf, b ? 1 : 0);
+			PqsqlBinaryFormat.pqbf_set_bool(mExpBuf, value ? 1 : 0);
 			unsafe
 			{
 				sbyte* val = PqsqlBinaryFormat.pqbf_get_bufval(mExpBuf) + begin;
@@ -405,7 +405,7 @@ namespace Pqsql
 			}
 		}
 
-		public int WriteInt2(short i)
+		public int WriteInt2(short value)
 		{
 			if (mRowInfo == null)
 				throw new InvalidOperationException("PqsqlCopyFrom.Start must be called before we can write data");
@@ -428,15 +428,15 @@ namespace Pqsql
 			switch (oid)
 			{
 				case PqsqlDbType.Int8:
-					PqsqlBinaryFormat.pqbf_set_int8(mExpBuf, i);
+					PqsqlBinaryFormat.pqbf_set_int8(mExpBuf, value);
 					destination_length = 8;
 					break;
 				case PqsqlDbType.Int4:
-					PqsqlBinaryFormat.pqbf_set_int4(mExpBuf, i);
+					PqsqlBinaryFormat.pqbf_set_int4(mExpBuf, value);
 					destination_length = 4;
 					break;
 				case PqsqlDbType.Int2:
-					PqsqlBinaryFormat.pqbf_set_int2(mExpBuf, i);
+					PqsqlBinaryFormat.pqbf_set_int2(mExpBuf, value);
 					destination_length = 2;
 					break;
 				default:
@@ -450,7 +450,7 @@ namespace Pqsql
 			}
 		}
 
-		public int WriteInt4(int i)
+		public int WriteInt4(int value)
 		{
 			if (mRowInfo == null)
 				throw new InvalidOperationException("PqsqlCopyFrom.Start must be called before we can write data");
@@ -473,16 +473,16 @@ namespace Pqsql
 			switch (oid)
 			{
 			case PqsqlDbType.Int8:
-				PqsqlBinaryFormat.pqbf_set_int8(mExpBuf, i);
+				PqsqlBinaryFormat.pqbf_set_int8(mExpBuf, value);
 				destination_length = 8;
 				break;
 			case PqsqlDbType.Int4:
-				PqsqlBinaryFormat.pqbf_set_int4(mExpBuf, i);
+				PqsqlBinaryFormat.pqbf_set_int4(mExpBuf, value);
 				destination_length = 4;
 				break;
 			case PqsqlDbType.Int2:
 				// dangerous, but let's try it
-				PqsqlBinaryFormat.pqbf_set_int2(mExpBuf, (short) i);
+				PqsqlBinaryFormat.pqbf_set_int2(mExpBuf, (short) value);
 				destination_length = 2;
 				break;
 			default:
@@ -496,7 +496,7 @@ namespace Pqsql
 			}
 		}
 
-		public int WriteInt8(long i)
+		public int WriteInt8(long value)
 		{
 			if (mRowInfo == null)
 				throw new InvalidOperationException("PqsqlCopyFrom.Start must be called before we can write data");
@@ -519,17 +519,17 @@ namespace Pqsql
 			switch (oid)
 			{
 				case PqsqlDbType.Int8:
-					PqsqlBinaryFormat.pqbf_set_int8(mExpBuf, i);
+					PqsqlBinaryFormat.pqbf_set_int8(mExpBuf, value);
 					destination_length = 8;
 					break;
 				case PqsqlDbType.Int4:
 					// dangerous, but let's try it
-					PqsqlBinaryFormat.pqbf_set_int4(mExpBuf, (int) i);
+					PqsqlBinaryFormat.pqbf_set_int4(mExpBuf, (int) value);
 					destination_length = 4;
 					break;
 				case PqsqlDbType.Int2:
 					// dangerous, but let's try it
-					PqsqlBinaryFormat.pqbf_set_int2(mExpBuf, (short) i);
+					PqsqlBinaryFormat.pqbf_set_int2(mExpBuf, (short) value);
 					destination_length = 2;
 					break;
 				default:
@@ -543,12 +543,12 @@ namespace Pqsql
 			}
 		}
 
-		public int WriteFloat4(float f)
+		public int WriteFloat4(float value)
 		{
 			long begin = LengthCheckReset();
 
 			// TODO try to infer destination datatype
-			PqsqlBinaryFormat.pqbf_set_float4(mExpBuf, f);
+			PqsqlBinaryFormat.pqbf_set_float4(mExpBuf, value);
 
 			unsafe
 			{
@@ -557,12 +557,12 @@ namespace Pqsql
 			}
 		}
 
-		public int WriteFloat8(double d)
+		public int WriteFloat8(double value)
 		{
 			long begin = LengthCheckReset();
 
 			// TODO try to infer destination datatype
-			PqsqlBinaryFormat.pqbf_set_float8(mExpBuf, d);
+			PqsqlBinaryFormat.pqbf_set_float8(mExpBuf, value);
 
 			unsafe
 			{
@@ -571,12 +571,12 @@ namespace Pqsql
 			}
 		}
 
-		public int WriteNumeric(decimal d)
+		public int WriteNumeric(decimal value)
 		{
 			long begin = LengthCheckReset();
 
 			// TODO try to infer destination datatype
-			PqsqlBinaryFormat.pqbf_set_numeric(mExpBuf, decimal.ToDouble(d));
+			PqsqlBinaryFormat.pqbf_set_numeric(mExpBuf, decimal.ToDouble(value));
 			long end = PqsqlBinaryFormat.pqbf_get_buflen(mExpBuf);
 
 			long len = end - begin;
@@ -587,12 +587,12 @@ namespace Pqsql
 			}
 		}
 
-		public int WriteText(string s)
+		public int WriteText(string value)
 		{
 			long begin = LengthCheckReset();
 			unsafe
 			{
-				fixed (char* sp = s)
+				fixed (char* sp = value)
 				{
 					PqsqlBinaryFormat.pqbf_set_unicode_text(mExpBuf, sp);
 				}
@@ -604,11 +604,11 @@ namespace Pqsql
 			}
 		}
 
-		public int WriteTimestamp(DateTime dt)
+		public int WriteTimestamp(DateTime value)
 		{
 			long begin = LengthCheckReset();
 
-			long ticks = dt.Ticks - PqsqlBinaryFormat.UnixEpochTicks;
+			long ticks = value.Ticks - PqsqlBinaryFormat.UnixEpochTicks;
 			long sec = ticks / TimeSpan.TicksPerSecond;
 			int usec = (int) (ticks % TimeSpan.TicksPerSecond / 10);
 
@@ -620,22 +620,22 @@ namespace Pqsql
 			}
 		}
 
-		public int WriteTime(DateTime dt)
+		public int WriteTime(DateTime value)
 		{
 			throw new NotImplementedException("WriteTime not implemented");
 		}
 
-		public int WriteDate(DateTime dt)
+		public int WriteDate(DateTime value)
 		{
 			throw new NotImplementedException("WriteDate not implemented");
 		}
 
-		public int WriteInterval(TimeSpan ts)
+		public int WriteInterval(TimeSpan value)
 		{
 			long begin = LengthCheckReset();
 
-			long total_ticks = ts.Ticks;
-			int total_days = ts.Days;
+			long total_ticks = value.Ticks;
+			int total_days = value.Days;
 			int month = (int) 365.25 * total_days / 12;
 			int num_days_month = (int) (12 * month / 365.25);
 			int day = total_days - num_days_month;

@@ -165,14 +165,14 @@ namespace Pqsql
 		}
 
 		// sets new position in the LO
-		public override long Seek(long offset, SeekOrigin whence)
+		public override long Seek(long offset, SeekOrigin origin)
 		{
 			if (mFd < 0)
 			{
 				throw new PqsqlException(string.Format(CultureInfo.InvariantCulture, "Cannot seek closed large object {0}", mOid));
 			}
 
-			mPos = PqsqlWrapper.lo_lseek64(mPGConn, mFd, offset, (int) whence);
+			mPos = PqsqlWrapper.lo_lseek64(mPGConn, mFd, offset, (int) origin);
 
 			if (mPos < 0)
 			{
