@@ -127,8 +127,7 @@ namespace Pqsql
 			get	{	return mCmdTimeout; }
 			set
 			{
-				int newTimeout = value * 1000; // mCmdTimeout is in msecs
-				mCmdTimeout = newTimeout;
+				mCmdTimeout = (int) Math.Min((long) value * 1000, int.MaxValue); // mCmdTimeout is in msecs
 			}
 		}
 		//
