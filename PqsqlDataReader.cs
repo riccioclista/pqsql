@@ -2161,7 +2161,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 							break;
 
 						string t = new string(tuples);
-						return Convert.ToInt32(t);
+						return Convert.ToInt32(t, CultureInfo.InvariantCulture);
 					}
 			}
 			return 0;
@@ -2248,7 +2248,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 					if (j < 0)
 					{
 						// throw error if we didn't find the corresponding parameter name in our parameter list
-						throw new PqsqlException(string.Format("Received unrecognized output parameter «{0}» when calling function «{1}»", colName, mCmd.CommandText))
+						throw new PqsqlException(string.Format(CultureInfo.InvariantCulture, "Received unrecognized output parameter «{0}» when calling function «{1}»", colName, mCmd.CommandText))
 						{
 							Hint = "Please adjust parameter names in PqsqlCommand.Parameters"
 						};
@@ -2287,7 +2287,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 			CommandBehavior behave = mBehaviour; // result fetching behaviour
 
 			// libpq does not want PQsetSingleRowMode with cursors, just turn it off
-			if (stmt.StartsWith("fetch ", true, CultureInfo.InvariantCulture))
+			if (stmt.StartsWith("fetch ", StringComparison.OrdinalIgnoreCase))
 			{
 				behave &= ~CommandBehavior.SingleRow;
 			}

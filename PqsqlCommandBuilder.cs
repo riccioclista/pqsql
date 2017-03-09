@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Data.Common;
 using System.Data;
+using System.Globalization;
 #if CODECONTRACTS
 using System.Diagnostics.Contracts;
 #endif
@@ -179,7 +180,8 @@ namespace Pqsql
 			PqsqlParameter pqp = p as PqsqlParameter;
 
 			if (pqp == null)
-				throw new InvalidCastException("Cannot ApplyParameterInfo on non-PqsqlParameter");
+				throw new InvalidCastException(string.Format(CultureInfo.InvariantCulture, "{0} is not a {1}", nameof(p), nameof(PqsqlParameter)));
+
 
 			if (pqp.SourceColumnNullMapping)
 			{
@@ -418,7 +420,7 @@ namespace Pqsql
 			if (string.IsNullOrEmpty(QuotePrefix))
 				return unquotedIdentifier;
 
-			return String.Format("{0}{1}{2}", QuotePrefix, unquotedIdentifier.Replace(QuotePrefix, QuotePrefix + QuotePrefix), QuoteSuffix ?? string.Empty);
+			return string.Format(CultureInfo.InvariantCulture, "{0}{1}{2}", QuotePrefix, unquotedIdentifier.Replace(QuotePrefix, QuotePrefix + QuotePrefix), QuoteSuffix ?? string.Empty);
 		}
 
 		//
@@ -487,13 +489,13 @@ namespace Pqsql
 				uqid = uqid.Replace(QuotePrefix + QuotePrefix, QuotePrefix);
 				len = uqid.Length;
 
-				if (uqid.StartsWith(QuotePrefix))
+				if (uqid.StartsWith(QuotePrefix, StringComparison.Ordinal))
 				{
 					beg++;
 				}
 			}
 
-			if (!string.IsNullOrEmpty(QuoteSuffix) && uqid.EndsWith(QuoteSuffix))
+			if (!string.IsNullOrEmpty(QuoteSuffix) && uqid.EndsWith(QuoteSuffix, StringComparison.Ordinal))
 			{
 				len = uqid.Length - beg - 1;
 			}

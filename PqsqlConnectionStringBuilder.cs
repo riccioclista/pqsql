@@ -1,6 +1,7 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Data.Common;
+using System.Globalization;
 #if CODECONTRACTS
 using System.Diagnostics.Contracts;
 #endif
@@ -226,7 +227,7 @@ namespace Pqsql
 				object timeout;
 				if (TryGetValue(connect_timeout, out timeout))
 				{
-					int it = Convert.ToInt32(timeout);
+					int it = Convert.ToInt32(timeout, CultureInfo.InvariantCulture);
 
 					if (it >= 2)
 						return;

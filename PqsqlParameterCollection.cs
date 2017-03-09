@@ -4,6 +4,7 @@ using System.Data.Common;
 using System.ComponentModel;
 using System.Collections;
 using System.Data;
+using System.Globalization;
 #if CODECONTRACTS
 using System.Diagnostics.Contracts;
 #endif
@@ -118,7 +119,7 @@ namespace Pqsql
 
 						if (oid == PqsqlDbType.Unknown) // cannot resolve oid for v
 						{
-								throw new PqsqlException(string.Format("Could not infer datatype for PqsqlParameter {0} (TypeCode={1})", p.ParameterName, vtc));
+								throw new PqsqlException(string.Format(CultureInfo.InvariantCulture, "Could not infer datatype for PqsqlParameter {0} (TypeCode={1})", p.ParameterName, vtc));
 						}
 					}
 
@@ -126,7 +127,7 @@ namespace Pqsql
 					if (tn == null)
 					{
 						// do not try to fetch datatype specs with PqsqlTypeRegistry.FetchType() here, just bail out
-						throw new NotSupportedException(string.Format("Datatype {0} is not supported", oid & ~PqsqlDbType.Array));
+						throw new NotSupportedException(string.Format(CultureInfo.InvariantCulture, "Datatype {0} is not supported", oid & ~PqsqlDbType.Array));
 					}
 
 					// try to convert to the proper datatype in case the user supplied a wrong PqsqlDbType
@@ -191,7 +192,7 @@ namespace Pqsql
 
 			// in case we would have an invalid cast from object to target type
 			// we try to convert v to the registered ProviderType next
-			return Convert.ChangeType(v, dtc);
+			return Convert.ChangeType(v, dtc, CultureInfo.InvariantCulture);
 		}
 
 		// try to infer PqsqlDbType from TypeCode

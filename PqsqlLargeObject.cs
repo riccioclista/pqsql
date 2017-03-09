@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel;
+using System.Globalization;
 #if CODECONTRACTS
 using System.Diagnostics.Contracts;
 #endif
@@ -114,7 +115,7 @@ namespace Pqsql
 
 			if (ret < 0)
 			{
-				throw new PqsqlException(string.Format("Could not unlink large object {0}: {1}", oid, mConn.GetErrorMessage()));
+				throw new PqsqlException(string.Format(CultureInfo.InvariantCulture, "Could not unlink large object {0}: {1}", oid, mConn.GetErrorMessage()));
 			}
 
 			return ret;
@@ -138,7 +139,7 @@ namespace Pqsql
 
 			if (mFd < 0)
 			{
-				throw new PqsqlException(string.Format("Cannot open large object {0}: {1}", oid, mConn.GetErrorMessage()));
+				throw new PqsqlException(string.Format(CultureInfo.InvariantCulture, "Cannot open large object {0}: {1}", oid, mConn.GetErrorMessage()));
 			}
 
 			mOid = oid;
@@ -168,14 +169,14 @@ namespace Pqsql
 		{
 			if (mFd < 0)
 			{
-				throw new PqsqlException(string.Format("Cannot seek closed large object {0}", mOid));
+				throw new PqsqlException(string.Format(CultureInfo.InvariantCulture, "Cannot seek closed large object {0}", mOid));
 			}
 
 			mPos = PqsqlWrapper.lo_lseek64(mPGConn, mFd, offset, (int) whence);
 
 			if (mPos < 0)
 			{
-				throw new PqsqlException(string.Format("Could not seek large object {0}: {1}", mOid, mConn.GetErrorMessage()));
+				throw new PqsqlException(string.Format(CultureInfo.InvariantCulture, "Could not seek large object {0}: {1}", mOid, mConn.GetErrorMessage()));
 			}
 
 			return mPos;
@@ -186,14 +187,14 @@ namespace Pqsql
 		{
 			if (mFd < 0)
 			{
-				throw new PqsqlException(string.Format("Cannot truncate closed large object {0}", mOid));
+				throw new PqsqlException(string.Format(CultureInfo.InvariantCulture, "Cannot truncate closed large object {0}", mOid));
 			}
 
 			int ret = PqsqlWrapper.lo_truncate64(mPGConn, mFd, value);
 
 			if (ret < 0)
 			{
-				throw new PqsqlException(string.Format("Could not truncate large object {0} to {1} bytes: {2}", mOid, value, mConn.GetErrorMessage()));
+				throw new PqsqlException(string.Format(CultureInfo.InvariantCulture, "Could not truncate large object {0} to {1} bytes: {2}", mOid, value, mConn.GetErrorMessage()));
 			}
 		}
 
@@ -218,7 +219,7 @@ namespace Pqsql
 				throw new ArgumentOutOfRangeException("count");
 
 			if (mFd < 0)
-				throw new PqsqlException(string.Format("Cannot read closed large object {0}", mOid));
+				throw new PqsqlException(string.Format(CultureInfo.InvariantCulture, "Cannot read closed large object {0}", mOid));
 
 			int read;
 
@@ -236,7 +237,7 @@ namespace Pqsql
 				return read;
 			}
 
-			throw new PqsqlException(string.Format("Could not read large object {0}: {1}" , mOid, mConn.GetErrorMessage()));
+			throw new PqsqlException(string.Format(CultureInfo.InvariantCulture, "Could not read large object {0}: {1}", mOid, mConn.GetErrorMessage()));
 		}
 
 		// write to LO
@@ -260,7 +261,7 @@ namespace Pqsql
 				throw new ArgumentOutOfRangeException("count");
 
 			if (mFd < 0)
-				throw new PqsqlException(string.Format("Cannot write closed large object {0}", mOid));
+				throw new PqsqlException(string.Format(CultureInfo.InvariantCulture, "Cannot write closed large object {0}", mOid));
 
 			int ret = count;
 
@@ -284,7 +285,7 @@ namespace Pqsql
 	
 			if (ret < 0)
 			{
-				throw new PqsqlException(string.Format("Could not write to large object {0}: {1}", mOid, mConn.GetErrorMessage()));
+				throw new PqsqlException(string.Format(CultureInfo.InvariantCulture, "Could not write to large object {0}: {1}", mOid, mConn.GetErrorMessage()));
 			}
 		}
 

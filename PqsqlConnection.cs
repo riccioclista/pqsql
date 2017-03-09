@@ -2,6 +2,7 @@
 using System.Data.Common;
 using System.Data;
 using System.ComponentModel;
+using System.Globalization;
 #if CODECONTRACTS
 using System.Diagnostics.Contracts;
 #endif
@@ -166,7 +167,7 @@ namespace Pqsql
 
 				if (mConnectionStringBuilder.TryGetValue(PqsqlConnectionStringBuilder.connect_timeout, out timeout))
 				{
-					return Convert.ToInt32((string) timeout);
+					return Convert.ToInt32((string) timeout, CultureInfo.InvariantCulture);
 				}
 
 				return 0;
@@ -258,7 +259,7 @@ namespace Pqsql
 				{
 					mServerVersion = PqsqlWrapper.PQserverVersion(mConnection);
 				}
-				return mServerVersion.ToString(); 
+				return mServerVersion.ToString(CultureInfo.InvariantCulture);
 			}
 		}
 

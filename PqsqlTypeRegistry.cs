@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Globalization;
 #if CODECONTRACTS
 using System.Diagnostics.Contracts;
 #endif
@@ -53,7 +54,7 @@ namespace Pqsql
 		// adds o as double array element to PQExpBuffer a
 		private static readonly Action<IntPtr, object> setNumericArray = (a, o) =>
 		{
-			double d = Convert.ToDouble(o);
+			double d = Convert.ToDouble(o, CultureInfo.InvariantCulture);
 
 			long len0 = PqsqlBinaryFormat.pqbf_get_buflen(a); // get start position
 
@@ -202,7 +203,7 @@ namespace Pqsql
 					ArrayDbType=PqsqlDbType.NumericArray,
 					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetNumeric(res,row,ord,typmod),
 					SetValue=(pb, val, oid) => {
-						double d = Convert.ToDouble(val);
+						double d = Convert.ToDouble(val, CultureInfo.InvariantCulture);
 						PqsqlBinaryFormat.pqbf_add_numeric(pb, d);
 					},
 					SetArrayItem = setNumericArray
@@ -839,7 +840,7 @@ namespace Pqsql
 			if (tn == null)
 			{
 				// do not try to fetch datatype specs with PqsqlTypeRegistry.FetchType() here, just bail out
-				throw new NotSupportedException(string.Format("Datatype {0} is not supported", oid & ~PqsqlDbType.Array));
+				throw new NotSupportedException(string.Format(CultureInfo.InvariantCulture, "Datatype {0} is not supported", oid & ~PqsqlDbType.Array));
 			}
 
 			return tn.DbType;
