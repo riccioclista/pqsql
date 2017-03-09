@@ -174,7 +174,7 @@ namespace Pqsql
 		}
 
 		// convert v of typecode vtc to typecode dtc
-		private object ConvertParameterValue(object v, TypeCode vtc, TypeCode dtc, PqsqlDbType oid)
+		private static object ConvertParameterValue(object v, TypeCode vtc, TypeCode dtc, PqsqlDbType oid)
 		{
 			if (vtc == TypeCode.String && string.IsNullOrEmpty(v as string))
 			{
@@ -196,7 +196,7 @@ namespace Pqsql
 		}
 
 		// try to infer PqsqlDbType from TypeCode
-		private PqsqlDbType InferValueType(TypeCode vtc)
+		private static PqsqlDbType InferValueType(TypeCode vtc)
 		{
 			PqsqlDbType oid;
 

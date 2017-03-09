@@ -705,7 +705,7 @@ namespace Pqsql
 
 
 		// resize statements to i+1, and set i to sb
-		private bool ResizeAndSetStatements(ref StringBuilder statement, ref string[] statements, int i)
+		private static bool ResizeAndSetStatements(ref StringBuilder statement, ref string[] statements, int i)
 		{
 #if CODECONTRACTS
 			Contract.Requires<ArgumentNullException>(statements != null);

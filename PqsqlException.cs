@@ -43,7 +43,7 @@ namespace Pqsql
 			mHint = CreateHint(result);
 		}
 
-		private unsafe string CreateHint(IntPtr result)
+		private static unsafe string CreateHint(IntPtr result)
 		{
 			sbyte* hint = PqsqlWrapper.PQresultErrorField(result, PqsqlDiag.PG_DIAG_MESSAGE_HINT);
 			return new string(hint);
