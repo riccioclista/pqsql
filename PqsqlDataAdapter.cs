@@ -6,22 +6,6 @@ using System.Diagnostics.Contracts;
 
 namespace Pqsql
 {
-
-	/// <summary>
-	/// Represents the method that handles the <see cref="PqsqlDataAdapter.RowUpdating">RowUpdating</see> events.
-	/// </summary>
-	/// <param name="sender">The source of the event.</param>
-	/// <param name="e">A <see cref="RowUpdatingEventArgs">RowUpdatingEventArgs</see> that contains the event data.</param>
-	public delegate void PqsqlRowUpdatingEventHandler(object sender, RowUpdatingEventArgs e);
-
-	/// <summary>
-	/// Represents the method that handles the <see cref="PqsqlDataAdapter.RowUpdated">RowUpdated</see> events.
-	/// </summary>
-	/// <param name="sender">The source of the event.</param>
-	/// <param name="e">A <see cref="RowUpdatedEventArgs">RowUpdatedEventArgs</see> that contains the event data.</param>
-	public delegate void PqsqlRowUpdatedEventHandler(object sender, RowUpdatedEventArgs e);
-
-
 	public sealed class PqsqlDataAdapter : DbDataAdapter
 	{
 
@@ -56,12 +40,12 @@ namespace Pqsql
 		/// <summary>
 		/// Row updating event.
 		/// </summary>
-		public event PqsqlRowUpdatingEventHandler RowUpdating;
+		public event EventHandler<RowUpdatingEventArgs> RowUpdating;
 
 		/// <summary>
 		/// Row updated event.
 		/// </summary>
-		public event PqsqlRowUpdatedEventHandler RowUpdated;
+		public event EventHandler<RowUpdatedEventArgs> RowUpdated;
 
 		/// <summary>
 		/// Raises the RowUpdating event of a .NET Framework data provider.
@@ -69,11 +53,7 @@ namespace Pqsql
 		/// <param name="value">An <see cref="T:System.Data.Common.RowUpdatingEventArgs"/>  that contains the event data. </param>
 		protected override void OnRowUpdating(RowUpdatingEventArgs value)
 		{
-			PqsqlRowUpdatingEventHandler handler = RowUpdating;
-			if (handler != null)
-			{
-				handler(this, value);
-			}
+			RowUpdating?.Invoke(this, value);
 		}
 
 		/// <summary>
@@ -82,11 +62,7 @@ namespace Pqsql
 		/// <param name="value">A <see cref="T:System.Data.Common.RowUpdatedEventArgs"/> that contains the event data. </param>
 		protected override void OnRowUpdated(RowUpdatedEventArgs value)
 		{
-			PqsqlRowUpdatedEventHandler handler = RowUpdated;
-			if (handler != null)
-			{
-				handler(this, value);
-			}
+			RowUpdated?.Invoke(this, value);
 		}
 
 	}

@@ -455,7 +455,7 @@ namespace Pqsql
 			if (pa == null)
 				throw new ArgumentException("adapter needs to be a PqsqlDataAdapter");
 
-			PqsqlRowUpdatingEventHandler handler = (s, e) => RowUpdatingHandler(e);
+			EventHandler<RowUpdatingEventArgs> handler = (s, e) => RowUpdatingHandler(e);
 
 			// unregister if we had registered adapter before
 			if (adapter == DataAdapter)
