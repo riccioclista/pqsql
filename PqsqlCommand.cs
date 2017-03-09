@@ -553,8 +553,27 @@ namespace Pqsql
 			// save behavior
 			mCmdBehavior = behavior;
 
-			PqsqlDataReader reader = new PqsqlDataReader(this, behavior, statements);
-			reader.NextResult(); // always execute first command
+			PqsqlDataReader r = null;
+			PqsqlDataReader reader;
+
+			try
+			{
+				r = new PqsqlDataReader(this, behavior, statements);
+				r.NextResult(); // always execute first command
+
+				// swap r with reader
+				reader = r;
+				r = null;
+			}
+			finally
+			{
+				if (r != null) // only dispose PqsqlDataReader if r.NextResult() throwed an exception
+				{
+					r.Close();
+					r.Dispose();
+				}
+			}
+
 			return reader;
 		}
 
