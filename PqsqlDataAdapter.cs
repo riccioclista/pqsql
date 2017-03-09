@@ -46,8 +46,10 @@ namespace Pqsql
 			Contract.Requires<ArgumentNullException>(selectCommandText != null);
 			Contract.Requires<ArgumentNullException>(selectConnectionString != null);
 #else
-			if (selectCommandText == null || selectConnectionString == null)
-				throw new ArgumentNullException();
+			if (selectCommandText == null)
+				throw new ArgumentNullException(nameof(selectCommandText));
+			if (selectConnectionString == null)
+				throw new ArgumentNullException(nameof(selectConnectionString));
 #endif
 		}
 

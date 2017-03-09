@@ -147,14 +147,14 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 			Contract.Ensures(mConn != null);
 #else
 			if (command == null)
-				throw new ArgumentNullException("command");
+				throw new ArgumentNullException(nameof(command));
 #endif
 
 			mCmd = command;
 
 			mConn = command.Connection;
 			if (mConn == null)
-				throw new ArgumentNullException("PqsqlDataReader cannot work on closed connection");
+				throw new ArgumentNullException(nameof(command), "PqsqlDataReader cannot work on closed connection");
 
 #if CODECONTRACTS
 			Contract.Assert(mConn != null);
@@ -480,7 +480,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 			}
 
 			if (ndim < 0 || ndim > maxdim)
-				throw new IndexOutOfRangeException("ndim");
+				throw new IndexOutOfRangeException(nameof(ndim));
 
 			dim = new int[ndim];
 			lbound = new int[ndim];
@@ -504,7 +504,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 			if (ndim != 1)
 				throw new NotImplementedException("Arrays with ndim != 1 not supported yet");
 			if (a == null)
-				throw new ArgumentNullException("a");
+				throw new ArgumentNullException(nameof(a));
 #endif
 
 			int[] idx = new int[ndim];
@@ -749,7 +749,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 		//     The specified cast is not valid.
 		public override char GetChar(int ordinal)
 		{
-			throw new NotImplementedException("GetChar");
+			throw new NotImplementedException(nameof(GetChar));
 		}
 		//
 		// Summary:
@@ -777,7 +777,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 		//     The actual number of characters read.
 		public override long GetChars(int ordinal, long dataOffset, char[] buffer, int bufferOffset, int length)
 		{
-			throw new NotImplementedException("GetChars");
+			throw new NotImplementedException(nameof(GetChars));
 		}
 		//
 		// Summary:
@@ -793,7 +793,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 		[EditorBrowsable(EditorBrowsableState.Never)]
 		public new PqsqlDataReader GetData(int ordinal)
 		{
-			throw new NotImplementedException("GetData");
+			throw new NotImplementedException(nameof(GetData));
 		}
 		//
 		// Summary:
@@ -1504,7 +1504,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 			Contract.Requires<ArgumentNullException>(!string.IsNullOrEmpty(name));
 #else
 			if (string.IsNullOrEmpty(name))
-				throw new ArgumentNullException("name");
+				throw new ArgumentNullException(nameof(name));
 #endif
 
 #if CODECONTRACTS

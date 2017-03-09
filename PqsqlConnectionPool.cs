@@ -68,7 +68,7 @@ namespace Pqsql
 			Contract.Requires<ArgumentNullException>(o != null);
 #else
 			if (o == null)
-				throw new ArgumentNullException("o");
+				throw new ArgumentNullException(nameof(o));
 #endif
 
 			List<IntPtr> closeConnections = o as List<IntPtr>;
@@ -152,7 +152,7 @@ namespace Pqsql
 			Contract.Requires<ArgumentNullException>(connStringBuilder != null);
 #else
 			if (connStringBuilder == null)
-				throw new ArgumentNullException("connStringBuilder");
+				throw new ArgumentNullException(nameof(connStringBuilder));
 #endif
 
 			// setup null-terminated key-value arrays for the connection
@@ -187,7 +187,7 @@ namespace Pqsql
 			Contract.Requires<ArgumentNullException>(connStringBuilder != null);
 #else
 			if (connStringBuilder == null)
-				throw new ArgumentNullException("connStringBuilder");
+				throw new ArgumentNullException(nameof(connStringBuilder));
 #endif
 
 			Queue<ConnectionInfo> queue;
@@ -312,7 +312,7 @@ namespace Pqsql
 			Contract.Requires<ArgumentNullException>(connStringBuilder != null);
 #else
 			if (connStringBuilder == null)
-				throw new ArgumentNullException("connStringBuilder");
+				throw new ArgumentNullException(nameof(connStringBuilder));
 #endif
 
 			if (pgConnHandle == IntPtr.Zero)

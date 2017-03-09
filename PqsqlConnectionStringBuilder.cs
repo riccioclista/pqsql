@@ -242,35 +242,32 @@ namespace Pqsql
 
 		// E.g.
 		// host=localhost; port=5432; user=postgres; password=P4$$word; dbname=postgres; connect_timeout=10
-		public PqsqlConnectionStringBuilder(string s)
+		public PqsqlConnectionStringBuilder(string connectionString)
 		{
 #if CODECONTRACTS
-			Contract.Requires<ArgumentNullException>(s != null); 
+			Contract.Requires<ArgumentNullException>(connectionString != null);
 #else
-			if (s == null)
-				throw new ArgumentNullException("s");
+			if (connectionString == null)
+				throw new ArgumentNullException(nameof(connectionString));
 #endif
 
-			ConnectionString = s;
+			ConnectionString = connectionString;
 		}
 
-		public bool Equals(PqsqlConnectionStringBuilder o)
+		public bool Equals(PqsqlConnectionStringBuilder connectionStringBuilder)
 		{
-			if (ReferenceEquals(null, o))
+			if (ReferenceEquals(null, connectionStringBuilder))
 				return false;
-			if (ReferenceEquals(this, o))
+			if (ReferenceEquals(this, connectionStringBuilder))
 				return true;
-			return o.ConnectionString == ConnectionString;
+			return connectionStringBuilder.ConnectionString == ConnectionString;
 		}
 
-		public override bool Equals(object o)
+		public override bool Equals(object obj)
 		{
-#if CODECONTRACTS
-			Contract.Assume(o != null);
-#endif
-			if (o.GetType() != typeof(PqsqlConnectionStringBuilder))
+			if (obj == null || obj.GetType() != typeof(PqsqlConnectionStringBuilder))
 				return false;
-			return Equals((PqsqlConnectionStringBuilder) o);
+			return Equals((PqsqlConnectionStringBuilder) obj);
 		}
 
 		public override int GetHashCode()

@@ -415,7 +415,7 @@ namespace Pqsql
 		public override string QuoteIdentifier(string unquotedIdentifier)
 		{
 			if (unquotedIdentifier == null)
-				throw new ArgumentNullException("unquotedIdentifier", "Unquoted identifier must not be null");
+				throw new ArgumentNullException(nameof(unquotedIdentifier), "Unquoted identifier must not be null");
 
 			if (string.IsNullOrEmpty(QuotePrefix))
 				return unquotedIdentifier;
@@ -478,7 +478,7 @@ namespace Pqsql
 		public override string UnquoteIdentifier(string quotedIdentifier)
 		{
 			if (quotedIdentifier == null)
-				throw new ArgumentNullException("quotedIdentifier", "Quoted identifier parameter cannot be null");
+				throw new ArgumentNullException(nameof(quotedIdentifier), "Quoted identifier parameter cannot be null");
 
 			string uqid = quotedIdentifier.Trim();
 			int beg = 0;

@@ -32,7 +32,7 @@ namespace Pqsql
 			Contract.Requires<ArgumentNullException>(conn != null);
 #else
 			if (conn == null)
-				throw new ArgumentNullException("conn");
+				throw new ArgumentNullException(nameof(conn));
 #endif
 		}
 
@@ -43,10 +43,10 @@ namespace Pqsql
 			Contract.Requires<ArgumentException>(isolationLevel != IsolationLevel.Chaos);
 #else
 			if (conn == null)
-				throw new ArgumentNullException("conn");
+				throw new ArgumentNullException(nameof(conn));
 
 			if (isolationLevel == IsolationLevel.Chaos)
-				throw new ArgumentException("isolationLevel");
+				throw new ArgumentException("unsupported isolation level", nameof(isolationLevel));
 #endif
 
 			switch (isolationLevel)

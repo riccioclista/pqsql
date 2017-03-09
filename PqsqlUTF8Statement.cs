@@ -16,7 +16,7 @@ namespace Pqsql
 			Contract.Requires<ArgumentNullException>(s != null);
 #else
 			if (s == null)
-				throw new ArgumentNullException("s");
+				throw new ArgumentNullException(nameof(s));
 #endif
 
 			byte[] b = Encoding.UTF8.GetBytes(s); // not null terminated
@@ -33,7 +33,7 @@ namespace Pqsql
 			Contract.Requires<ArgumentNullException>(sb != null);
 #else
 			if (sb == null)
-				throw new ArgumentNullException("sb");
+				throw new ArgumentNullException(nameof(sb));
 #endif
 
 			return CreateUTF8Statement(sb.ToString());

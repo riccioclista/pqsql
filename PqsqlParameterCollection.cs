@@ -359,7 +359,7 @@ namespace Pqsql
 				Contract.Requires<IndexOutOfRangeException>(index >= 0);
 #else
 				if (index < 0)
-					throw new ArgumentException("index");
+					throw new ArgumentException(nameof(index));
 #endif
 
 #if CODECONTRACTS
@@ -374,12 +374,17 @@ namespace Pqsql
 				Contract.Requires<IndexOutOfRangeException>(index >= 0);
 #else
 				if (index < 0)
-					throw new ArgumentException("index");
+					throw new ArgumentException(nameof(index));
 #endif
 
 #if CODECONTRACTS
 				Contract.Assume(index < mParamList.Count);
 #endif
+
+				if (value == null)
+				{
+					throw new ArgumentNullException(nameof(value));	
+				}
 
 				PqsqlParameter old = mParamList[index];
 
@@ -674,7 +679,7 @@ namespace Pqsql
 			Contract.Requires<ArgumentNullException>(value != null);
 #else
 			if (value == null)
-				throw new ArgumentNullException("value");
+				throw new ArgumentNullException(nameof(value));
 #endif
 
 #if CODECONTRACTS
@@ -685,9 +690,9 @@ namespace Pqsql
 			PqsqlParameter val = value as PqsqlParameter;
 
 			if (val == null)
-				throw new InvalidCastException("value is not a PqsqlParameter");
+				throw new InvalidCastException(nameof(value) + " is not a PqsqlParameter");
 			if (val.ParameterName == null)
-				throw new ArgumentNullException("ParameterName is null");
+				throw new ArgumentNullException(nameof(value), "ParameterName is null");
 
 			PqsqlParameter old = mParamList[index];
 			if (old != null && old.ParameterName != null)
@@ -712,7 +717,7 @@ namespace Pqsql
 			Contract.Requires<ArgumentNullException>(value != null);
 #else
 			if (value == null)
-				throw new ArgumentNullException("value");
+				throw new ArgumentNullException(nameof(value));
 #endif
 
 			int i = IndexOf(value);

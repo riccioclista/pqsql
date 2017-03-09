@@ -68,7 +68,7 @@ namespace Pqsql
 			Contract.Requires<ArgumentNullException>(connectionString != null);
 #else
 			if (connectionString == null)
-				throw new ArgumentNullException("connectionString");
+				throw new ArgumentNullException(nameof(connectionString));
 #endif
 		}
 
@@ -83,7 +83,7 @@ namespace Pqsql
 			Contract.Requires<ArgumentNullException>(builder != null);
 #else
 			if (builder == null)
-				throw new ArgumentNullException("builder");
+				throw new ArgumentNullException(nameof(builder));
 #endif
 
 			Init();

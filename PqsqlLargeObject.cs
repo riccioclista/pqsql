@@ -32,7 +32,7 @@ namespace Pqsql
 			Contract.Requires<ArgumentNullException>(conn != null);
 #else
 			if (conn == null)
-				throw new ArgumentNullException("conn");
+				throw new ArgumentNullException(nameof(conn));
 #endif
 
 			// All large object manipulation using these functions must take place within an SQL transaction block,
@@ -202,7 +202,7 @@ namespace Pqsql
 		public override int Read(byte[] buffer, int offset, int count)
 		{
 			if (buffer == null)
-				throw new ArgumentNullException("buffer");
+				throw new ArgumentNullException(nameof(buffer));
 
 			if (!CanRead)
 				throw new NotSupportedException("Reading from large object is turned off");
@@ -213,10 +213,10 @@ namespace Pqsql
 				throw new ArgumentException("offset or count larger than buffer");
 			
 			if (offset < 0 || offset >= blen)
-				throw new ArgumentOutOfRangeException("offset");
+				throw new ArgumentOutOfRangeException(nameof(offset));
 
 			if (count < 0)
-				throw new ArgumentOutOfRangeException("count");
+				throw new ArgumentOutOfRangeException(nameof(count));
 
 			if (mFd < 0)
 				throw new PqsqlException(string.Format(CultureInfo.InvariantCulture, "Cannot read closed large object {0}", mOid));
@@ -244,7 +244,7 @@ namespace Pqsql
 		public override void Write(byte[] buffer, int offset, int count)
 		{
 			if (buffer == null)
-				throw new ArgumentNullException("buffer");
+				throw new ArgumentNullException(nameof(buffer));
 
 			if (!CanWrite)
 				throw new NotSupportedException("Writing to large object is turned off");
@@ -255,10 +255,10 @@ namespace Pqsql
 				throw new ArgumentException("offset or count larger than buffer");
 
 			if (offset < 0)
-				throw new ArgumentOutOfRangeException("offset");
+				throw new ArgumentOutOfRangeException(nameof(offset));
 
 			if (count < 0)
-				throw new ArgumentOutOfRangeException("count");
+				throw new ArgumentOutOfRangeException(nameof(count));
 
 			if (mFd < 0)
 				throw new PqsqlException(string.Format(CultureInfo.InvariantCulture, "Cannot write closed large object {0}", mOid));

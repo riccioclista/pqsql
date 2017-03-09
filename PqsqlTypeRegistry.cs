@@ -764,9 +764,9 @@ namespace Pqsql
 			Contract.Ensures(Contract.Result<PqsqlTypeName>().ProviderType != null);
 #else
 			if (oid == 0)
-				throw new ArgumentOutOfRangeException("Datatype with oid=0 (InvalidOid) not supported");
+				throw new ArgumentOutOfRangeException(nameof(oid), "Datatype with oid=0 (InvalidOid) not supported");
 			if (connstring == null)
-				throw new ArgumentNullException("connstring");
+				throw new ArgumentNullException(nameof(connstring));
 #endif
 
 			// try to guess the type mapping
@@ -853,7 +853,7 @@ namespace Pqsql
 			Contract.Requires<ArgumentNullException>(n != null);
 #else
 			if (n == null)
-				throw new ArgumentNullException("n");
+				throw new ArgumentNullException(nameof(n));
 #endif
 
 			oid &= ~PqsqlDbType.Array; // remove Array flag

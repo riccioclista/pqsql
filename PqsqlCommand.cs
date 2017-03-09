@@ -111,7 +111,7 @@ namespace Pqsql
 			set
 			{
 				if (value == null)
-					throw new ArgumentNullException("CommandText");
+					throw new ArgumentNullException(nameof(value));
 				mCmdText = value;
 			}
 		}
@@ -302,7 +302,7 @@ namespace Pqsql
 						mUpdateRowSource = value;
 						break;
 					default:
-						throw new ArgumentOutOfRangeException();
+						throw new ArgumentOutOfRangeException(nameof(value));
 				}
 			}
 		}
@@ -696,11 +696,13 @@ namespace Pqsql
 			Contract.Ensures(statement != null);
 			Contract.Ensures(statements != null);
 #else
-			if (statements == null || statement == null)
-				throw new ArgumentNullException();
+			if (statements == null)
+				throw new ArgumentNullException(nameof(statements));
+			if (statement == null)
+				throw new ArgumentNullException(nameof(statement));
 
 			if (i < 0)
-				throw new IndexOutOfRangeException("i");
+				throw new ArgumentOutOfRangeException(nameof(i));
 #endif
 
 			string stm = statement.ToString().TrimStart();
@@ -728,8 +730,12 @@ namespace Pqsql
 			Contract.Ensures(paramName != null);
 			Contract.Ensures(paramIndex != null);
 #else
-			if (statement == null || paramName == null || paramIndex == null)
-				throw new ArgumentNullException();
+			if (statement == null)
+				throw new ArgumentNullException(nameof(statement));
+			if (paramName == null)
+				throw new ArgumentNullException(nameof(paramName));
+			if (paramIndex == null)
+				throw new ArgumentNullException(nameof(paramIndex));
 #endif
 
 			string p = paramName.ToString();
