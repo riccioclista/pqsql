@@ -9,6 +9,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pqsql", "Pqsql.csproj", "{B
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PqsqlTests", "PqsqlTests\PqsqlTests.csproj", "{ECC585A1-94F7-4E92-BE1C-20CC48079083}"
+	ProjectSection(ProjectDependencies) = postProject
+		{49C56B70-6C43-4038-B493-6146E4C98078} = {49C56B70-6C43-4038-B493-6146E4C98078}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libpqbinfmt", "libpqbinfmt\libpqbinfmt.vcxproj", "{49C56B70-6C43-4038-B493-6146E4C98078}"
 EndProject
@@ -43,7 +46,6 @@ Global
 		{ECC585A1-94F7-4E92-BE1C-20CC48079083}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{ECC585A1-94F7-4E92-BE1C-20CC48079083}.Release|Any CPU.Build.0 = Release|Any CPU
 		{ECC585A1-94F7-4E92-BE1C-20CC48079083}.Release|x64.ActiveCfg = Release|Any CPU
-		{ECC585A1-94F7-4E92-BE1C-20CC48079083}.Release|x64.Build.0 = Release|Any CPU
 		{ECC585A1-94F7-4E92-BE1C-20CC48079083}.Release|x86.ActiveCfg = Release|Any CPU
 		{ECC585A1-94F7-4E92-BE1C-20CC48079083}.Release|x86.Build.0 = Release|Any CPU
 		{49C56B70-6C43-4038-B493-6146E4C98078}.Debug|Any CPU.ActiveCfg = Debug|x64
