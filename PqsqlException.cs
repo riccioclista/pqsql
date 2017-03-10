@@ -15,20 +15,29 @@ namespace Pqsql
 		// hint string retrieved from query results
 		private string mHint = string.Empty;
 
+		public PqsqlException()
+			: base("", (int)PqsqlState.WARNING)
+		{ }
 
 		public PqsqlException(string message)
 			: base(message)
-		{ }
-
-		public PqsqlException(string message, int errorCode)
-			: base(message, errorCode)
 		{ }
 
 		public PqsqlException(string message, Exception innerException)
 			: base(message, innerException)
 		{ }
 
-		public PqsqlException(string message, IntPtr result)
+		private PqsqlException(SerializationInfo info, StreamingContext context)
+			: base(info, context)
+		{
+			mHint = info.GetString("Hint");
+		}
+
+		internal PqsqlException(string message, int errorCode)
+			: base(message, errorCode)
+		{ }
+
+		internal PqsqlException(string message, IntPtr result)
 			: base(message, CreateErrorCode(result))
 		{
 			mHint = CreateHint(result);
@@ -99,7 +108,10 @@ namespace Pqsql
 
 		public override void GetObjectData(SerializationInfo info, StreamingContext context)
 		{
-			info.AddValue("mHint", mHint);
+			if (info != null)
+			{
+				info.AddValue("Hint", mHint);
+			}
 			base.GetObjectData(info, context);
 		}
 
