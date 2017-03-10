@@ -96,30 +96,25 @@ namespace Pqsql
 			sb.AppendFormat("SELECT {0} FROM {1} LIMIT 0", (object) ColumnList ?? '*' , Table);
 
 			// fetch number of columns and store column information
-			using
-			(
-				PqsqlCommand cmd = new PqsqlCommand(mConn)
-				{
-					CommandText = sb.ToString(), 
-					CommandType = CommandType.Text,
-					CommandTimeout = CopyTimeout
-				}
-			)
-			using
-			(
-				PqsqlDataReader r = cmd.ExecuteReader(CommandBehavior.Default)
-			)
+			using (PqsqlCommand cmd = new PqsqlCommand(mConn))
 			{
-				// just pick current row information
-				PqsqlColInfo[] src = r.RowInformation;
+				cmd.CommandText = sb.ToString();
+				cmd.CommandType = CommandType.Text;
+				cmd.CommandTimeout = CopyTimeout;
 
-				if (src == null)
-					throw new PqsqlException("Cannot retrieve RowInformation for table " + Table);
+				using (PqsqlDataReader r = cmd.ExecuteReader(CommandBehavior.Default))
+				{
+					// just pick current row information
+					PqsqlColInfo[] src = r.RowInformation;
 
-				mColumns = src.Length;
-				mRowInfo = new PqsqlColInfo[mColumns];
+					if (src == null)
+						throw new PqsqlException("Cannot retrieve RowInformation for table " + Table);
 
-				Array.Copy(src, mRowInfo, mColumns);
+					mColumns = src.Length;
+					mRowInfo = new PqsqlColInfo[mColumns];
+
+					Array.Copy(src, mRowInfo, mColumns);
+				}
 			}
 
 			// reset current field position
