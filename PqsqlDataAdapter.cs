@@ -14,18 +14,29 @@ namespace Pqsql
 		}
 
 		public PqsqlDataAdapter(DbCommand selectCommand)
-    {
-      SelectCommand = selectCommand;
-    }
-
-		public PqsqlDataAdapter(String selectCommandText, PqsqlConnection selectConnection)
-			: this(new PqsqlCommand(selectCommandText, selectConnection))
-    {
+		{
+			SelectCommand = selectCommand;
 		}
 
-		public PqsqlDataAdapter(String selectCommandText, String selectConnectionString)
-			: this(selectCommandText, new PqsqlConnection(selectConnectionString))
-    {
+		public PqsqlDataAdapter(string selectCommandText, PqsqlConnection selectConnection)
+		{
+			PqsqlCommand cmd = null;
+
+			try
+			{
+				cmd = new PqsqlCommand(selectCommandText, selectConnection);
+				SelectCommand = cmd;
+
+				cmd = null;
+			}
+			finally
+			{
+				cmd?.Dispose();
+			}
+		}
+
+		public PqsqlDataAdapter(string selectCommandText, string selectConnectionString)
+		{
 #if CODECONTRACTS
 			Contract.Requires<ArgumentNullException>(selectCommandText != null);
 			Contract.Requires<ArgumentNullException>(selectConnectionString != null);
@@ -35,6 +46,29 @@ namespace Pqsql
 			if (selectConnectionString == null)
 				throw new ArgumentNullException(nameof(selectConnectionString));
 #endif
+
+			PqsqlConnection conn = null;
+			PqsqlCommand cmd = null;
+
+			try
+			{
+				conn = new PqsqlConnection(selectConnectionString);
+				
+				// ReSharper disable once UseObjectOrCollectionInitializer
+				cmd = new PqsqlCommand();
+				cmd.CommandText = selectCommandText;
+				cmd.Connection = conn;
+
+				SelectCommand = cmd;
+
+				cmd = null;
+				conn = null;
+			}
+			finally
+			{
+				cmd?.Dispose();
+				conn?.Dispose();
+			}
 		}
 
 		/// <summary>
