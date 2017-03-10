@@ -298,13 +298,21 @@ namespace Pqsql
 				{
 					// still in COPY_IN mode? bail out!
 					byte[] b = PqsqlUTF8Statement.CreateUTF8Statement("COPY FROM cancelled by client");
+					int end;
 
 					unsafe
 					{
 						fixed (byte* bs = b)
 						{
-							PqsqlWrapper.PQputCopyEnd(conn, bs);
+							end = PqsqlWrapper.PQputCopyEnd(conn, bs);
 						}
+					}
+
+					if (end != 1)
+					{
+						err = err.Insert(0, "Cannot cancel COPY FROM (" + s + "): ");
+
+						goto bailout;
 					}
 
 					res = PqsqlWrapper.PQgetResult(conn);
