@@ -83,10 +83,10 @@ namespace Pqsql
 		public void Start()
 		{
 #if CODECONTRACTS
-			Contract.Requires<ArgumentNullException>(!string.IsNullOrEmpty(Table), "Table property is null");
+			Contract.Requires<InvalidOperationException>(!string.IsNullOrEmpty(Table), "Table property is null");
 #else
 			if (string.IsNullOrEmpty(Table))
-				throw new ArgumentNullException("Table property is null");
+				throw new InvalidOperationException("Table property is null");
 #endif
 
 			// PQexec does not set field types in PQresult for COPY FROM statements,

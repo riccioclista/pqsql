@@ -314,7 +314,7 @@ namespace Pqsql
 						n = (int) PqsqlDataReader.GetBytes(res, row, ord, 0, bs, 0, n);
 
 						if (n != bs.Length)
-							throw new IndexOutOfRangeException("Received wrong number of bytes for byte array");
+							throw new PqsqlException(string.Format(CultureInfo.InvariantCulture, "Received wrong number of bytes ({0}) for byte array ({1})", n, bs.Length));
 				
 						return bs;
 					},
@@ -887,7 +887,7 @@ namespace Pqsql
 					a = PqsqlWrapper.createPQExpBuffer();
 
 					if (a == IntPtr.Zero)
-						throw new OutOfMemoryException("Cannot create PQExpBuffer");
+						throw new PqsqlException("Cannot create PQExpBuffer for array");
 
 					foreach (object o in aparam)
 					{

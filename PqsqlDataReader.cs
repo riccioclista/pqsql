@@ -480,7 +480,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 			}
 
 			if (ndim < 0 || ndim > maxdim)
-				throw new IndexOutOfRangeException(nameof(ndim));
+				throw new ArgumentOutOfRangeException(nameof(ndim));
 
 			dim = new int[ndim];
 			lbound = new int[ndim];
@@ -594,9 +594,9 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 #endif
 
 			if (ordinal >= mColumns)
-				throw new IndexOutOfRangeException("Column out of range");
+				throw new ArgumentOutOfRangeException(nameof(ordinal), "Column out of range");
 			if (mResult == IntPtr.Zero)
-				throw new IndexOutOfRangeException("No tuple available");
+				throw new InvalidOperationException("No tuple available");
 
 #if CODECONTRACTS
 			Contract.Assume(mRowInfo != null);
@@ -636,9 +636,9 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 #endif
 
 			if (ordinal >= mColumns)
-				throw new IndexOutOfRangeException("Column out of range");
+				throw new ArgumentOutOfRangeException(nameof(ordinal), "Column out of range");
 			if (mResult == IntPtr.Zero)
-				throw new IndexOutOfRangeException("No tuple available");
+				throw new InvalidOperationException("No tuple available");
 			// oid does not matter
 
 			return GetByte(mResult, mRowNum, ordinal);
@@ -683,9 +683,9 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 #endif
 
 			if (ordinal >= mColumns)
-				throw new IndexOutOfRangeException("Column out of range");
+				throw new ArgumentOutOfRangeException(nameof(ordinal), "Column out of range");
 			if (mResult == IntPtr.Zero)
-				throw new IndexOutOfRangeException("No tuple available");
+				throw new InvalidOperationException("No tuple available");
 
 #if CODECONTRACTS
 			Contract.Assume(mRowInfo != null);
@@ -816,9 +816,9 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 #endif
 
 			if (ordinal >= mColumns)
-				throw new IndexOutOfRangeException("Column out of range");
+				throw new ArgumentOutOfRangeException(nameof(ordinal), "Column out of range");
 			if (mResult == IntPtr.Zero)
-				throw new IndexOutOfRangeException("No tuple available");
+				throw new InvalidOperationException("No tuple available");
 
 #if CODECONTRACTS
 			Contract.Assume(mRowInfo != null);
@@ -848,9 +848,9 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 #endif
 
 			if (ordinal >= mColumns)
-				throw new IndexOutOfRangeException("Column out of range");
+				throw new ArgumentOutOfRangeException(nameof(ordinal), "Column out of range");
 			if (mResult == IntPtr.Zero)
-				throw new IndexOutOfRangeException("No tuple available");
+				throw new InvalidOperationException("No tuple available");
 
 #if CODECONTRACTS
 			Contract.Assume(mRowInfo != null);
@@ -882,13 +882,13 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 			Contract.Requires<IndexOutOfRangeException>(ordinal >= 0);
 #else
 			if (ordinal < 0)
-				throw new IndexOutOfRangeException("ordinal");
+				throw new ArgumentOutOfRangeException(nameof(ordinal));
 #endif
 
 			if (ordinal >= mColumns)
-				throw new IndexOutOfRangeException("Column out of range");
+				throw new ArgumentOutOfRangeException(nameof(ordinal), "Column out of range");
 			if (mResult == IntPtr.Zero)
-				throw new IndexOutOfRangeException("No tuple available");
+				throw new InvalidOperationException("No tuple available");
 
 #if CODECONTRACTS
 			Contract.Assume(mRowInfo != null);
@@ -997,9 +997,9 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 #endif
 
 			if (ordinal >= mColumns)
-				throw new IndexOutOfRangeException("Column out of range");
+				throw new ArgumentOutOfRangeException(nameof(ordinal), "Column out of range");
 			if (mResult == IntPtr.Zero)
-				throw new IndexOutOfRangeException("No tuple available");
+				throw new InvalidOperationException("No tuple available");
 
 #if CODECONTRACTS
 			Contract.Assume(mRowInfo != null);
@@ -1095,9 +1095,9 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 #endif
 
 			if (ordinal >= mColumns)
-				throw new IndexOutOfRangeException("Column out of range");
+				throw new ArgumentOutOfRangeException(nameof(ordinal), "Column out of range");
 			if (mResult == IntPtr.Zero)
-				throw new IndexOutOfRangeException("No tuple available");
+				throw new InvalidOperationException("No tuple available");
 
 #if CODECONTRACTS
 			Contract.Assume(mRowInfo != null);
@@ -1139,9 +1139,9 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 #endif
 
 			if (ordinal >= mColumns)
-				throw new IndexOutOfRangeException("Column out of range");
+				throw new ArgumentOutOfRangeException(nameof(ordinal), "Column out of range");
 			if (mResult == IntPtr.Zero)
-				throw new IndexOutOfRangeException("No tuple available");
+				throw new InvalidOperationException("No tuple available");
 
 #if CODECONTRACTS
 			Contract.Assume(mRowInfo != null);
@@ -1204,9 +1204,9 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 #endif
 
 			if (ordinal >= mColumns)
-				throw new IndexOutOfRangeException("Column out of range");
+				throw new ArgumentOutOfRangeException(nameof(ordinal), "Column out of range");
 			if (mResult == IntPtr.Zero)
-				throw new IndexOutOfRangeException("No tuple available");
+				throw new InvalidOperationException("No tuple available");
 
 #if CODECONTRACTS
 			Contract.Assume(mRowInfo != null);
@@ -1238,9 +1238,9 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 #endif
 
 			if (ordinal >= mColumns)
-				throw new IndexOutOfRangeException("Column out of range");
+				throw new ArgumentOutOfRangeException(nameof(ordinal), "Column out of range");
 			if (mResult == IntPtr.Zero)
-				throw new IndexOutOfRangeException("No tuple available");
+				throw new InvalidOperationException("No tuple available");
 
 #if CODECONTRACTS
 			Contract.Assume(mRowInfo != null);
@@ -1280,9 +1280,9 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 #endif
 
 			if (ordinal >= mColumns)
-				throw new IndexOutOfRangeException("Column out of range");
+				throw new ArgumentOutOfRangeException(nameof(ordinal), "Column out of range");
 			if (mResult == IntPtr.Zero)
-				throw new IndexOutOfRangeException("No tuple available");
+				throw new InvalidOperationException("No tuple available");
 
 #if CODECONTRACTS
 			Contract.Assume(mRowInfo != null);
@@ -1322,9 +1322,9 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 #endif
 
 			if (ordinal >= mColumns)
-				throw new IndexOutOfRangeException("Column out of range");
+				throw new ArgumentOutOfRangeException(nameof(ordinal), "Column out of range");
 			if (mResult == IntPtr.Zero)
-				throw new IndexOutOfRangeException("No tuple available");
+				throw new InvalidOperationException("No tuple available");
 
 #if CODECONTRACTS
 			Contract.Assume(mRowInfo != null);
@@ -1364,9 +1364,9 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 #endif
 
 			if (ordinal >= mColumns)
-				throw new IndexOutOfRangeException("Column out of range");
+				throw new ArgumentOutOfRangeException(nameof(ordinal), "Column out of range");
 			if (mResult == IntPtr.Zero)
-				throw new IndexOutOfRangeException("No tuple available");
+				throw new InvalidOperationException("No tuple available");
 
 #if CODECONTRACTS
 			Contract.Assume(mRowInfo != null);
@@ -1392,9 +1392,9 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 #endif
 
 			if (ordinal >= mColumns)
-				throw new IndexOutOfRangeException("Column out of range");
+				throw new ArgumentOutOfRangeException(nameof(ordinal), "Column out of range");
 			if (mResult == IntPtr.Zero)
-				throw new IndexOutOfRangeException("No tuple available");
+				throw new InvalidOperationException("No tuple available");
 
 #if CODECONTRACTS
 			Contract.Assume(mRowInfo != null);
@@ -1434,9 +1434,9 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 #endif
 
 			if (ordinal >= mColumns)
-				throw new IndexOutOfRangeException("Column out of range");
+				throw new ArgumentOutOfRangeException(nameof(ordinal), "Column out of range");
 			if (mResult == IntPtr.Zero)
-				throw new IndexOutOfRangeException("No tuple available");
+				throw new InvalidOperationException("No tuple available");
 
 #if CODECONTRACTS
 			Contract.Assume(mRowInfo != null);
@@ -1472,9 +1472,9 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 #endif
 
 			if (ordinal >= mColumns)
-				throw new IndexOutOfRangeException("Column out of range");
+				throw new ArgumentOutOfRangeException(nameof(ordinal), "Column out of range");
 			if (mResult == IntPtr.Zero)
-				throw new IndexOutOfRangeException("No tuple available");
+				throw new InvalidOperationException("No tuple available");
 
 #if CODECONTRACTS
 			Contract.Assume(mRowInfo != null);
@@ -1514,7 +1514,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 			int col = PqsqlWrapper.PQfnumber(mResult, name);
 
 			if (col == -1)
-				throw new IndexOutOfRangeException("No column with name " + name + " was found");
+				throw new KeyNotFoundException("No column with name " + name + " was found");
 
 			return col;
 		}
@@ -1825,9 +1825,9 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 #endif
 
 			if (ordinal >= mColumns)
-				throw new IndexOutOfRangeException("Column out of range");
+				throw new ArgumentOutOfRangeException(nameof(ordinal), "Column out of range");
 			if (mResult == IntPtr.Zero)
-				throw new IndexOutOfRangeException("No tuple available");
+				throw new InvalidOperationException("No tuple available");
 
 #if CODECONTRACTS
 			Contract.Assume(mRowInfo != null);
@@ -1912,13 +1912,13 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 			Contract.Requires<IndexOutOfRangeException>(ordinal >= 0);
 #else
 			if (ordinal < 0)
-				throw new IndexOutOfRangeException("ordinal");
+				throw new ArgumentOutOfRangeException(nameof(ordinal));
 #endif
 
 			if (ordinal >= mColumns)
-				throw new IndexOutOfRangeException("Column out of range");
+				throw new ArgumentOutOfRangeException(nameof(ordinal), "Column out of range");
 			if (mResult == IntPtr.Zero)
-				throw new IndexOutOfRangeException("No tuple available");
+				throw new InvalidOperationException("No tuple available");
 
 			if (PqsqlWrapper.PQgetisnull(mResult, mRowNum, ordinal) == 1)
 				return DBNull.Value;
@@ -1969,13 +1969,13 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 			Contract.Requires<IndexOutOfRangeException>(ordinal >= 0, "Column out of range");
 #else
 			if (ordinal < 0)
-				throw new IndexOutOfRangeException("ordinal");
+				throw new ArgumentOutOfRangeException(nameof(ordinal));
 #endif
 
 			if (ordinal >= mColumns)
-				throw new IndexOutOfRangeException("Column out of range");
+				throw new ArgumentOutOfRangeException(nameof(ordinal), "Column out of range");
 			if (mResult == IntPtr.Zero)
-				throw new IndexOutOfRangeException("No tuple available");
+				throw new InvalidOperationException("No tuple available");
 
 			return PqsqlWrapper.PQgetisnull(mResult, mRowNum, ordinal) == 1;
 		}
@@ -2280,7 +2280,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 			Contract.Requires<IndexOutOfRangeException>(mStmtNum >= 0 && mStmtNum < mStatements.Length);
 #else
 			if (mStmtNum < 0 || mStmtNum >= mStatements.Length)
-				throw new IndexOutOfRangeException("mStmtNum");
+				throw new InvalidOperationException("statement out of bounds");
 #endif
 
 			string stmt = mStatements[mStmtNum]; // current statement

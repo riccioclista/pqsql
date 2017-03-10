@@ -359,7 +359,7 @@ namespace Pqsql
 				Contract.Requires<IndexOutOfRangeException>(index >= 0);
 #else
 				if (index < 0)
-					throw new ArgumentException(nameof(index));
+					throw new ArgumentOutOfRangeException(nameof(index));
 #endif
 
 #if CODECONTRACTS
@@ -374,7 +374,7 @@ namespace Pqsql
 				Contract.Requires<IndexOutOfRangeException>(index >= 0);
 #else
 				if (index < 0)
-					throw new ArgumentException(nameof(index));
+					throw new ArgumentOutOfRangeException(nameof(index));
 #endif
 
 #if CODECONTRACTS
@@ -427,7 +427,7 @@ namespace Pqsql
 				int i = IndexOf(parameterName);
 
 				if (i == -1)
-					throw new IndexOutOfRangeException("Parameter not found");
+					throw new ArgumentOutOfRangeException(nameof(parameterName), "Parameter not found");
 
 				return mParamList[i];
 			}
@@ -436,7 +436,7 @@ namespace Pqsql
 				int i = IndexOf(parameterName);
 
 				if (i == -1)
-					throw new IndexOutOfRangeException("Parameter not found");
+					throw new ArgumentOutOfRangeException(nameof(parameterName), "Parameter not found");
 
 				mParamList[i] = value;
 				mChanged = true;
