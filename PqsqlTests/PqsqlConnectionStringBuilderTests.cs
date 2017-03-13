@@ -1,4 +1,5 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using System;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Pqsql;
 
 namespace PqsqlTests
@@ -22,6 +23,37 @@ namespace PqsqlTests
 			{
 				//
 				cmd.Cancel();
+			}
+		}
+
+		[TestMethod]
+		[ExpectedException(typeof(ArgumentNullException), "null exception should have been given")]
+		public void PqsqlConnectionStringBuilderTest2()
+		{
+			PqsqlConnectionStringBuilder builder = new PqsqlConnectionStringBuilder(null);
+			Assert.Fail();
+		}
+
+		[TestMethod]
+		public void PqsqlConnectionStringBuilderTest3()
+		{
+			PqsqlConnectionStringBuilder builder = new PqsqlConnectionStringBuilder(string.Empty);
+
+			Assert.AreEqual(string.Empty, builder.ConnectionString);
+			Assert.AreEqual(0, builder.Count);
+
+			using (PqsqlConnection connection = new PqsqlConnection(builder))
+			{
+				try
+				{
+					connection.Open();
+				}
+				catch (PqsqlException)
+				{
+					// ignored, depends on server config whether empty connection string is valid
+				}
+
+				connection.Close();
 			}
 		}
 	}
