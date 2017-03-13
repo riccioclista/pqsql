@@ -8,7 +8,7 @@ namespace Pqsql
 		//
 		// Routines for formatting and parsing frontend/backend binary messages
 		//
-		internal sealed unsafe class PqsqlBinaryFormat
+		internal static unsafe class PqsqlBinaryFormat
 		{
 			#region unix timestamp 0 in ticks
 

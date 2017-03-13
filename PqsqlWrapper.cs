@@ -64,6 +64,11 @@ namespace Pqsql
 	/// </summary>
 	internal class PqsqlDiag
 	{
+		// private default ctor
+		private PqsqlDiag()
+		{
+		}
+
 		public const char PG_DIAG_SEVERITY = 'S';
 		public const char PG_DIAG_SQLSTATE = 'C';
 		public const char PG_DIAG_MESSAGE_PRIMARY = 'M';
@@ -479,7 +484,7 @@ namespace Pqsql
 		/// <summary>
 		/// wraps C functions from libpq.dll
 		/// </summary>
-		internal sealed class PqsqlWrapper
+		internal static class PqsqlWrapper
 		{
 			// libpq.dll depends on libeay32.dll, libintl-8.dll, ssleay32.dll
 			// (DllImport would throw a DllNotFoundException if some of them are missing)
