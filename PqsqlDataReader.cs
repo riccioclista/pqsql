@@ -1583,11 +1583,8 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 				NextResult();
 			}
 
-			if (mSchemaTable != null)
-				return mSchemaTable;
-
-			// populates mSchemaTable
-			return PopulateSchemaTable();
+			// populates mSchemaTable if not yet set
+			return mSchemaTable ?? PopulateSchemaTable();
 		}
 
 		// retrieve schema information from mRowInfo to populate schema DataTable
@@ -1597,44 +1594,51 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 			Contract.Ensures(Contract.Result<DataTable>() != null);
 #endif
 
-			mSchemaTable = new DataTable("SchemaTable");
+			DataTable st = null;
+			mSchemaTable = null;
 
-			DataColumnCollection coll = mSchemaTable.Columns;
-
-			// populate columns in this order
-
-			coll.Add(PqsqlSchemaTableColumn.TypeOid, typeof(PqsqlDbType)); // type oid used in PqsqlCommandBuilder.ApplyParameterInfo
-			coll.Add(SchemaTableColumn.AllowDBNull, typeof(bool)); // whether value DBNull is allowed.
-			coll.Add(SchemaTableColumn.BaseColumnName, typeof(string)); // name of the column in the schema table.
-			coll.Add(SchemaTableOptionalColumn.BaseCatalogName, typeof(string)); // name of the catalog associated with the results of the latest query.
-			coll.Add(SchemaTableColumn.BaseSchemaName, typeof(string)); // name of the schema in the schema table.
-			coll.Add(SchemaTableColumn.BaseTableName, typeof(string)); // name of the table in the schema table.
-
-			coll.Add(SchemaTableColumn.ColumnName, typeof(string)); // name of the column in the schema table.
-			coll.Add(SchemaTableColumn.ColumnOrdinal, typeof(int)); // ordinal of the column.
-			coll.Add(SchemaTableColumn.ColumnSize, typeof(int)); // size of the column.
-
-			coll.Add(SchemaTableColumn.NumericPrecision, typeof(int)); // precision of the column data, if the data is numeric.
-			coll.Add(SchemaTableColumn.NumericScale, typeof(int)); // scale of the column data, if the data is numeric.
-
-			coll.Add(SchemaTableColumn.ProviderType, typeof(string)); // provider-specific data type of the column.
-			coll.Add(SchemaTableColumn.DataType, typeof(Type)); // type of data in the column.
-			
-			// only set key information when the user asked for it
-			if ((mBehaviour & CommandBehavior.KeyInfo) == CommandBehavior.KeyInfo)
+			try
 			{
-				coll.Add(SchemaTableColumn.IsKey, typeof(bool)); // whether this column is a key for the table.
-				coll.Add(SchemaTableColumn.IsUnique, typeof(bool)); // whether a unique constraint applies to this column.
-				coll.Add(SchemaTableColumn.IsAliased, typeof(bool)); // whether this column is aliased.
-				coll.Add(SchemaTableColumn.IsExpression, typeof(bool)); // whether this column is an expression.
-				coll.Add(SchemaTableOptionalColumn.IsAutoIncrement, typeof(bool)); // whether the column values in the column are automatically incremented.
-				coll.Add(SchemaTableOptionalColumn.IsRowVersion, typeof(bool)); // whether this column contains row version information.
-				coll.Add(SchemaTableOptionalColumn.IsHidden, typeof(bool)); // whether this column is hidden.
-				coll.Add(SchemaTableColumn.IsLong, typeof(bool)); // whether this column contains long data.
-				coll.Add(SchemaTableOptionalColumn.IsReadOnly, typeof(bool)); // whether this column is read-only.
-				coll.Add(SchemaTableOptionalColumn.DefaultValue, typeof(object)); // default value for the column.
-			}
-		
+				// ReSharper disable once UseObjectOrCollectionInitializer
+				st = new DataTable("SchemaTable");
+				st.Locale = CultureInfo.InvariantCulture; // IDisposable forces to initialize here
+
+				DataColumnCollection coll = st.Columns;
+
+				// populate columns in this order
+
+				coll.Add(PqsqlSchemaTableColumn.TypeOid, typeof(PqsqlDbType)); // type oid used in PqsqlCommandBuilder.ApplyParameterInfo
+				coll.Add(SchemaTableColumn.AllowDBNull, typeof(bool)); // whether value DBNull is allowed.
+				coll.Add(SchemaTableColumn.BaseColumnName, typeof(string)); // name of the column in the schema table.
+				coll.Add(SchemaTableOptionalColumn.BaseCatalogName, typeof(string)); // name of the catalog associated with the results of the latest query.
+				coll.Add(SchemaTableColumn.BaseSchemaName, typeof(string)); // name of the schema in the schema table.
+				coll.Add(SchemaTableColumn.BaseTableName, typeof(string)); // name of the table in the schema table.
+
+				coll.Add(SchemaTableColumn.ColumnName, typeof(string)); // name of the column in the schema table.
+				coll.Add(SchemaTableColumn.ColumnOrdinal, typeof(int)); // ordinal of the column.
+				coll.Add(SchemaTableColumn.ColumnSize, typeof(int)); // size of the column.
+
+				coll.Add(SchemaTableColumn.NumericPrecision, typeof(int)); // precision of the column data, if the data is numeric.
+				coll.Add(SchemaTableColumn.NumericScale, typeof(int)); // scale of the column data, if the data is numeric.
+
+				coll.Add(SchemaTableColumn.ProviderType, typeof(string)); // provider-specific data type of the column.
+				coll.Add(SchemaTableColumn.DataType, typeof(Type)); // type of data in the column.
+
+				// only set key information when the user asked for it
+				if ((mBehaviour & CommandBehavior.KeyInfo) == CommandBehavior.KeyInfo)
+				{
+					coll.Add(SchemaTableColumn.IsKey, typeof(bool)); // whether this column is a key for the table.
+					coll.Add(SchemaTableColumn.IsUnique, typeof(bool)); // whether a unique constraint applies to this column.
+					coll.Add(SchemaTableColumn.IsAliased, typeof(bool)); // whether this column is aliased.
+					coll.Add(SchemaTableColumn.IsExpression, typeof(bool)); // whether this column is an expression.
+					coll.Add(SchemaTableOptionalColumn.IsAutoIncrement, typeof(bool)); // whether the column values in the column are automatically incremented.
+					coll.Add(SchemaTableOptionalColumn.IsRowVersion, typeof(bool)); // whether this column contains row version information.
+					coll.Add(SchemaTableOptionalColumn.IsHidden, typeof(bool)); // whether this column is hidden.
+					coll.Add(SchemaTableColumn.IsLong, typeof(bool)); // whether this column contains long data.
+					coll.Add(SchemaTableOptionalColumn.IsReadOnly, typeof(bool)); // whether this column is read-only.
+					coll.Add(SchemaTableOptionalColumn.DefaultValue, typeof(object)); // default value for the column.
+				}
+
 #if false
 		SchemaTableColumn.NonVersionedProviderType // non-versioned provider-specific data type of the column.
 		SchemaTableOptionalColumn.ProviderSpecificDataType // provider-specific data type of the column.
@@ -1647,14 +1651,22 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 		SchemaTableOptionalColumn.Expression; //     The expression used to compute the column.
 #endif
 
-			FillSchemaTableColumns();
+				FillSchemaTableColumns(st);
+
+				mSchemaTable = st;
+				st = null;
+			}
+			finally
+			{
+				st?.Dispose();
+			}
 
 			return mSchemaTable;
 		}
 
 
 		// 
-		private void FillSchemaTableColumns()
+		private void FillSchemaTableColumns(DataTable schemaTable)
 		{
 			string catalogName = string.Empty;
 			string schemaName = string.Empty;
@@ -1665,7 +1677,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 
 			GetSchemaTableInfo(ref catalogName, ref schemaName, ref tableName, ref colDic);
 
-			DataRowCollection srows = mSchemaTable.Rows;
+			DataRowCollection srows = schemaTable.Rows;
 
 			for (int i = 0; i < mColumns; i++)
 			{
@@ -1675,7 +1687,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 				int modifier = ci.Modifier;
 				int size = ci.Size;
 
-				DataRow row = mSchemaTable.NewRow();
+				DataRow row = schemaTable.NewRow();
 				int j = 0; // set fields by index
 
 				// 1=colPos, 2=defVal, 3=isKey, 4=notNull, 5=isUnique, 6=isUpdateable
