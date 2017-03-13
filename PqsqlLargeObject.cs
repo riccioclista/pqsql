@@ -153,7 +153,11 @@ namespace Pqsql
 			if (mFd < 0)
 				return;
 
-			PqsqlWrapper.lo_close(mPGConn, mFd); // ignore errors
+			if (PqsqlWrapper.lo_close(mPGConn, mFd) == -1)
+			{
+				// ignore error
+			}
+
 			mFd = -1;
 			mMode = 0;
 			mPos = -1;
