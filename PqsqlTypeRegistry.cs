@@ -824,7 +824,7 @@ namespace Pqsql
 		}
 
 		// used in PqsqlParameter.DbType
-		public static PqsqlDbType GetPqsqlDbType(DbType dbType)
+		internal static PqsqlDbType GetPqsqlDbType(DbType dbType)
 		{
 #if CODECONTRACTS
 			Contract.Assume((int) dbType < mDbTypeArray.Length);
@@ -833,7 +833,7 @@ namespace Pqsql
 		}
 
 		// used in PqsqlParameter.PqsqlDbType
-		public static DbType GetDbType(PqsqlDbType oid)
+		internal static DbType GetDbType(PqsqlDbType oid)
 		{
 			PqsqlTypeName tn = Get(oid);
 
@@ -847,7 +847,7 @@ namespace Pqsql
 		}
 
 		// used in PqsqlParameterCollection.AddParameterValue
-		public static Action<IntPtr, object> SetArrayValue(PqsqlDbType oid, PqsqlTypeName n)
+		internal static Action<IntPtr, object> SetArrayValue(PqsqlDbType oid, PqsqlTypeName n)
 		{
 #if CODECONTRACTS
 			Contract.Requires<ArgumentNullException>(n != null);
