@@ -157,7 +157,10 @@ pqpb_get_vals(pqparam_buffer *b)
 		{
 			int i;
 			b->param_vals = (char**) malloc(b->num_param * sizeof(char*));
-			
+
+			if (b->param_vals == NULL)
+				return NULL;
+
 			/* set parameter value start to difference from start of payload data
 			 * we can only do this after PQExpBuffer is fixed, i.e., no realloc()
 			 * will be called on b->payload->data anymore
