@@ -8,7 +8,6 @@ using System.Globalization;
 #if CODECONTRACTS
 using System.Diagnostics.Contracts;
 #endif
-using System.Text;
 
 using PqsqlBinaryFormat = Pqsql.UnsafeNativeMethods.PqsqlBinaryFormat;
 
@@ -20,7 +19,7 @@ namespace Pqsql
 		private readonly List<PqsqlParameter> mParamList = new List<PqsqlParameter>();
 
 		// Dictionary lookups for GetValue to improve performance
-		private readonly Dictionary<string, int> lookup;
+		private readonly Dictionary<string, int> mLookup = new Dictionary<string, int>();
 
 		// pqparam_buffer* for Input and InputOutput parameter
 		private IntPtr mPqPB;
@@ -34,7 +33,6 @@ namespace Pqsql
 		public PqsqlParameterCollection()
 		{
 			mPqPB = PqsqlBinaryFormat.pqpb_create(); // create pqparam_buffer
-			lookup = new Dictionary<string, int>();
 		}
 
 		~PqsqlParameterCollection()
@@ -395,13 +393,13 @@ namespace Pqsql
 
 				mParamList[index] = value;
 
-				lookup.Remove(old.ParameterName);
+				mLookup.Remove(old.ParameterName);
 
 #if CODECONTRACTS
 				Contract.Assume(value.ParameterName != null);
 #endif
 
-				lookup.Add(value.ParameterName, index);
+				mLookup.Add(value.ParameterName, index);
 
 				mChanged = true;
 			}
@@ -472,11 +470,11 @@ namespace Pqsql
 			Contract.Assume(s != null);
 #endif
 
-			if (!lookup.TryGetValue(s, out i))
+			if (!mLookup.TryGetValue(s, out i))
 			{
 				mParamList.Add(p);
 				i = mParamList.Count - 1;
-				lookup.Add(s, i);
+				mLookup.Add(s, i);
 				mChanged = true;
 			}
 
@@ -503,7 +501,7 @@ namespace Pqsql
 			if (mPqPB != IntPtr.Zero)
 				PqsqlBinaryFormat.pqpb_reset(mPqPB);
 			mParamList.Clear();
-			lookup.Clear();
+			mLookup.Clear();
 		}
 
 		//
@@ -642,22 +640,11 @@ namespace Pqsql
 			Contract.Ensures(Contract.Result<int>() < Count);
 #endif
 
-			if (!string.IsNullOrEmpty(parameterName))
+			int ret;
+			if (!string.IsNullOrEmpty(parameterName) &&
+				mLookup.TryGetValue(PqsqlParameter.CanonicalParameterName(parameterName), out ret))
 			{
-				StringBuilder sb = new StringBuilder();
-
-				sb.Append(':'); // always prefix with :
-
-				if (parameterName[0] != '"')
-					sb.Append(parameterName.TrimStart(PqsqlParameter.TrimStart).TrimEnd().ToLowerInvariant());
-				else
-					sb.Append(parameterName);
-
-				int ret;
-				if (lookup.TryGetValue(sb.ToString(), out ret))
-				{
-					return ret < -1 ? -1 : ret;
-				}
+				return ret < -1 ? -1 : ret;
 			}
 
 			return -1;
@@ -697,11 +684,11 @@ namespace Pqsql
 			PqsqlParameter old = mParamList[index];
 			if (old?.ParameterName != null)
 			{
-				lookup.Remove(old.ParameterName);
+				mLookup.Remove(old.ParameterName);
 			}
 
 			mParamList.Insert(index, val);
-			lookup.Add(val.ParameterName, index);
+			mLookup.Add(val.ParameterName, index);
 			mChanged = true;
 		}
 		//
@@ -746,7 +733,7 @@ namespace Pqsql
 
 			if (old != null)
 			{
-				lookup.Remove(old.ParameterName);
+				mLookup.Remove(old.ParameterName);
 				mParamList.RemoveAt(index);
 				mChanged = true;
 			}
@@ -765,18 +752,21 @@ namespace Pqsql
 			Contract.Assume(parameterName != null);
 #endif
 
-			int i = IndexOf(parameterName);
+			if (!string.IsNullOrEmpty(parameterName))
+			{
+				int ret;
+				string canonical = PqsqlParameter.CanonicalParameterName(parameterName);
 
-			if (i != -1)
-			{
-				lookup.Remove(parameterName);
-				mParamList.RemoveAt(i);
-				mChanged = true;
+				if (mLookup.TryGetValue(canonical, out ret) && ret != -1)
+				{
+					mLookup.Remove(canonical);
+					mParamList.RemoveAt(ret);
+					mChanged = true;
+					return;
+				}
 			}
-			else
-			{
-				throw new KeyNotFoundException("Could not find parameter name " + parameterName);
-			}
+
+			throw new KeyNotFoundException("Could not find parameter name " + parameterName);
 		}
 		//
 		// Summary:
