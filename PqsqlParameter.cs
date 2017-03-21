@@ -5,7 +5,6 @@ using System.Data;
 #if CODECONTRACTS
 using System.Diagnostics.Contracts;
 #endif
-using System.Text;
 
 namespace Pqsql
 {
@@ -21,7 +20,7 @@ namespace Pqsql
 
 		object mValue;
 
-		internal static readonly char[] TrimStart = { ' ', ':', '\t', '\n' };
+		static readonly char[] mTrimStart = { ' ', ':', '\t', '\n' };
 
 		// Summary:
 		//     Initializes a new instance of the System.Data.Common.DbParameter class.
@@ -56,6 +55,19 @@ namespace Pqsql
 			DbType = parameterType;
 			mSize = size;
 			SourceColumn = sourceColumn;
+		}
+
+		// creates canonical parameter name as lower-case string prefixed with ':'
+		internal static string CanonicalParameterName(string parameterName)
+		{
+			if (string.IsNullOrEmpty(parameterName))
+				return string.Empty;
+
+			// always prefix with ':'
+			if (parameterName[0] != '"')
+				return ":" + parameterName.TrimStart(mTrimStart).TrimEnd().ToLowerInvariant();
+
+			return ":" + parameterName;
 		}
 
 		// Summary:
@@ -154,20 +166,7 @@ namespace Pqsql
 			}
 			set
 			{
-				if (string.IsNullOrEmpty(value))
-				{
-					mName = string.Empty;
-				}
-				else
-				{
-					StringBuilder sb = new StringBuilder();
-					sb.Append(':');
-					if (value[0] != '"')
-						sb.Append(value.TrimStart(TrimStart).TrimEnd().ToLowerInvariant());
-					else
-						sb.Append(value);
-					mName = sb.ToString();
-				}
+				mName = CanonicalParameterName(value);
 			}
 		}
 		//
