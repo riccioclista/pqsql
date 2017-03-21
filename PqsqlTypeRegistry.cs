@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
@@ -128,7 +129,7 @@ namespace Pqsql
 
 		// maps PqsqlDbType to PqsqlTypeName
 		static readonly Dictionary<PqsqlDbType, PqsqlTypeName> mPqsqlDbTypeDict = new Dictionary<PqsqlDbType, PqsqlTypeName>
-    {
+		{
 			{ PqsqlDbType.Boolean,
 				new PqsqlTypeName { 
 					DataTypeName="bool",
@@ -462,8 +463,6 @@ namespace Pqsql
 					SetArrayItem = null
 				}
 			},
-
-
 			{ PqsqlDbType.BooleanArray,
 				new PqsqlTypeName {
 					DataTypeName="_bool",
@@ -500,7 +499,6 @@ namespace Pqsql
 					SetArrayItem = null
 				}
 			},
-
 			{ PqsqlDbType.TextArray,
 				new PqsqlTypeName {
 					DataTypeName="_text",
@@ -537,7 +535,6 @@ namespace Pqsql
 					SetArrayItem = setTextArray
 				}
 			},
-
 			{ PqsqlDbType.Int8Array,
 				new PqsqlTypeName {
 					DataTypeName="_int8",
@@ -648,7 +645,7 @@ namespace Pqsql
 					SetArrayItem = (a, o) => { throw new InvalidOperationException("Cannot set void array parameter"); }
 				}
 			},
-    };
+		};
 
 		// maps DbType to PqsqlDbType
 		static readonly PqsqlDbType[] mDbTypeArray = {
@@ -675,13 +672,13 @@ namespace Pqsql
 
 			// DbType.Decimal = 7,
 			PqsqlDbType.Numeric,
-			
+
 			// DbType.Double = 8,
 			PqsqlDbType.Float8,
 
 			// DbType.Guid = 9,
 			PqsqlDbType.Uuid,
-		
+
 			//DbType.Int16 = 10,
 			PqsqlDbType.Int2,
 
@@ -738,7 +735,11 @@ namespace Pqsql
 			
 		};
 
-		// used in PqsqlDataReader.PopulateRowInfoAndOutputParameters and PqsqlParameterCollection.CreateParameterBuffer
+		// maps connection strings to user-defined data types
+		private static readonly ConcurrentDictionary<string, Dictionary<PqsqlDbType, PqsqlTypeName>> mUserTypesDict  = new ConcurrentDictionary<string, Dictionary<PqsqlDbType, PqsqlTypeName>>();
+
+		// used in PqsqlTypeRegistry.GetDbType and PqsqlParameterCollection.CreateParameterBuffer
+		// TODO user-defined data types not supported
 		internal static PqsqlTypeName Get(PqsqlDbType oid)
 		{
 #if CODECONTRACTS
@@ -752,11 +753,88 @@ namespace Pqsql
 		}
 
 		// used in PqsqlDataReader.PopulateRowInfoAndOutputParameters
-		internal static PqsqlTypeName FetchType(PqsqlDbType oid, string connstring)
+		internal static PqsqlTypeName GetOrAdd(PqsqlDbType oid, PqsqlConnection connection)
+		{
+#if CODECONTRACTS
+			Contract.Ensures(Contract.Result<PqsqlTypeName>() == null || Contract.Result<PqsqlTypeName>().GetValue != null);
+			Contract.Ensures(Contract.Result<PqsqlTypeName>() == null || Contract.Result<PqsqlTypeName>().DataTypeName != null);
+			Contract.Ensures(Contract.Result<PqsqlTypeName>() == null || Contract.Result<PqsqlTypeName>().ProviderType != null);
+#endif
+
+			PqsqlTypeName result;
+			Dictionary<PqsqlDbType, PqsqlTypeName> userTypes;
+
+			// try to get native postgres type
+			if (mPqsqlDbTypeDict.TryGetValue(oid, out result))
+			{
+				return result;
+			}
+
+			// TODO cache maintainance in mUserTypesDict not implemented
+
+			string connectionString = connection.ConnectionString;
+
+			// try to get user-defined data type (CREATE TYPE, etc.), whose oid might differ between databases
+			if (mUserTypesDict.TryGetValue(connectionString, out userTypes))
+			{
+				lock (userTypes)
+				{
+					if (!userTypes.TryGetValue(oid, out result))
+					{
+						// if oid is not yet stored, try to find it
+						result = FetchType(oid, connection);
+						userTypes[oid] = result; // store fresh PqsqlTypeName here
+					}
+
+					return result;
+				}
+			}
+
+			// create fresh user-defined data type mapping
+			userTypes = new Dictionary<PqsqlDbType, PqsqlTypeName>();
+
+			// no user-defined data type mapping for connectionString stored yet, try to add a new one
+			if (mUserTypesDict.TryAdd(connectionString, userTypes))
+			{
+				lock (userTypes)
+				{
+					if (!userTypes.TryGetValue(oid, out result))
+					{
+						// if oid is not yet stored, we came first, just try to find oid
+						result = FetchType(oid, connection);
+						userTypes[oid] = result; // store fresh PqsqlTypeName here
+					}
+
+					return result;
+				}
+			}
+
+			// in the meantime, another thread already stored a new dynamic type mapping for connectionString
+			if (mUserTypesDict.TryGetValue(connectionString, out userTypes))
+			{
+				lock (userTypes)
+				{
+					if (!userTypes.TryGetValue(oid, out result))
+					{
+						// if oid is not yet stored, we ran before the TryAdd thread, just try to find oid
+						result = FetchType(oid, connection);
+						userTypes[oid] = result; // store fresh PqsqlTypeName here
+					}
+
+					return result;
+				}
+			}
+
+			// 
+			throw new PqsqlException("Could not find datatype " + oid + " for connection " + connectionString);
+		}
+
+		// create new PqsqlTypeName for oid in connection
+		private static PqsqlTypeName FetchType(PqsqlDbType oid, PqsqlConnection connection)
 		{
 #if CODECONTRACTS
 			Contract.Requires<ArgumentOutOfRangeException>(oid != 0, "Datatype with oid=0 (InvalidOid) not supported");
-			Contract.Requires<ArgumentNullException>(connstring != null);
+			Contract.Requires<ArgumentNullException>(connection != null);
 
 			Contract.Ensures(Contract.Result<PqsqlTypeName>() != null);
 			Contract.Ensures(Contract.Result<PqsqlTypeName>().GetValue != null);
@@ -765,14 +843,16 @@ namespace Pqsql
 #else
 			if (oid == 0)
 				throw new ArgumentOutOfRangeException(nameof(oid), "Datatype with oid=0 (InvalidOid) not supported");
-			if (connstring == null)
-				throw new ArgumentNullException(nameof(connstring));
+			if (connection == null)
+				throw new ArgumentNullException(nameof(connection));
 #endif
+
+			string connectionString = connection.ConnectionString;
 
 			// try to guess the type mapping
 			// we must open a new connection here, since we have already a running query when we call FetchType
 			// TODO when we have query pipelining, we might not need to open fresh connections here https://commitfest.postgresql.org/10/634/ http://2ndquadrant.github.io/postgres/libpq-batch-mode.html 
-			using (PqsqlConnection conn = new PqsqlConnection(connstring))
+			using (PqsqlConnection conn = new PqsqlConnection(connectionString))
 			using (PqsqlCommand cmd = new PqsqlCommand(TypeCategoryByTypeOid, conn))
 			{
 				PqsqlParameter p_oid = new PqsqlParameter
@@ -811,16 +891,15 @@ namespace Pqsql
 								SetArrayItem = setTextArray
 							};
 
-							// TODO cache maintainance not implemented here! what about different databases?
-							mPqsqlDbTypeDict.Add(oid, tn);
-
 							return tn;
 						}
+
+						// TODO other types not implemented
 					}
 				}
 			}
 
-			throw new NotSupportedException("Datatype " + oid + " not supported");
+			throw new NotSupportedException("Datatype " + oid + " not supported for connection " + connectionString);
 		}
 
 		// used in PqsqlParameter.DbType
