@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Data;
+using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Pqsql;
 
@@ -261,6 +262,66 @@ namespace PqsqlTests
 
 			read = reader.Read();
 			Assert.IsFalse(read);
+		}
+
+		[TestMethod]
+		public void PqsqlTypeRegistryTest6()
+		{
+			Action[] actions = new Action[20];
+
+			// stress test user-defined type setup
+			for (int i = 0; i < 20; i++)
+			{
+				actions[i] = () =>
+				{
+					using (PqsqlConnection conn = new PqsqlConnection(mConnection.ConnectionString))
+					using (PqsqlCommand cmd = new PqsqlCommand("select 'hello world'::citext", conn))
+					using (PqsqlDataReader reader = cmd.ExecuteReader())
+					{
+						bool read = reader.Read();
+						Assert.IsTrue(read);
+						object helloWorld = reader.GetValue(0); // must access by GetValue, GetString verifies typoid
+						Assert.AreEqual("hello world", helloWorld);
+						read = reader.Read();
+						Assert.IsFalse(read);
+					}
+				};
+			}
+
+			using (PqsqlCommand check = new PqsqlCommand("select oid from pg_extension where extname='citext'", mConnection))
+			using (PqsqlCommand create = new PqsqlCommand("create extension citext", mConnection))
+			using (PqsqlTransaction t = mConnection.BeginTransaction())
+			{
+				object o = null;
+
+				try
+				{
+					check.Transaction = t;
+					o = check.ExecuteScalar();
+
+					if (o == null)
+					{
+						create.Transaction = t;
+						int aff = create.ExecuteNonQuery();
+						Assert.AreEqual(0, aff);
+					}
+
+					t.Commit();
+
+					Parallel.Invoke(actions);
+				}
+				finally
+				{
+					if (o == null)
+					{
+						using (PqsqlCommand drop = new PqsqlCommand("drop extension if exists citext", mConnection))
+						{
+							int aff = drop.ExecuteNonQuery();
+							Assert.AreEqual(0, aff);
+						}
+					}
+				}
+			}
 		}
 	}
 }
