@@ -74,7 +74,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 #endregion
 
 
-			// the current PGresult* buffer
+		// the current PGresult* buffer
 		IntPtr mResult;
 
 		/// <summary>
@@ -2243,7 +2243,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 #endif
 
 				// try to lookup OID, otherwise try to guess type and fetch type specs from DB
-				PqsqlTypeRegistry.PqsqlTypeName tn = PqsqlTypeRegistry.Get(oid) ?? PqsqlTypeRegistry.FetchType(oid, mConn.ConnectionString);
+				PqsqlTypeRegistry.PqsqlTypeName tn = PqsqlTypeRegistry.GetOrAdd(oid, mConn);
 
 #if CODECONTRACTS
 				Contract.Assert(tn != null);
