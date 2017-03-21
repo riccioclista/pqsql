@@ -18,24 +18,24 @@ Dependencies of Pqsql
 libpqbinfmt
 -----------
 
-When libpqbinfmt is compiled with Visual Studio 2010, we need to install
-Microsoft Visual C++ 2010 SP1 Redistributable Package (x64) from
-https://www.microsoft.com/en-us/download/details.aspx?id=13523
+When libpqbinfmt is compiled with Visual Studio 2015, we need to install
+Microsoft Visual C++ 2015 Redistributable Update 3 (x64) from
+https://www.microsoft.com/en-us/download/details.aspx?id=53587
 
 The libpq DLLs depend on Visual C++ Redistributable Packages for Visual Studio 2013 from
 https://www.microsoft.com/en-us/download/details.aspx?id=40784
 
-libpqbinfmt us based on x64 libpq from PostgreSQL 9.4.10:
+libpqbinfmt is based on x64 libpq from PostgreSQL 9.4.11:
 http://www.postgresql.org/docs/current/static/libpq.html
 
-libpq DLLs can be retrieved from postgresql-9.4.10-1-windows-x64-binaries.zip:
-http://www.enterprisedb.com/postgresql-9410-binaries-win64
+libpq DLLs can be retrieved from postgresql-9.4.11-2-windows-x64-binaries.zip:
+http://www.enterprisedb.com/postgresql-9411-binaries-win64
 
-libpq 9.4.10 is linked with
-- OpenSSL 1.0.2j (libeay32.dll and ssleay32.dll)
+libpq 9.4.11 is linked with
+- OpenSSL 1.0.2k (libeay32.dll and ssleay32.dll)
 - libintl 0.18.1 (libintl-8.dll)
 
-postgresql-9.4.10-1-windows-x64-binaries.zip contains the necessary DLLs
+postgresql-9.4.11-2-windows-x64-binaries.zip contains the necessary DLLs
 for libpqbinfmt:
 - pgsql\bin\libpq.dll
 - pgsql\bin\libeay32.dll
@@ -61,9 +61,16 @@ Installation:
 TODO
 ====
 
+Data types
+----------
+
 - see README Section "Unsupported datatypes" of libpqbinfmt
 
-- Textual I/O format not supported: some datatypes (aclitem, ...) do not support binary I/O, cf. also
+- add support for user-defined data types in PqsqlParameter and PqsqlParameterCollection
+
+- add support for further typcategory user-types in PqsqlDataReader (currently, only S (String types) is supported)
+
+- Textual I/O format not supported: some data types (aclitem, ...) do not support binary I/O, cf. also
   http://www.postgresql.org/message-id/flat/201102222230.41081.rsmogura@softperience.eu
 
 	corresponding error is
@@ -89,8 +96,24 @@ TODO
   │ 3831 │ anyrange         │        0 │ anyrange_in         │ anyrange_out         │ -          │ -       │
   └──────┴──────────────────┴──────────┴─────────────────────┴──────────────────────┴────────────┴─────────┘
 
+Asynchronous Notification
+-------------------------
 - add support for PqsqlConnection.Notify event https://www.postgresql.org/docs/current/static/libpq-notify.html
 - add support for PqsqlConnection.Notice event https://www.postgresql.org/docs/current/static/libpq-notice-processing.html
+
+Connection Status Functions
+---------------------------
+- use PQdb for PqsqlConnection.Database, PQhost/PQport for PqsqlConnection.DataSource
+- https://www.postgresql.org/docs/current/static/libpq-status.html
+
+GetSchema
+---------
 - PqsqlConnection.GetSchema() and friends
+
+Two-phase commit
+----------------
 - PqsqlConnection.EnlistTransaction() (see https://www.postgresql.org/docs/current/static/sql-prepare-transaction.html)
+
+PREPARE
+-------
 - PqsqlCommand.Prepare() (see PQsendPrepare, PQsendQueryPrepared, PQsendDescribePrepared)
