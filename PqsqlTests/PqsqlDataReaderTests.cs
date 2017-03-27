@@ -427,5 +427,74 @@ namespace PqsqlTests
 
 			reader.Close();
 		}
+
+		[TestMethod]
+		public void PqsqlDataReaderTest8()
+		{
+			const string qs = "select ARRAY[0,1,2,3,42,null,4711,-1]::int2[], :p1";
+
+			short?[] p1_arr = { 0, 1, 2, 3, 42, null, 4711, -1 };
+
+			mCmd.CommandText = qs;
+			mCmd.CommandTimeout = 5;
+
+			PqsqlParameter p1 = mCmd.CreateParameter();
+			p1.ParameterName = "p1";
+			p1.Value = p1_arr;
+			p1.PqsqlDbType = PqsqlDbType.Array | PqsqlDbType.Int2;
+
+			mCmd.Parameters.Add(p1);
+
+			using (PqsqlDataReader r = mCmd.ExecuteReader())
+			{
+				// select ARRAY[0,1,2,3,42,null,4711,-1]::_int2, :p1
+				bool read = r.Read();
+				Assert.IsTrue(read);
+
+				Array a0 = (Array) r.GetValue(0);
+				Array a1 = (Array) r.GetValue(1);
+
+				Assert.AreEqual(a0.Length, a1.Length);
+				Assert.AreEqual(a0.Rank, a1.Rank);
+
+				IEnumerator e1 = a1.GetEnumerator();
+
+				foreach (object o0 in a0)
+				{
+					if (e1.MoveNext())
+					{
+						short? s0 = (short?) o0;
+						short? s1 = (short?) e1.Current;
+						Assert.AreEqual(s0, s1);
+					}
+					else
+					{
+						Assert.Fail("cannot advance a1");
+					}
+				}
+
+				Assert.AreEqual((short)0, a0.GetValue(1));
+				Assert.AreEqual((short)1, a0.GetValue(2));
+				Assert.AreEqual((short)2, a0.GetValue(3));
+				Assert.AreEqual((short)3, a0.GetValue(4));
+				Assert.AreEqual((short)42, a0.GetValue(5));
+				Assert.AreEqual(null, a0.GetValue(6));
+				Assert.AreEqual((short)4711, a0.GetValue(7));
+				Assert.AreEqual((short)-1, a0.GetValue(8));
+
+				Assert.AreEqual((short)0, a1.GetValue(1));
+				Assert.AreEqual((short)1, a1.GetValue(2));
+				Assert.AreEqual((short)2, a1.GetValue(3));
+				Assert.AreEqual((short)3, a1.GetValue(4));
+				Assert.AreEqual((short)42, a1.GetValue(5));
+				Assert.AreEqual(null, a1.GetValue(6));
+				Assert.AreEqual((short)4711, a1.GetValue(7));
+				Assert.AreEqual((short)-1, a1.GetValue(8));
+
+				read = r.Read();
+				Assert.IsFalse(read);
+			}
+		}
+
 	}
 }
