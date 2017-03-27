@@ -143,3 +143,9 @@ pqbf_add_array(pqparam_buffer *pb, PQExpBuffer a, uint32_t oid)
 
 	pqpb_add(pb, oid,  pb->payload->len - len);
 }
+
+DECLSPEC void
+pqbf_set_array_value(PQExpBuffer a, const char* p, int32_t itemlen)
+{
+	// TODO
+}
