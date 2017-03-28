@@ -40,12 +40,10 @@ namespace Pqsql
 
 #if PQSQL_DEBUG
 		private static log4net.ILog mLogger;
-#endif
 
 		// static constructor for log4net
 		static PqsqlConnectionPool()
 		{
-#if PQSQL_DEBUG
 			log4net.Layout.PatternLayout layout = new log4net.Layout.PatternLayout("%date{ISO8601} [%thread] %-5level %logger - %message%newline");
 			log4net.Appender.RollingFileAppender appender = new log4net.Appender.RollingFileAppender
 			{
@@ -56,8 +54,8 @@ namespace Pqsql
 			appender.ActivateOptions();
 			log4net.Config.BasicConfigurator.Configure(appender);
 			mLogger = log4net.LogManager.GetLogger(typeof(PqsqlConnectionPool));
-#endif
 		}
+#endif
 
 		private static void PoolService(object o)
 		{
