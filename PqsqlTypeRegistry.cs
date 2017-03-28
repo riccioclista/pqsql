@@ -1,13 +1,15 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
+using System.Net;
+using System.Net.NetworkInformation;
 #if CODECONTRACTS
 using System.Diagnostics.Contracts;
 #endif
 
-using PqsqlWrapper = Pqsql.UnsafeNativeMethods.PqsqlWrapper;
 using PqsqlBinaryFormat = Pqsql.UnsafeNativeMethods.PqsqlBinaryFormat;
 
 namespace Pqsql
@@ -17,33 +19,39 @@ namespace Pqsql
 	/// </summary>
 	internal static class PqsqlTypeRegistry
 	{
-#region PqsqlTypeRegistry statements
-			
-			// retrieve type category and name from type oid
-			// parameter :o is type oid
-			const string TypeCategoryByTypeOid = "select typcategory,typname from pg_type where oid=:o";
+		#region PqsqlTypeRegistry statements
 
-#endregion
+		// retrieve type category and name from type oid
+		// parameter :o is type oid
+		const string TypeCategoryByTypeOid = "select typcategory,typname from pg_type where oid=:o";
 
-		internal sealed class PqsqlTypeName
+		#endregion
+
+		/// <summary>
+		/// stores Type, datatype name, and GetValue delegate for PqsqlDataReader
+		/// </summary>
+		internal sealed class PqsqlTypeValue
 		{
 			// used in PqsqlDataReader.GetDataTypeName / PqsqlDataReader.FillSchemaTableColumns
 			public string DataTypeName { get; set; }
 
-			// used in PqsqlParameterCollection.CreateParameterBuffer
-			public TypeCode TypeCode { get; set; }
-
 			// used in PqsqlDataReader.GetFieldType / PqsqlDataReader.FillSchemaTableColumns
 			public Type ProviderType { get; set; }
 
-			// used in PqsqlParameter.PqsqlDbType
-			public DbType DbType { get; set; }
+			// used in PqsqlDataReader.GetValue / PqsqlDataReader.PopulateRowInfoAndOutputParameters
+			public Func<IntPtr, int, int, int, object> GetValue { get; set; }
+		}
+
+		/// <summary>
+		/// stores TypeCode, PqsqlDbType for arrays, SetValue, and SetArrayItem delegates for PqsqlParameterCollection
+		/// </summary>
+		internal sealed class PqsqlTypeParameter
+		{
+			// used in PqsqlParameterCollection.CreateParameterBuffer
+			public TypeCode TypeCode { get; set; }
 
 			// used in PqsqlTypeRegistry.SetArrayValue
 			public PqsqlDbType ArrayDbType { get; set; }
-
-			// used in PqsqlDataReader.GetValue
-			public Func<IntPtr, int, int, int, object> GetValue { get; set; }
 
 			// used in PqsqlParameterCollection.AddParameterValue
 			public Action<IntPtr, object, PqsqlDbType> SetValue { get; set; }
@@ -52,597 +60,727 @@ namespace Pqsql
 			public Action<IntPtr, object> SetArrayItem { get; set; }
 		}
 
-		// adds o as double array element to PQExpBuffer a
-		private static readonly Action<IntPtr, object> setNumericArray = (a, o) =>
+		/// <summary>
+		/// entry for static PqsqlDbType dictionary: TypeValue, TypeParameter, and DbType
+		/// </summary>
+		private sealed class PqsqlTypeEntry
 		{
-			double d = Convert.ToDouble(o, CultureInfo.InvariantCulture);
+			public PqsqlTypeValue TypeValue { get; set; }
 
-			long len0 = PqsqlBinaryFormat.pqbf_get_buflen(a); // get start position
+			public PqsqlTypeParameter TypeParameter { get; set; }
 
-			PqsqlBinaryFormat.pqbf_set_array_itemlength(a, -2); // first set an invalid item length
-			PqsqlBinaryFormat.pqbf_set_numeric(a, d); // encode numeric value (variable length)
+			// used in PqsqlParameter.PqsqlDbType
+			public DbType DbType { get; set; }
+		}
 
-			int len = (int) (PqsqlBinaryFormat.pqbf_get_buflen(a) - len0); // get new buffer length
-			// update array item length == len - 4 bytes
-			PqsqlBinaryFormat.pqbf_update_array_itemlength(a, -len, len - 4);
-		};
-
-		// sets val as string with Oid oid (PqsqlDbType.BPChar, PqsqlDbType.Text, PqsqlDbType.Varchar, PqsqlDbType.Name, PqsqlDbType.Char)
-		// into pqparam_buffer pb
-		private static readonly Action<IntPtr, object, PqsqlDbType> setText = (pb, val, oid) =>
-		{
-			unsafe
-			{
-				fixed (char* t = (string) val)
-				{
-					PqsqlBinaryFormat.pqbf_add_unicode_text(pb, t, (uint) oid);
-				}
-			}
-		};
-
-		// adds o as string array element to PQExpBuffer a
-		private static readonly Action<IntPtr, object> setTextArray = (a, o) =>
-		{
-			string v = (string) o;
-
-			long len0 = PqsqlBinaryFormat.pqbf_get_buflen(a); // get start position
-
-			PqsqlBinaryFormat.pqbf_set_array_itemlength(a, -2); // first set an invalid item length
-
-			unsafe
-			{
-				fixed (char* t = v)
-				{
-					PqsqlBinaryFormat.pqbf_set_unicode_text(a, t); // encode text value (variable length)
-				}
-			}
-
-			int len = (int) (PqsqlBinaryFormat.pqbf_get_buflen(a) - len0); // get new buffer length
-			// update array item length == len - 4 bytes
-			PqsqlBinaryFormat.pqbf_update_array_itemlength(a, -len, len - 4);
-		};
-
-		// sets val as DateTime with Oid oid (PqsqlDbType.Timestamp, PqsqlDbType.TimestampTZ) into pqparam_buffer pb
-		private static readonly Action<IntPtr, object, PqsqlDbType> setTimestamp = (pb, val, oid) =>
-		{
-			DateTime dt = (DateTime) val;
-
-            // we always interpret dt as Utc timestamp and ignore DateTime.Kind value
-			long ticks = dt.Ticks - PqsqlBinaryFormat.UnixEpochTicks;
-			long sec = ticks / TimeSpan.TicksPerSecond;
-			int usec = (int) (ticks % TimeSpan.TicksPerSecond / 10);
-			PqsqlBinaryFormat.pqbf_add_timestamp(pb, sec, usec, (uint) oid);
-		};
-
-		// adds o as DateTime array element into PQExpBuffer a
-		private static readonly Action<IntPtr, object> setTimestampArray = (a, o) =>
-		{
-			DateTime dt = (DateTime) o;
-
-            // we always interpret dt as Utc timestamp and ignore DateTime.Kind value
-			long ticks = dt.Ticks - PqsqlBinaryFormat.UnixEpochTicks;
-			long sec = ticks / TimeSpan.TicksPerSecond;
-			int usec = (int) (ticks % TimeSpan.TicksPerSecond / 10);
-			PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 8);
-			PqsqlBinaryFormat.pqbf_set_timestamp(a, sec, usec);
-		};
-
-		// maps PqsqlDbType to PqsqlTypeName
-		static readonly Dictionary<PqsqlDbType, PqsqlTypeName> mPqsqlDbTypeDict = new Dictionary<PqsqlDbType, PqsqlTypeName>
+		// maps PqsqlDbType to PqsqlTypeEntry
+		private static readonly Dictionary<PqsqlDbType, PqsqlTypeEntry> mPqsqlDbTypeDict = new Dictionary<PqsqlDbType, PqsqlTypeEntry>
 		{
 			{ PqsqlDbType.Boolean,
-				new PqsqlTypeName { 
-					DataTypeName="bool",
-					TypeCode=TypeCode.Boolean,
-					ProviderType=typeof(bool),
+				new PqsqlTypeEntry {
+					TypeValue=new PqsqlTypeValue {
+						DataTypeName="bool",
+						ProviderType=typeof(bool),
+						GetValue =(res, row, ord, typmod) => PqsqlDataReader.GetBoolean(res,row,ord),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.Boolean,
+						ArrayDbType=PqsqlDbType.BooleanArray,
+						SetValue=(pb, val, oid) => PqsqlBinaryFormat.pqbf_add_bool(pb, (bool) val ? 1 : 0),
+						SetArrayItem = (a, o) => PqsqlParameterCollection.SetTypeArray(a, sizeof(bool), PqsqlBinaryFormat.pqbf_set_bool, (bool) o ? 1 : 0),
+					},
 					DbType=DbType.Boolean,
-					ArrayDbType=PqsqlDbType.BooleanArray,
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetBoolean(res,row,ord),
-					SetValue=(pb, val, oid) => PqsqlBinaryFormat.pqbf_add_bool(pb, (bool) val ? 1 : 0),
-					SetArrayItem = (a, o) =>
-					{
-						bool v = (bool) o;
-						PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 1);
-						PqsqlBinaryFormat.pqbf_set_bool(a, v ? 1 : 0);
-					}
 				}
 			},
 			{ PqsqlDbType.Float8,
-				new PqsqlTypeName {
-					DataTypeName="float8",
-					TypeCode=TypeCode.Double,
-					ProviderType=typeof(double),
+				new PqsqlTypeEntry {
+					TypeValue=new PqsqlTypeValue {
+						DataTypeName="float8",
+						ProviderType=typeof(double),
+						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetDouble(res,row,ord),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode =TypeCode.Double,
+						ArrayDbType=PqsqlDbType.Float8Array,
+						SetValue=(pb, val, oid) => PqsqlBinaryFormat.pqbf_add_float8(pb, (double) val),
+						SetArrayItem = (a, o) => PqsqlParameterCollection.SetTypeArray(a, sizeof(double), PqsqlBinaryFormat.pqbf_set_float8, (double) o),
+					},
 					DbType=DbType.Double,
-					ArrayDbType=PqsqlDbType.Float8Array,
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetDouble(res,row,ord),
-					SetValue=(pb, val, oid) => PqsqlBinaryFormat.pqbf_add_float8(pb, (double) val),
-					SetArrayItem = (a, o) => {
-						double v = (double) o;
-						PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 8);
-						PqsqlBinaryFormat.pqbf_set_float8(a, v);
-					}
 				}
 			},
 			{ PqsqlDbType.Int4,
-				new PqsqlTypeName {
-					DataTypeName="int4",
-					TypeCode=TypeCode.Int32,
-					ProviderType=typeof(int),
+				new PqsqlTypeEntry {
+					TypeValue=new PqsqlTypeValue {
+						DataTypeName="int4",
+						ProviderType=typeof(int),
+						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetInt32(res,row,ord),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.Int32,
+						ArrayDbType=PqsqlDbType.Int4Array,
+						SetValue=(pb, val, oid) => PqsqlBinaryFormat.pqbf_add_int4(pb, (int) val),
+						SetArrayItem = (a, o) => PqsqlParameterCollection.SetTypeArray(a, sizeof(int), PqsqlBinaryFormat.pqbf_set_int4, (int) o),
+					},
 					DbType=DbType.Int32,
-					ArrayDbType=PqsqlDbType.Int4Array,
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetInt32(res,row,ord),
-					SetValue=(pb, val, oid) => PqsqlBinaryFormat.pqbf_add_int4(pb, (int) val),
-					SetArrayItem = (a, o) => {
-						int v = (int) o;
-						PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 4);
-						PqsqlBinaryFormat.pqbf_set_int4(a, v);
-					}
 				}
 			},
 			{ PqsqlDbType.Int8,
-				new PqsqlTypeName {
-					DataTypeName="int8",
-					TypeCode=TypeCode.Int64,
-					ProviderType=typeof(long),
+				new PqsqlTypeEntry {
+					TypeValue=new PqsqlTypeValue {
+						DataTypeName="int8",
+						ProviderType=typeof(long),
+						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetInt64(res,row,ord),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.Int64,
+						ArrayDbType=PqsqlDbType.Int8Array,
+						SetValue=(pb, val, oid) => PqsqlBinaryFormat.pqbf_add_int8(pb, (long) val),
+						SetArrayItem = (a, o) => PqsqlParameterCollection.SetTypeArray(a, sizeof(long), PqsqlBinaryFormat.pqbf_set_int8, (long) o),
+					},
 					DbType=DbType.Int64,
-					ArrayDbType=PqsqlDbType.Int8Array,
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetInt64(res,row,ord),
-					SetValue=(pb, val, oid) => PqsqlBinaryFormat.pqbf_add_int8(pb, (long) val),
-					SetArrayItem = (a, o) => {
-						long v = (long) o;
-						PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 8);
-						PqsqlBinaryFormat.pqbf_set_int8(a, v);
-					}
 				}
 			},
 			{ PqsqlDbType.Numeric,
-				new PqsqlTypeName {
-					DataTypeName="numeric",
-					TypeCode=TypeCode.Decimal,
-					ProviderType=typeof(Decimal),
-					DbType=DbType.VarNumeric,
-					ArrayDbType=PqsqlDbType.NumericArray,
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetNumeric(res,row,ord,typmod),
-					SetValue=(pb, val, oid) => {
-						double d = Convert.ToDouble(val, CultureInfo.InvariantCulture);
-						PqsqlBinaryFormat.pqbf_add_numeric(pb, d);
+				new PqsqlTypeEntry {
+					TypeValue=new PqsqlTypeValue {
+						DataTypeName="numeric",
+						ProviderType=typeof(Decimal),
+						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetNumeric(res,row,ord,typmod),
 					},
-					SetArrayItem = setNumericArray
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.Decimal,
+						ArrayDbType=PqsqlDbType.NumericArray,
+						SetValue=(pb, val, oid) => {
+							double d = Convert.ToDouble(val, CultureInfo.InvariantCulture);
+							PqsqlBinaryFormat.pqbf_add_numeric(pb, d);
+						},
+						SetArrayItem = PqsqlParameterCollection.SetNumericArray
+					},
+					DbType=DbType.VarNumeric,
 				}
 			},
 			{ PqsqlDbType.Float4,
-				new PqsqlTypeName {
-					DataTypeName="float4",
-					TypeCode=TypeCode.Single,
-					ProviderType=typeof(float),
+				new PqsqlTypeEntry {
+					TypeValue=new PqsqlTypeValue {
+						DataTypeName="float4",
+						ProviderType=typeof(float),
+						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetFloat(res,row,ord),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.Single,
+						ArrayDbType=PqsqlDbType.Float4Array,
+						SetValue=(pb, val, oid) => PqsqlBinaryFormat.pqbf_add_float4(pb, (float) val),
+						SetArrayItem = (a, o) => PqsqlParameterCollection.SetTypeArray(a, sizeof(float), PqsqlBinaryFormat.pqbf_set_float4, (float) o),
+					},
 					DbType=DbType.Single,
-					ArrayDbType=PqsqlDbType.Float4Array,
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetFloat(res,row,ord),
-					SetValue=(pb, val, oid) => PqsqlBinaryFormat.pqbf_add_float4(pb, (float) val),
-					SetArrayItem = (a, o) => {
-						float v = (float) o;
-						PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 4);
-						PqsqlBinaryFormat.pqbf_set_float4(a, v);
-					}
 				}
 			},
 			{ PqsqlDbType.Int2,
-				new PqsqlTypeName {
-					DataTypeName="int2",
-					TypeCode=TypeCode.Int16,
-					ProviderType=typeof(short),
-					DbType=DbType.Int16,
-					ArrayDbType=PqsqlDbType.Int2Array,
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetInt16(res,row,ord),
-					SetValue=(pb, val, oid) => PqsqlBinaryFormat.pqbf_add_int2(pb, (short) val),
-					SetArrayItem = (a, o) => {
-						short v = (short) o;
-						PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 2);
-						PqsqlBinaryFormat.pqbf_set_int2(a, v);
-					}
+				new PqsqlTypeEntry {
+					TypeValue=new PqsqlTypeValue {
+						DataTypeName="int2",
+						ProviderType=typeof(short),
+						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetInt16(res,row,ord),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.Int16,
+						ArrayDbType=PqsqlDbType.Int2Array,
+						SetValue=(pb, val, oid) => PqsqlBinaryFormat.pqbf_add_int2(pb, (short) val),
+						SetArrayItem = (a, o) => PqsqlParameterCollection.SetTypeArray(a, sizeof(short), PqsqlBinaryFormat.pqbf_set_int2, (short) o),
+					},
+					DbType =DbType.Int16,
 				}
 			},
 			{ PqsqlDbType.BPChar,
-				new PqsqlTypeName {
-					DataTypeName="bpchar",
-					TypeCode=TypeCode.String,
-					ProviderType=typeof(string),
+				new PqsqlTypeEntry {
+					TypeValue=new PqsqlTypeValue {
+						DataTypeName="bpchar",
+						ProviderType=typeof(string),
+						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.String,
+						ArrayDbType=PqsqlDbType.Array, // TODO
+						SetValue= PqsqlParameterCollection.SetText,
+						SetArrayItem= PqsqlParameterCollection.SetTextArray
+					},
 					DbType=DbType.StringFixedLength,
-					ArrayDbType=PqsqlDbType.Array, // TODO
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
-					SetValue=setText,
-					SetArrayItem=setTextArray
 				}
 			},
 			{ PqsqlDbType.Text,
-				new PqsqlTypeName {
-					DataTypeName="text",
-					TypeCode=TypeCode.String,
-					ProviderType=typeof(string),
+				new PqsqlTypeEntry {
+					TypeValue=new PqsqlTypeValue {
+						DataTypeName="text",
+						ProviderType=typeof(string),
+						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.String,
+						ArrayDbType=PqsqlDbType.TextArray,
+						SetValue = PqsqlParameterCollection.SetText,
+						SetArrayItem= PqsqlParameterCollection.SetTextArray
+					},
 					DbType=DbType.String,
-					ArrayDbType=PqsqlDbType.TextArray,
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
-					SetValue = setText,
-					SetArrayItem = setTextArray
 				}
 			},
 			{ PqsqlDbType.Varchar,
-				new PqsqlTypeName {
-					DataTypeName="varchar",
-					TypeCode=TypeCode.String,
-					ProviderType=typeof(string),
+				new PqsqlTypeEntry {
+					TypeValue=new PqsqlTypeValue {
+						DataTypeName="varchar",
+						ProviderType=typeof(string),
+						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.String,
+						ArrayDbType=PqsqlDbType.VarcharArray,
+						SetValue = PqsqlParameterCollection.SetText,
+						SetArrayItem= PqsqlParameterCollection.SetTextArray
+					},
 					DbType=DbType.String,
-					ArrayDbType=PqsqlDbType.VarcharArray,
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
-					SetValue = setText,
-					SetArrayItem = setTextArray
 				}
 			},
 			{ PqsqlDbType.Name,
-				new PqsqlTypeName {
-					DataTypeName="name",
-					TypeCode=TypeCode.String,
-					ProviderType=typeof(string),
+				new PqsqlTypeEntry {
+					TypeValue=new PqsqlTypeValue {
+						DataTypeName ="name",
+						ProviderType=typeof(string),
+						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.String,
+						ArrayDbType=PqsqlDbType.NameArray,
+						SetValue = PqsqlParameterCollection.SetText,
+						SetArrayItem= PqsqlParameterCollection.SetTextArray
+					},				
 					DbType=DbType.StringFixedLength,
-					ArrayDbType=PqsqlDbType.NameArray,
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
-					SetValue = setText,
-					SetArrayItem = setTextArray
 				}
 			},
 			{ PqsqlDbType.Char,
-				new PqsqlTypeName {
-					DataTypeName="char",
-					TypeCode=TypeCode.SByte,
-					ProviderType=typeof(sbyte),
+				new PqsqlTypeEntry {
+					TypeValue=new PqsqlTypeValue {
+						DataTypeName="char",
+						ProviderType=typeof(sbyte),
+						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetByte(res,row,ord),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.SByte,
+						ArrayDbType=PqsqlDbType.Array, // TODO
+						SetValue=null, // TODO
+						SetArrayItem = null // TODO
+					},
 					DbType=DbType.SByte,
-					ArrayDbType=PqsqlDbType.Array, // TODO
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetByte(res,row,ord),
-					SetValue=null, // TODO
-					SetArrayItem = null // TODO
 				}
 			},
 			{ PqsqlDbType.Bytea,
-				new PqsqlTypeName {
-					DataTypeName="bytea",
-					TypeCode=TypeCode.Object,
-					ProviderType=typeof(byte[]),
-					DbType=DbType.Object,
-					ArrayDbType=PqsqlDbType.Array, // TODO
-					GetValue= (res, row, ord, typmod) => {
-						int n = (int) PqsqlDataReader.GetBytes(res, row, ord, 0, null, 0, 0);
-						byte[] bs = new byte[n];
-						n = (int) PqsqlDataReader.GetBytes(res, row, ord, 0, bs, 0, n);
+				new PqsqlTypeEntry {
+					TypeValue=new PqsqlTypeValue {
+						DataTypeName="bytea",
+						ProviderType=typeof(byte[]),
+						GetValue= (res, row, ord, typmod) => {
+							int n = (int) PqsqlDataReader.GetBytes(res, row, ord, 0, null, 0, 0);
+							byte[] bs = new byte[n];
+							n = (int) PqsqlDataReader.GetBytes(res, row, ord, 0, bs, 0, n);
 
-						if (n != bs.Length)
-							throw new PqsqlException(string.Format(CultureInfo.InvariantCulture, "Received wrong number of bytes ({0}) for byte array ({1})", n, bs.Length));
-				
-						return bs;
+							if (n != bs.Length)
+								throw new PqsqlException(string.Format(CultureInfo.InvariantCulture, "Received wrong number of bytes ({0}) for byte array ({1})", n, bs.Length));
+
+							return bs;
+						},
 					},
-					SetValue= (pb, val, oid) =>
-					{
-						byte[] buf = (byte[]) val;
-						ulong len = (ulong) buf.LongLength;
-						unsafe
-						{
-							fixed (byte* b = buf)
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.Object,
+						ArrayDbType=PqsqlDbType.Array, // TODO
+						SetValue= (pb, val, oid) => {
+							byte[] buf = (byte[]) val;
+							ulong len = (ulong) buf.LongLength;
+							unsafe
 							{
-								PqsqlBinaryFormat.pqbf_add_bytea(pb, (sbyte*) b, len);
+								fixed (byte* b = buf)
+								{
+									PqsqlBinaryFormat.pqbf_add_bytea(pb, (sbyte*) b, len);
+								}
 							}
-						}
+						},
+						SetArrayItem = null // TODO
 					},
-					SetArrayItem = null // TODO
+					DbType=DbType.Object,
 				}
 			},
 			{ PqsqlDbType.Date,
-				new PqsqlTypeName {
-					DataTypeName="date",
-					TypeCode=TypeCode.DateTime,
-					ProviderType=typeof(DateTime),
+				new PqsqlTypeEntry {
+					TypeValue =new PqsqlTypeValue {
+						DataTypeName="date",
+						ProviderType=typeof(DateTime),
+						GetValue=(res, row, ord, typmod) => new DateTime(PqsqlDataReader.GetDate(res,row,ord)),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.DateTime,
+						ArrayDbType=PqsqlDbType.Array, // TODO
+						SetValue=null, // TODO (IntPtr pb,object val) => { PqsqlBinaryFormat.pqbf_add_date(pb, (DateTime) val); }
+						SetArrayItem = null // TODO
+					},
 					DbType=DbType.Date,
-					ArrayDbType=PqsqlDbType.Array, // TODO
-					GetValue=(res, row, ord, typmod) => new DateTime(PqsqlDataReader.GetDate(res,row,ord)),
-					SetValue=null, // TODO (IntPtr pb,object val) => { PqsqlBinaryFormat.pqbf_add_date(pb, (DateTime) val); }
-					SetArrayItem = null // TODO
 				}
 			},
 			{ PqsqlDbType.Time,
-				new PqsqlTypeName {
-					DataTypeName="time",
-					TypeCode=TypeCode.DateTime,
-					ProviderType=typeof(DateTime),
+				new PqsqlTypeEntry {
+					TypeValue =new PqsqlTypeValue {
+						DataTypeName="time",
+						ProviderType=typeof(DateTime),
+						GetValue=(res, row, ord, typmod) => new DateTime(PqsqlDataReader.GetTime(res,row,ord)),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.DateTime,
+						ArrayDbType=PqsqlDbType.Array, // TODO
+						SetValue=null, // TODO (IntPtr pb,object val) => { PqsqlBinaryFormat.pqbf_add_time(pb, (DateTime) val); }
+						SetArrayItem = null // TODO
+					},
 					DbType=DbType.Time,
-					ArrayDbType=PqsqlDbType.Array, // TODO
-					GetValue=(res, row, ord, typmod) => new DateTime(PqsqlDataReader.GetTime(res,row,ord)),
-					SetValue=null, // TODO (IntPtr pb,object val) => { PqsqlBinaryFormat.pqbf_add_time(pb, (DateTime) val); }
-					SetArrayItem = null // TODO
 				}
 			},
 			{ PqsqlDbType.Timestamp,
-				new PqsqlTypeName {
-					DataTypeName="timestamp",
-					TypeCode=TypeCode.DateTime,
-					ProviderType=typeof(DateTime),
+				new PqsqlTypeEntry {
+					TypeValue =new PqsqlTypeValue {
+						DataTypeName="timestamp",
+						ProviderType=typeof(DateTime),
+						GetValue=(res, row, ord, typmod) => new DateTime(PqsqlDataReader.GetDateTime(res,row,ord)),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.DateTime,
+						ArrayDbType=PqsqlDbType.TimestampArray,
+						SetValue = PqsqlParameterCollection.SetTimestamp,
+						SetArrayItem = PqsqlParameterCollection.SetTimestampArray
+					},
 					DbType=DbType.DateTime,
-					ArrayDbType=PqsqlDbType.TimestampArray,
-					GetValue=(res, row, ord, typmod) => new DateTime(PqsqlDataReader.GetDateTime(res,row,ord)),
-					SetValue = setTimestamp,
-					SetArrayItem = setTimestampArray
 				}
 			},
 			{ PqsqlDbType.TimestampTZ,
-				new PqsqlTypeName {
-					DataTypeName="timestamptz",
-					TypeCode=TypeCode.DateTime,
-					ProviderType=typeof(DateTime),
+				new PqsqlTypeEntry {
+					TypeValue =new PqsqlTypeValue {
+						DataTypeName="timestamptz",
+						ProviderType=typeof(DateTime),
+						GetValue=(res, row, ord, typmod) => new DateTimeOffset(PqsqlDataReader.GetDateTime(res,row,ord), TimeSpan.Zero),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.DateTime,
+						ArrayDbType=PqsqlDbType.TimestampTZArray,
+						SetValue = PqsqlParameterCollection.SetTimestamp,
+						SetArrayItem = PqsqlParameterCollection.SetTimestampArray
+					},
 					DbType=DbType.DateTimeOffset,
-					ArrayDbType=PqsqlDbType.TimestampTZArray,
-					GetValue=(res, row, ord, typmod) => new DateTimeOffset(PqsqlDataReader.GetDateTime(res,row,ord), TimeSpan.Zero),
-					SetValue = setTimestamp,
-					SetArrayItem = setTimestampArray
 				}
 			},
 			{ PqsqlDbType.Interval,
-				new PqsqlTypeName {
-					DataTypeName="interval",
-					TypeCode=TypeCode.DateTime,
-					ProviderType=typeof(TimeSpan),
+				new PqsqlTypeEntry {
+					TypeValue=new PqsqlTypeValue {
+						DataTypeName="interval",
+						ProviderType=typeof(TimeSpan),
+						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetInterval(res,row,ord),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.DateTime,
+						ArrayDbType=PqsqlDbType.Array, // TODO
+						SetValue=null, // TODO (IntPtr pb,object val) => { PqsqlBinaryFormat.pqbf_add_interval(pb, (DateTime) val); }
+						SetArrayItem = null // TODO
+					},
 					DbType=DbType.DateTime,
-					ArrayDbType=PqsqlDbType.Array, // TODO
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetInterval(res,row,ord),
-					SetValue=null, // TODO (IntPtr pb,object val) => { PqsqlBinaryFormat.pqbf_add_interval(pb, (DateTime) val); }
-					SetArrayItem = null
 				}
 			},
 			{ PqsqlDbType.TimeTZ,
-				new PqsqlTypeName {
-					DataTypeName="timetz",
-					TypeCode=TypeCode.DateTime,
-					ProviderType=typeof(DateTime),
+				new PqsqlTypeEntry {
+					TypeValue =new PqsqlTypeValue {
+						DataTypeName="timetz",
+						ProviderType=typeof(DateTime),
+						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetTime(res,row,ord),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.DateTime,
+						ArrayDbType=PqsqlDbType.Array, // TODO
+						SetValue=null, // TODO (IntPtr pb,object val) => { PqsqlBinaryFormat.pqbf_add_timetz(pb, (DateTime) val); }
+						SetArrayItem = null // TODO
+					},
 					DbType=DbType.DateTime,
-					ArrayDbType=PqsqlDbType.Array, // TODO
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetTime(res,row,ord),
-					SetValue=null, // TODO (IntPtr pb,object val) => { PqsqlBinaryFormat.pqbf_add_timetz(pb, (DateTime) val); }
-					SetArrayItem = null
 				}
 			},
-			//{ PqsqlDbType.Inet, new PqsqlTypeName { Name="inet", ProviderType=typeof() } },
-			//{ PqsqlDbType.Cidr, new PqsqlTypeName { Name="cidr", ProviderType=typeof() } },
-			//{ PqsqlDbType.MacAddr, new PqsqlTypeName { Name="macaddr", ProviderType=typeof() } },
-			//{ PqsqlDbType.Bit, new PqsqlTypeName { Name="bit", ProviderType=typeof() } },
-			//{ PqsqlDbType.Varbit, new PqsqlTypeName { Name="varbit", ProviderType=typeof() } },
+			{ PqsqlDbType.Inet,
+				new PqsqlTypeEntry {
+					TypeValue=new PqsqlTypeValue {
+						DataTypeName="inet",
+						ProviderType=typeof(IPAddress),
+						GetValue=null, // TODO
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.Object,
+						ArrayDbType=PqsqlDbType.Array, // TODO
+						SetValue=null, // TODO
+						SetArrayItem = null // TODO
+					},
+					DbType=DbType.Object,
+				}
+			},
+			{ PqsqlDbType.Cidr,
+				new PqsqlTypeEntry {
+					TypeValue=new PqsqlTypeValue {
+						DataTypeName="cidr",
+						ProviderType=typeof(IPAddress),
+						GetValue=null, // TODO
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.Object,
+						ArrayDbType=PqsqlDbType.Array, // TODO
+						SetValue=null, // TODO
+						SetArrayItem = null // TODO
+					},
+					DbType=DbType.Object,
+				}
+			},
+			{ PqsqlDbType.MacAddr,
+				new PqsqlTypeEntry {
+					TypeValue=new PqsqlTypeValue {
+						DataTypeName="macaddr",
+						ProviderType=typeof(PhysicalAddress),
+						GetValue=null, // TODO
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.Object,
+						ArrayDbType=PqsqlDbType.Array, // TODO
+						SetValue=null, // TODO
+						SetArrayItem = null // TODO
+					},
+					DbType=DbType.Object,
+				}
+			},
+			{ PqsqlDbType.Bit,
+				new PqsqlTypeEntry {
+					TypeValue=new PqsqlTypeValue {
+						DataTypeName="bit",
+						ProviderType=typeof(BitArray),
+						GetValue=null, // TODO
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.Object,
+						ArrayDbType=PqsqlDbType.Array, // TODO
+						SetValue=null, // TODO
+						SetArrayItem = null // TODO
+					},
+					DbType=DbType.Object,
+				}
+			},
+			{ PqsqlDbType.Varbit,new PqsqlTypeEntry {
+					TypeValue=new PqsqlTypeValue {
+						DataTypeName="varbit",
+						ProviderType=typeof(BitArray),
+						GetValue=null, // TODO
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.Object,
+						ArrayDbType=PqsqlDbType.Array, // TODO
+						SetValue=null, // TODO
+						SetArrayItem = null // TODO
+					},
+					DbType=DbType.Object,
+				}
+			},
 			{ PqsqlDbType.Uuid,
-				new PqsqlTypeName {
-					DataTypeName="uuid",
-					TypeCode=TypeCode.Object,
-					ProviderType=typeof(Guid),
+				new PqsqlTypeEntry {
+					TypeValue=new PqsqlTypeValue {
+						DataTypeName="uuid",
+						ProviderType=typeof(Guid),
+						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetGuid(res,row,ord),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.Object,
+						ArrayDbType=PqsqlDbType.Array, // TODO
+						SetValue=null, // TODO (IntPtr pb,object val) => { PqsqlBinaryFormat.pqbf_add_uuid(pb, (Guid) val); }
+						SetArrayItem = null // TODO
+					},
 					DbType=DbType.Guid,
-					ArrayDbType=PqsqlDbType.Array, // TODO
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetGuid(res,row,ord),
-					SetValue=null, // TODO (IntPtr pb,object val) => { PqsqlBinaryFormat.pqbf_add_uuid(pb, (Guid) val); }
-					SetArrayItem = null
 				}
 			},
 			{ PqsqlDbType.Refcursor,
-				new PqsqlTypeName {
-					DataTypeName="refcursor",
-					TypeCode=TypeCode.String,
-					ProviderType=typeof(string),
+				new PqsqlTypeEntry {
+					TypeValue=new PqsqlTypeValue {
+						DataTypeName="refcursor",
+						ProviderType=typeof(string),
+						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.String,
+						ArrayDbType=PqsqlDbType.Array, // TODO
+						SetValue = PqsqlParameterCollection.SetText,
+						SetArrayItem = PqsqlParameterCollection.SetTextArray
+					},
 					DbType=DbType.String,
-					ArrayDbType=PqsqlDbType.Array, // TODO
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
-					SetValue = setText,
-					SetArrayItem = setTextArray
 				}
 			},
 			{ PqsqlDbType.Oid,
-				new PqsqlTypeName {
-					DataTypeName="oid",
-					TypeCode=TypeCode.UInt32,
-					ProviderType=typeof(uint),
+				new PqsqlTypeEntry {
+					TypeValue=new PqsqlTypeValue {
+						DataTypeName="oid",
+						ProviderType=typeof(uint),
+						GetValue=(res, row, ord, typmod) => (uint) PqsqlDataReader.GetInt32(res,row,ord),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.UInt32,
+						ArrayDbType=PqsqlDbType.OidArray,
+						SetValue=(pb, val, oid) => PqsqlBinaryFormat.pqbf_add_oid(pb, (uint) val),
+						SetArrayItem = (a, o) => PqsqlParameterCollection.SetTypeArray(a, sizeof(uint), PqsqlBinaryFormat.pqbf_set_oid, (uint) o),
+					},
 					DbType=DbType.UInt32,
-					ArrayDbType=PqsqlDbType.OidArray,
-					GetValue=(res, row, ord, typmod) => (uint) PqsqlDataReader.GetInt32(res,row,ord),
-					SetValue=(pb, val, oid) => PqsqlBinaryFormat.pqbf_add_oid(pb, (uint) val),
-					SetArrayItem = (a, o) => {
-						uint v = (uint) o;
-						PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 4);
-						PqsqlBinaryFormat.pqbf_set_oid(a, v);
-					}
 				}
 			},
 			{ PqsqlDbType.Unknown,
-				new PqsqlTypeName {
-					DataTypeName="unknown",
-					TypeCode=TypeCode.String,
-					ProviderType=typeof(string),
+				new PqsqlTypeEntry {
+					TypeValue =new PqsqlTypeValue {
+						DataTypeName="unknown",
+						ProviderType=typeof(string),
+						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.String,
+						ArrayDbType=PqsqlDbType.Array, // TODO
+						SetValue = PqsqlParameterCollection.SetText,
+						SetArrayItem = null // TODO
+					},
 					DbType=DbType.String,
-					ArrayDbType=PqsqlDbType.Array, // TODO
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
-					SetValue = setText,
-					SetArrayItem = null
 				}
 			},
 			{ PqsqlDbType.BooleanArray,
-				new PqsqlTypeName {
-					DataTypeName="_bool",
-					TypeCode=TypeCode.Object,
-					ProviderType=typeof(Array),
+				new PqsqlTypeEntry {
+					TypeValue =new PqsqlTypeValue {
+						DataTypeName="_bool",
+						ProviderType=typeof(Array),
+						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Boolean, typeof(bool?), typeof(bool), (x, len) => PqsqlBinaryFormat.pqbf_get_bool(x) > 0),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.Object,
+						ArrayDbType=PqsqlDbType.BooleanArray,
+						SetValue=null,
+						SetArrayItem = null
+					},
 					DbType=DbType.Object,
-					ArrayDbType=PqsqlDbType.BooleanArray,
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Boolean, typeof(bool?), typeof(bool), (x, len) => PqsqlBinaryFormat.pqbf_get_bool(x) > 0),
-					SetValue=null,
-					SetArrayItem = null
 				}
 			},
 			{ PqsqlDbType.Int2Array,
-				new PqsqlTypeName {
-					DataTypeName="_int2",
-					TypeCode=TypeCode.Object,
-					ProviderType=typeof(Array),
+				new PqsqlTypeEntry {
+					TypeValue =new PqsqlTypeValue {
+						DataTypeName="_int2",
+						ProviderType=typeof(Array),
+						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Int2, typeof(short?), typeof(short), (x, len) => PqsqlBinaryFormat.pqbf_get_int2(x)),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.Object,
+						ArrayDbType=PqsqlDbType.Int2Array,
+						SetValue=null,
+						SetArrayItem = null
+					},
 					DbType=DbType.Object,
-					ArrayDbType=PqsqlDbType.Int2Array,
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Int2, typeof(short?), typeof(short), (x, len) => PqsqlBinaryFormat.pqbf_get_int2(x)),
-					SetValue=null,
-					SetArrayItem = null
 				}
 			},
 			{ PqsqlDbType.Int4Array,
-				new PqsqlTypeName {
-					DataTypeName="_int4",
-					TypeCode=TypeCode.Object,
-					ProviderType=typeof(Array),
+				new PqsqlTypeEntry {
+					TypeValue =new PqsqlTypeValue {
+						DataTypeName="_int4",
+						ProviderType=typeof(Array),
+						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Int4, typeof(int?), typeof(int), (x, len) => PqsqlBinaryFormat.pqbf_get_int4(x)),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.Object,
+						ArrayDbType=PqsqlDbType.Int4Array,
+						SetValue=null,
+						SetArrayItem = null
+					},
 					DbType=DbType.Object,
-					ArrayDbType=PqsqlDbType.Int4Array,
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Int4, typeof(int?), typeof(int), (x, len) => PqsqlBinaryFormat.pqbf_get_int4(x)),
-					SetValue=null,
-					SetArrayItem = null
 				}
 			},
 			{ PqsqlDbType.TextArray,
-				new PqsqlTypeName {
-					DataTypeName="_text",
-					TypeCode=TypeCode.Object,
-					ProviderType=typeof(Array),
+				new PqsqlTypeEntry {
+					TypeValue =new PqsqlTypeValue {
+						DataTypeName="_text",
+						ProviderType=typeof(Array),
+						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Text, typeof(string), typeof(string), PqsqlDataReader.GetStringValue),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.Object,
+						ArrayDbType=PqsqlDbType.TextArray,
+						SetValue=null,
+						SetArrayItem = PqsqlParameterCollection.SetTextArray
+					},
 					DbType=DbType.Object,
-					ArrayDbType=PqsqlDbType.TextArray,
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Text, typeof(string), typeof(string), PqsqlDataReader.GetStringValue),
-					SetValue = null,
-					SetArrayItem = setTextArray
 				}
 			},
 			{ PqsqlDbType.NameArray,
-				new PqsqlTypeName {
-					DataTypeName="_name",
-					TypeCode=TypeCode.Object,
-					ProviderType=typeof(Array),
+				new PqsqlTypeEntry {
+					TypeValue =new PqsqlTypeValue {
+						DataTypeName="_name",
+						ProviderType=typeof(Array),
+						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Name, typeof(string), typeof(string), PqsqlDataReader.GetStringValue),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.Object,
+						ArrayDbType=PqsqlDbType.NameArray,
+						SetValue = null,
+						SetArrayItem = PqsqlParameterCollection.SetTextArray
+					},
 					DbType=DbType.Object,
-					ArrayDbType=PqsqlDbType.NameArray,
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Name, typeof(string), typeof(string), PqsqlDataReader.GetStringValue),
-					SetValue = null,
-					SetArrayItem = setTextArray
 				}
 			},
 			{ PqsqlDbType.VarcharArray,
-				new PqsqlTypeName {
-					DataTypeName="_varchar",
-					TypeCode=TypeCode.Object,
-					ProviderType=typeof(Array),
+				new PqsqlTypeEntry {
+					TypeValue =new PqsqlTypeValue {
+						DataTypeName="_varchar",
+						ProviderType=typeof(Array),
+						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Varchar, typeof(string), typeof(string), PqsqlDataReader.GetStringValue),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.Object,
+						ArrayDbType=PqsqlDbType.VarcharArray,
+						SetValue = null,
+						SetArrayItem = PqsqlParameterCollection.SetTextArray
+					},
 					DbType=DbType.Object,
-					ArrayDbType=PqsqlDbType.VarcharArray,
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Varchar, typeof(string), typeof(string), PqsqlDataReader.GetStringValue),
-					SetValue = null,
-					SetArrayItem = setTextArray
 				}
 			},
 			{ PqsqlDbType.Int8Array,
-				new PqsqlTypeName {
-					DataTypeName="_int8",
-					TypeCode=TypeCode.Object,
-					ProviderType=typeof(Array),
+				new PqsqlTypeEntry {
+					TypeValue =new PqsqlTypeValue {
+						DataTypeName="_int8",
+						ProviderType=typeof(Array),
+						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Int8, typeof(long?), typeof(long), (x, len) => PqsqlBinaryFormat.pqbf_get_int8(x)),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.Object,
+						ArrayDbType=PqsqlDbType.Int8Array,
+						SetValue=null,
+						SetArrayItem = null
+					},
 					DbType=DbType.Object,
-					ArrayDbType=PqsqlDbType.Int8Array,
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Int8, typeof(long?), typeof(long), (x, len) => PqsqlBinaryFormat.pqbf_get_int8(x)),
-					SetValue=null,
-					SetArrayItem = null
 				}
 			},
 			{ PqsqlDbType.Float4Array,
-				new PqsqlTypeName {
-					DataTypeName="_float4",
-					TypeCode=TypeCode.Object,
-					ProviderType=typeof(Array),
+				new PqsqlTypeEntry {
+					TypeValue =new PqsqlTypeValue {
+						DataTypeName="_float4",
+						ProviderType=typeof(Array),
+						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Float4, typeof(float?), typeof(float), (x, len) => PqsqlBinaryFormat.pqbf_get_float4(x)),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.Object,
+						ArrayDbType=PqsqlDbType.Float4Array,
+						SetValue=null,
+						SetArrayItem = null
+					},
 					DbType=DbType.Object,
-					ArrayDbType=PqsqlDbType.Float4Array,
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Float4, typeof(float?), typeof(float), (x, len) => PqsqlBinaryFormat.pqbf_get_float4(x)),
-					SetValue=null,
-					SetArrayItem = null
 				}
 			},
 			{ PqsqlDbType.Float8Array,
-				new PqsqlTypeName {
-					DataTypeName="_float8",
-					TypeCode=TypeCode.Object,
-					ProviderType=typeof(Array),
+				new PqsqlTypeEntry {
+					TypeValue =new PqsqlTypeValue {
+						DataTypeName="_float8",
+						ProviderType=typeof(Array),
+						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Float8, typeof(double?), typeof(double), (x, len) => PqsqlBinaryFormat.pqbf_get_float8(x)),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.Object,
+						ArrayDbType=PqsqlDbType.Float8Array,
+						SetValue=null,
+						SetArrayItem = null
+					},
 					DbType=DbType.Object,
-					ArrayDbType=PqsqlDbType.Float8Array,
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Float8, typeof(double?), typeof(double), (x, len) => PqsqlBinaryFormat.pqbf_get_float8(x)),
-					SetValue=null,
-					SetArrayItem = null
 				}
 			},
 			{ PqsqlDbType.OidArray,
-				new PqsqlTypeName {
-					DataTypeName="_oid",
-					TypeCode=TypeCode.Object,
-					ProviderType=typeof(Array),
+				new PqsqlTypeEntry {
+					TypeValue =new PqsqlTypeValue {
+						DataTypeName="_oid",
+						ProviderType=typeof(Array),
+						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Oid, typeof(uint?), typeof(uint), (x, len) => (uint) PqsqlBinaryFormat.pqbf_get_int4(x)),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.Object,
+						ArrayDbType=PqsqlDbType.OidArray,
+						SetValue=null,
+						SetArrayItem = null
+					},
 					DbType=DbType.Object,
-					ArrayDbType=PqsqlDbType.OidArray,
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Oid, typeof(uint?), typeof(uint), (x, len) => (uint) PqsqlBinaryFormat.pqbf_get_int4(x)),
-					SetValue=null,
-					SetArrayItem = null
 				}
 			},
 			{ PqsqlDbType.TimestampArray,
-				new PqsqlTypeName {
-					DataTypeName="_timestamp",
-					TypeCode=TypeCode.Object,
-					ProviderType=typeof(Array),
+				new PqsqlTypeEntry {
+					TypeValue =new PqsqlTypeValue {
+						DataTypeName="_timestamp",
+						ProviderType=typeof(Array),
+						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Timestamp, typeof(DateTime?), typeof(DateTime), (x, len) => {
+							long sec;
+							int usec;
+							unsafe { PqsqlBinaryFormat.pqbf_get_timestamp(x, &sec, &usec); }
+							long ticks = PqsqlBinaryFormat.UnixEpochTicks + sec * TimeSpan.TicksPerSecond + usec * 10;
+							DateTime dt = new DateTime(ticks);
+							return dt;
+						}),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.Object,
+						ArrayDbType=PqsqlDbType.TimestampArray,
+						SetValue=null,
+						SetArrayItem = null
+					},
 					DbType=DbType.Object,
-					ArrayDbType=PqsqlDbType.TimestampArray,
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Timestamp, typeof(DateTime?), typeof(DateTime), (x, len) => {
-						long sec;
-						int usec;
-						unsafe { PqsqlBinaryFormat.pqbf_get_timestamp(x, &sec, &usec); }
-						long ticks = PqsqlBinaryFormat.UnixEpochTicks + sec * TimeSpan.TicksPerSecond + usec * 10;
-						DateTime dt = new DateTime(ticks);
-						return dt;
-					}),
-					SetValue=null,
-					SetArrayItem = null
 				}
 			},
 			{ PqsqlDbType.TimestampTZArray,
-				new PqsqlTypeName {
-					DataTypeName="_timestamptz",
-					TypeCode=TypeCode.Object,
-					ProviderType=typeof(Array),
+				new PqsqlTypeEntry {
+					TypeValue =new PqsqlTypeValue {
+						DataTypeName="_timestamptz",
+						ProviderType=typeof(Array),
+						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.TimestampTZ, typeof(DateTimeOffset?), typeof(DateTimeOffset), (x, len) => {
+							long sec;
+							int usec;
+							unsafe { PqsqlBinaryFormat.pqbf_get_timestamp(x, &sec, &usec); }
+							long ticks = PqsqlBinaryFormat.UnixEpochTicks + sec * TimeSpan.TicksPerSecond + usec * 10;
+							DateTimeOffset dt = new DateTimeOffset(ticks, TimeSpan.Zero);
+							return dt;
+						}),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.Object,
+						ArrayDbType=PqsqlDbType.TimestampTZArray,
+						SetValue=null,
+						SetArrayItem = null
+					},
 					DbType=DbType.Object,
-					ArrayDbType=PqsqlDbType.TimestampTZArray,
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.TimestampTZ, typeof(DateTimeOffset?), typeof(DateTimeOffset), (x, len) => {
-						long sec;
-						int usec;
-						unsafe { PqsqlBinaryFormat.pqbf_get_timestamp(x, &sec, &usec); }
-						long ticks = PqsqlBinaryFormat.UnixEpochTicks + sec * TimeSpan.TicksPerSecond + usec * 10;
-						DateTimeOffset dt = new DateTimeOffset(ticks, TimeSpan.Zero);
-						return dt;
-					}),
-					SetValue=null,
-					SetArrayItem = null
 				}
 			},
 			{ PqsqlDbType.NumericArray,
-				new PqsqlTypeName {
-					DataTypeName="_numeric",
-					TypeCode=TypeCode.Object,
-					ProviderType=typeof(Array),
+				new PqsqlTypeEntry {
+					TypeValue =new PqsqlTypeValue {
+						DataTypeName="_numeric",
+						ProviderType=typeof(Array),
+						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Numeric, typeof(double?), typeof(double), (x, len) => PqsqlBinaryFormat.pqbf_get_numeric(x,typmod)),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.Object,
+						ArrayDbType=PqsqlDbType.NumericArray,
+						SetValue=null,
+						SetArrayItem = null
+					},
 					DbType=DbType.Object,
-					ArrayDbType=PqsqlDbType.NumericArray,
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Numeric, typeof(double?), typeof(double), (x, len) => PqsqlBinaryFormat.pqbf_get_numeric(x,typmod)),
-					SetValue=null,
-					SetArrayItem = null
 				}
 			},
 			{ PqsqlDbType.Void,
-				new PqsqlTypeName { 
-					DataTypeName="void",
-					TypeCode=TypeCode.Object,
-					ProviderType=typeof(object),
+				new PqsqlTypeEntry {
+					TypeValue =new PqsqlTypeValue {
+						DataTypeName="void",
+						ProviderType=typeof(object),
+						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.Object,
+						ArrayDbType=PqsqlDbType.Array, // TODO
+						SetValue= (pb, val, oid) => { throw new  InvalidOperationException("Cannot set void parameter"); },
+						SetArrayItem = (a, o) => { throw new InvalidOperationException("Cannot set void array parameter"); }
+					},
 					DbType=DbType.Object,
-					ArrayDbType=PqsqlDbType.Array, // TODO
-					GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetString(res,row,ord),
-					SetValue= (pb, val, oid) => { throw new  InvalidOperationException("Cannot set void parameter"); },
-					SetArrayItem = (a, o) => { throw new InvalidOperationException("Cannot set void array parameter"); }
 				}
 			},
 		};
@@ -735,46 +873,58 @@ namespace Pqsql
 			
 		};
 
-		// maps connection strings to user-defined data types
-		private static readonly ConcurrentDictionary<string, Dictionary<PqsqlDbType, PqsqlTypeName>> mUserTypesDict  = new ConcurrentDictionary<string, Dictionary<PqsqlDbType, PqsqlTypeName>>();
+		// maps connection strings to user-defined datatypes
+		private static readonly ConcurrentDictionary<string, Dictionary<PqsqlDbType, PqsqlTypeEntry>> mUserTypesDict  = new ConcurrentDictionary<string, Dictionary<PqsqlDbType, PqsqlTypeEntry>>();
 
-		// used in PqsqlTypeRegistry.GetDbType and PqsqlParameterCollection.CreateParameterBuffer
-		// TODO user-defined data types not supported
-		internal static PqsqlTypeName Get(PqsqlDbType oid)
+
+		#region access types for PqsqlParameterCollection
+
+		// used in PqsqlParameterCollection.CreateParameterBuffer
+		// TODO user-defined datatypes not supported
+		internal static PqsqlTypeParameter Get(PqsqlDbType oid)
 		{
 #if CODECONTRACTS
-			Contract.Ensures(Contract.Result<PqsqlTypeName>() == null || Contract.Result<PqsqlTypeName>().GetValue != null);
-			Contract.Ensures(Contract.Result<PqsqlTypeName>() == null || Contract.Result<PqsqlTypeName>().DataTypeName != null);
-			Contract.Ensures(Contract.Result<PqsqlTypeName>() == null || Contract.Result<PqsqlTypeName>().ProviderType != null);
+			Contract.Ensures(Contract.Result<PqsqlTypeParameter>() == null || Contract.Result<PqsqlTypeParameter>().TypeCode != TypeCode.Empty);
+			Contract.Ensures(Contract.Result<PqsqlTypeParameter>() == null || Contract.Result<PqsqlTypeParameter>().ArrayDbType != 0);
 #endif
 
-			PqsqlTypeName result;
-			return mPqsqlDbTypeDict.TryGetValue(oid, out result) ? result : null;
+			PqsqlTypeEntry result;
+			return mPqsqlDbTypeDict.TryGetValue(oid, out result) ? result.TypeParameter : null;
 		}
 
+		#endregion
+
+
+		#region access types for PqsqlDataReader
+
 		// used in PqsqlDataReader.PopulateRowInfoAndOutputParameters
-		internal static PqsqlTypeName GetOrAdd(PqsqlDbType oid, PqsqlConnection connection)
+		internal static PqsqlTypeValue GetOrAdd(PqsqlDbType oid, PqsqlConnection connection)
 		{
 #if CODECONTRACTS
-			Contract.Ensures(Contract.Result<PqsqlTypeName>() == null || Contract.Result<PqsqlTypeName>().GetValue != null);
-			Contract.Ensures(Contract.Result<PqsqlTypeName>() == null || Contract.Result<PqsqlTypeName>().DataTypeName != null);
-			Contract.Ensures(Contract.Result<PqsqlTypeName>() == null || Contract.Result<PqsqlTypeName>().ProviderType != null);
+			Contract.Ensures(Contract.Result<PqsqlTypeValue>() != null);
+			Contract.Ensures(Contract.Result<PqsqlTypeValue>().GetValue != null);
+			Contract.Ensures(Contract.Result<PqsqlTypeValue>().DataTypeName != null);
+			Contract.Ensures(Contract.Result<PqsqlTypeValue>().ProviderType != null);
 #endif
 
-			PqsqlTypeName result;
-			Dictionary<PqsqlDbType, PqsqlTypeName> userTypes;
+			PqsqlTypeEntry result;
+			Dictionary<PqsqlDbType, PqsqlTypeEntry> userTypes;
 
 			// try to get native postgres type
 			if (mPqsqlDbTypeDict.TryGetValue(oid, out result))
 			{
-				return result;
+#if CODECONTRACTS
+				Contract.Assume(result != null);
+				Contract.Assert(result.TypeValue != null);
+#endif
+				return result.TypeValue;
 			}
 
 			// TODO cache maintainance in mUserTypesDict not implemented
 
 			string connectionString = connection.ConnectionString;
 
-			// try to get user-defined data type (CREATE TYPE, etc.), whose oid might differ between databases
+			// try to get user-defined datatype (CREATE TYPE, etc.), whose oid might differ between databases
 			if (mUserTypesDict.TryGetValue(connectionString, out userTypes))
 			{
 				lock (userTypes)
@@ -783,15 +933,20 @@ namespace Pqsql
 					{
 						// if oid is not yet stored, try to find it
 						result = FetchType(oid, connection);
-						userTypes[oid] = result; // store fresh PqsqlTypeName here
+						userTypes[oid] = result; // store fresh PqsqlTypeEntry here
 					}
 
-					return result;
+#if CODECONTRACTS
+					Contract.Assume(result != null);
+					Contract.Assert(result.TypeValue != null);
+#endif
+
+					return result.TypeValue;
 				}
 			}
 
 			// create fresh user-defined data type mapping
-			userTypes = new Dictionary<PqsqlDbType, PqsqlTypeName>();
+			userTypes = new Dictionary<PqsqlDbType, PqsqlTypeEntry>();
 
 			// no user-defined data type mapping for connectionString stored yet, try to add a new one
 			if (mUserTypesDict.TryAdd(connectionString, userTypes))
@@ -802,10 +957,15 @@ namespace Pqsql
 					{
 						// if oid is not yet stored, we came first, just try to find oid
 						result = FetchType(oid, connection);
-						userTypes[oid] = result; // store fresh PqsqlTypeName here
+						userTypes[oid] = result; // store fresh PqsqlTypeEntry here
 					}
 
-					return result;
+#if CODECONTRACTS
+					Contract.Assert(result != null);
+					Contract.Assert(result.TypeValue != null);
+#endif
+
+					return result.TypeValue;
 				}
 			}
 
@@ -818,10 +978,15 @@ namespace Pqsql
 					{
 						// if oid is not yet stored, we ran before the TryAdd thread, just try to find oid
 						result = FetchType(oid, connection);
-						userTypes[oid] = result; // store fresh PqsqlTypeName here
+						userTypes[oid] = result; // store fresh PqsqlTypeEntry here
 					}
 
-					return result;
+#if CODECONTRACTS
+					Contract.Assume(result != null);
+					Contract.Assert(result.TypeValue != null);
+#endif
+
+					return result.TypeValue;
 				}
 			}
 
@@ -829,17 +994,21 @@ namespace Pqsql
 			throw new PqsqlException("Could not find datatype " + oid + " for connection " + connectionString);
 		}
 
-		// create new PqsqlTypeName for oid in connection
-		private static PqsqlTypeName FetchType(PqsqlDbType oid, PqsqlConnection connection)
+		// create new PqsqlTypeEntry for oid in connection
+		private static PqsqlTypeEntry FetchType(PqsqlDbType oid, PqsqlConnection connection)
 		{
 #if CODECONTRACTS
 			Contract.Requires<ArgumentOutOfRangeException>(oid != 0, "Datatype with oid=0 (InvalidOid) not supported");
 			Contract.Requires<ArgumentNullException>(connection != null);
 
-			Contract.Ensures(Contract.Result<PqsqlTypeName>() != null);
-			Contract.Ensures(Contract.Result<PqsqlTypeName>().GetValue != null);
-			Contract.Ensures(Contract.Result<PqsqlTypeName>().DataTypeName != null);
-			Contract.Ensures(Contract.Result<PqsqlTypeName>().ProviderType != null);
+			Contract.Ensures(Contract.Result<PqsqlTypeEntry>() != null);
+			Contract.Ensures(Contract.Result<PqsqlTypeEntry>().TypeValue != null);
+			Contract.Ensures(Contract.Result<PqsqlTypeEntry>().TypeValue.GetValue != null);
+			Contract.Ensures(Contract.Result<PqsqlTypeEntry>().TypeValue.DataTypeName != null);
+			Contract.Ensures(Contract.Result<PqsqlTypeEntry>().TypeValue.ProviderType != null);
+			Contract.Ensures(Contract.Result<PqsqlTypeEntry>().TypeParameter != null);
+			Contract.Ensures(Contract.Result<PqsqlTypeEntry>().TypeParameter.SetValue != null);
+			Contract.Ensures(Contract.Result<PqsqlTypeEntry>().TypeParameter.SetArrayItem != null);
 #else
 			if (oid == 0)
 				throw new ArgumentOutOfRangeException(nameof(oid), "Datatype with oid=0 (InvalidOid) not supported");
@@ -876,19 +1045,22 @@ namespace Pqsql
 							string typname = reader.GetString(1);
 
 							if (typname == null)
-								throw new PqsqlException("Could not fetch datatype name " + oid);
+								throw new PqsqlException("Could not fetch datatype " + oid + " for connection " + connectionString);
 
 							// assume that we can use this type just like PqsqlDbType.Text (e.g., citext)
-							PqsqlTypeName tn = new PqsqlTypeName
-							{
-								DataTypeName = typname,
-								TypeCode = TypeCode.String,
-								ProviderType = typeof (string),
+							PqsqlTypeEntry tn = new PqsqlTypeEntry {
+								TypeValue = new PqsqlTypeValue {
+									DataTypeName = typname,
+									ProviderType = typeof(string),
+									GetValue = (res, row, ord, typmod) => PqsqlDataReader.GetString(res, row, ord),
+								},
+								TypeParameter = new PqsqlTypeParameter {
+									TypeCode = TypeCode.String,
+									ArrayDbType = PqsqlDbType.Array,
+									SetValue = PqsqlParameterCollection.SetText,
+									SetArrayItem = PqsqlParameterCollection.SetTextArray
+								},
 								DbType = DbType.String,
-								ArrayDbType = PqsqlDbType.Array,
-								GetValue = (res, row, ord, typmod) => PqsqlDataReader.GetString(res, row, ord),
-								SetValue = setText,
-								SetArrayItem = setTextArray
 							};
 
 							return tn;
@@ -902,6 +1074,11 @@ namespace Pqsql
 			throw new NotSupportedException("Datatype " + oid + " not supported for connection " + connectionString);
 		}
 
+		#endregion
+
+
+		#region access types for PqsqlParameter
+
 		// used in PqsqlParameter.DbType
 		internal static PqsqlDbType GetPqsqlDbType(DbType dbType)
 		{
@@ -914,95 +1091,17 @@ namespace Pqsql
 		// used in PqsqlParameter.PqsqlDbType
 		internal static DbType GetDbType(PqsqlDbType oid)
 		{
-			PqsqlTypeName tn = Get(oid);
+			PqsqlTypeEntry result;
 
-			if (tn == null)
+			if (!mPqsqlDbTypeDict.TryGetValue(oid, out result))
 			{
 				// do not try to fetch datatype specs with PqsqlTypeRegistry.FetchType() here, just bail out
 				throw new NotSupportedException(string.Format(CultureInfo.InvariantCulture, "Datatype {0} is not supported", oid & ~PqsqlDbType.Array));
 			}
 
-			return tn.DbType;
+			return result.DbType;
 		}
 
-		// used in PqsqlParameterCollection.AddParameterValue
-		internal static Action<IntPtr, object> SetArrayValue(PqsqlDbType oid, PqsqlTypeName n)
-		{
-#if CODECONTRACTS
-			Contract.Requires<ArgumentNullException>(n != null);
-#else
-			if (n == null)
-				throw new ArgumentNullException(nameof(n));
-#endif
-
-			oid &= ~PqsqlDbType.Array; // remove Array flag
-			PqsqlDbType arrayoid = n.ArrayDbType;
-			Action<IntPtr, object> setArrayItem = n.SetArrayItem;
-
-			// return closure
-			return (pb, val) =>
-			{
-				Array aparam = val as Array;
-				int rank = aparam.Rank;
-				int hasNulls = 0;
-
-				// TODO we only support one-dimensional array for now
-				if (rank != 1)
-					throw new NotImplementedException("only one-dimensional arrays supported");
-
-				int[] dim = new int[rank];
-				int[] lbound = new int[rank];
-
-				// always set 1-based numbering for indexes, we cannot reuse lower and upper bounds from aparam
-				for (int i = 0; i < rank; i++)
-				{
-					lbound[i] = 1;
-					dim[i] = aparam.GetLength(i);
-				}
-
-				IntPtr a = IntPtr.Zero;
-				try
-				{
-					a = PqsqlWrapper.createPQExpBuffer();
-
-					if (a == IntPtr.Zero)
-						throw new PqsqlException("Cannot create PQExpBuffer for array");
-
-					foreach (object o in aparam)
-					{
-						if (o == null || o == DBNull.Value)
-						{
-							hasNulls = 1;
-							break;
-						}
-					}
-
-					// create array header
-					PqsqlBinaryFormat.pqbf_set_array(a, rank, hasNulls, (uint) oid, dim, lbound);
-
-					// copy array items to buffer
-					foreach (object o in aparam)
-					{
-						if (o == null || o == DBNull.Value) // null values have itemlength -1 only
-						{
-							PqsqlBinaryFormat.pqbf_set_array_itemlength(a, -1);
-						}
-						else
-						{
-							setArrayItem(a, o);
-						}
-					}
-
-					// add array to parameter buffer
-					PqsqlBinaryFormat.pqbf_add_array(pb, a, (uint) arrayoid);
-				}
-				finally
-				{
-					if (a != IntPtr.Zero)
-						PqsqlWrapper.destroyPQExpBuffer(a);
-				}
-			};
-		}
-
+		#endregion
 	}
 }
