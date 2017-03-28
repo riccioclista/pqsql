@@ -26,7 +26,7 @@ using SchemaTableColumnInfo = System.Tuple<short, object, bool, bool, bool, bool
 namespace Pqsql
 {
 	/// <summary>
-	/// cache column name and type information
+	/// cache column name and type oid / modifier / size information
 	/// </summary>
 	internal sealed class PqsqlColInfo
 	{
@@ -34,9 +34,6 @@ namespace Pqsql
 		public int Modifier { get; set; }
 		public int Size { get; set; }
 		public string ColumnName { get; set; }
-		public string DataTypeName { get; set; }
-		public Type ProviderType  { get; set; }
-		public Func<IntPtr, int, int, int, object> GetValue { get; set; }
 	};
 
 
@@ -54,7 +51,7 @@ namespace Pqsql
 	/// </summary>
 	public sealed class PqsqlDataReader : DbDataReader
 	{
-#region PqsqlDataReader statements
+		#region PqsqlDataReader statements
 
 		// two queries: retrieve first catalog and table information and then column information
 		// parameter :o is table oid
@@ -71,7 +68,7 @@ FROM (pg_attribute ca LEFT JOIN pg_attrdef ad ON (attrelid = adrelid AND attnum 
      ON (ind.attname = ca.attname)
 WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 
-#endregion
+		#endregion
 
 
 		// the current PGresult* buffer
@@ -92,6 +89,10 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 
 		// row information of current result set
 		PqsqlColInfo[] mRowInfo;
+
+		// row type information
+		PqsqlTypeRegistry.PqsqlTypeValue[] mRowTypes;
+
 		// for GetSchemaTable()
 		DataTable mSchemaTable;
 
@@ -124,6 +125,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 			Contract.Invariant(mMaxRows >= -1);
 			Contract.Invariant(mRowNum >= -1);
 			Contract.Invariant(mConn != null);
+			Contract.Invariant((mRowTypes == null && mRowInfo == null) || (mRowTypes != null && mRowInfo != null && mRowTypes.Length == mRowInfo.Length));
 		}
 #endif
 
@@ -192,6 +194,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 					mSchemaTable = null;
 				}
 				mRowInfo = null;
+				mRowTypes = null;
 				mColumns = 0;
 			}
 
@@ -821,11 +824,11 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 				throw new InvalidOperationException("No tuple available");
 
 #if CODECONTRACTS
-			Contract.Assume(mRowInfo != null);
-			Contract.Assume(ordinal < mRowInfo.Length);
+			Contract.Assume(mRowTypes != null);
+			Contract.Assume(ordinal < mRowTypes.Length);
 #endif
 
-			return mRowInfo[ordinal].DataTypeName;
+			return mRowTypes[ordinal].DataTypeName;
 		}
 		//
 		// Summary:
@@ -1209,11 +1212,11 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 				throw new InvalidOperationException("No tuple available");
 
 #if CODECONTRACTS
-			Contract.Assume(mRowInfo != null);
-			Contract.Assume(ordinal < mRowInfo.Length);
+			Contract.Assume(mRowTypes != null);
+			Contract.Assume(ordinal < mRowTypes.Length);
 #endif
 
-			return mRowInfo[ordinal].ProviderType;
+			return mRowTypes[ordinal].ProviderType;
 		}
 
 		//
@@ -1682,6 +1685,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 			for (int i = 0; i < mColumns; i++)
 			{
 				PqsqlColInfo ci = mRowInfo[i];
+				PqsqlTypeRegistry.PqsqlTypeValue ct = mRowTypes[i];
 
 				string name = ci.ColumnName;
 				int modifier = ci.Modifier;
@@ -1739,8 +1743,8 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 					break;
 				}
 
-				row.SetField(j++, ci.DataTypeName); // ProviderType
-				row.SetField(j++, ci.ProviderType); // DataType
+				row.SetField(j++, ct.DataTypeName); // ProviderType
+				row.SetField(j++, ct.ProviderType); // DataType
 
 				if ((mBehaviour & CommandBehavior.KeyInfo) == CommandBehavior.KeyInfo)
 				{
@@ -1936,12 +1940,13 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 				return DBNull.Value;
 
 			PqsqlColInfo ci = mRowInfo[ordinal];
+			PqsqlTypeRegistry.PqsqlTypeValue ct = mRowTypes[ordinal];
 
 #if CODECONTRACTS
-			Contract.Assume(ci.GetValue != null);
+			Contract.Assume(ct.GetValue != null);
 #endif
 
-			return ci.GetValue(mResult, mRowNum, ordinal, ci.Modifier);
+			return ct.GetValue(mResult, mRowNum, ordinal, ci.Modifier);
 		}
 
 		//
@@ -2190,6 +2195,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 		{
 #if CODECONTRACTS
 			Contract.Ensures(mRowInfo != null);
+			Contract.Ensures(mRowTypes != null);
 #endif
 
 			mColumns = PqsqlWrapper.PQnfields(mResult); // get number of columns
@@ -2199,6 +2205,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 #endif
 
 			mRowInfo = new PqsqlColInfo[mColumns];
+			mRowTypes = new PqsqlTypeRegistry.PqsqlTypeValue[mColumns];
 
 			// only set output parameters when we had executed a stored procedure returning at least one row
 			bool populateOutputParameters = mMaxRows > 0 && mCmd.CommandType == CommandType.StoredProcedure;
@@ -2218,10 +2225,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 				if (mTableOid == 0) // try to get table oid until we find a column that is simple reference to a table column
 					mTableOid = PqsqlWrapper.PQftable(mResult, o); // try to get table oid for column o 
 
-				mRowInfo[o] = new PqsqlColInfo();
-
 				PqsqlDbType oid = (PqsqlDbType) PqsqlWrapper.PQftype(mResult, o); // column type
-				mRowInfo[o].Oid = oid;
 
 				string colName;
 				unsafe
@@ -2233,9 +2237,13 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 				int size = PqsqlWrapper.PQfsize(mResult, o); // column datatype size
 				int modifier = PqsqlWrapper.PQfmod(mResult, o); // column modifier (e.g., varchar(n))
 
-				mRowInfo[o].ColumnName = colName; // column name
-				mRowInfo[o].Size = size; // column size
-				mRowInfo[o].Modifier = modifier; // column modifier
+				mRowInfo[o] = new PqsqlColInfo
+				{
+					Oid = oid, // column oid
+					ColumnName = colName, // column name
+					Size = size, // column size
+					Modifier = modifier // column modifier
+				};
 
 #if CODECONTRACTS
 				Contract.Assert(mConn != null);
@@ -2243,18 +2251,16 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 #endif
 
 				// try to lookup OID, otherwise try to guess type and fetch type specs from DB
-				PqsqlTypeRegistry.PqsqlTypeName tn = PqsqlTypeRegistry.GetOrAdd(oid, mConn);
+				PqsqlTypeRegistry.PqsqlTypeValue tv = PqsqlTypeRegistry.GetOrAdd(oid, mConn);
 
 #if CODECONTRACTS
-				Contract.Assert(tn != null);
-				Contract.Assert(tn.DataTypeName != null);
-				Contract.Assert(tn.ProviderType != null);
-				Contract.Assert(tn.GetValue != null);
+				Contract.Assert(tv != null);
+				Contract.Assert(tv.DataTypeName != null);
+				Contract.Assert(tv.ProviderType != null);
+				Contract.Assert(tv.GetValue != null);
 #endif
 
-				mRowInfo[o].DataTypeName = tn.DataTypeName; // cache PG datatype name
-				mRowInfo[o].ProviderType = tn.ProviderType; // cache corresponding ProviderType
-				mRowInfo[o].GetValue = tn.GetValue; // cache GetValue function
+				mRowTypes[o] = tv; // get PG datatype name, corresponding ProviderType, and GetValue function
 
 				if (populateOutputParameters) // use first row to fill corresponding output parameter
 				{
@@ -2280,7 +2286,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 						};
 					}
 
-					parm.Value = tn.GetValue(mResult, 0, o, modifier);
+					parm.Value = tv.GetValue(mResult, 0, o, modifier);
 				}
 			}
 		}
