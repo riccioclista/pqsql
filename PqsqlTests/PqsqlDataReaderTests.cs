@@ -46,6 +46,29 @@ namespace PqsqlTests
 			DataTable dt = reader.GetSchemaTable();
 			Assert.AreNotEqual(null, dt);
 
+			Assert.AreEqual(7, dt.Rows.Count);
+
+			Assert.AreEqual("datid", dt.Rows[0][SchemaTableColumn.ColumnName]);
+			Assert.AreEqual(1, dt.Rows[0][SchemaTableColumn.ColumnOrdinal]);
+
+			Assert.AreEqual("datname", dt.Rows[1][SchemaTableColumn.ColumnName]);
+			Assert.AreEqual(2, dt.Rows[1][SchemaTableColumn.ColumnOrdinal]);
+
+			Assert.AreEqual("pid", dt.Rows[2][SchemaTableColumn.ColumnName]);
+			Assert.AreEqual(3, dt.Rows[2][SchemaTableColumn.ColumnOrdinal]);
+
+			Assert.AreEqual("application_name", dt.Rows[3][SchemaTableColumn.ColumnName]);
+			Assert.AreEqual(4, dt.Rows[3][SchemaTableColumn.ColumnOrdinal]);
+
+			Assert.AreEqual("backend_start", dt.Rows[4][SchemaTableColumn.ColumnName]);
+			Assert.AreEqual(5, dt.Rows[4][SchemaTableColumn.ColumnOrdinal]);
+
+			Assert.AreEqual("waiting", dt.Rows[5][SchemaTableColumn.ColumnName]);
+			Assert.AreEqual(6, dt.Rows[5][SchemaTableColumn.ColumnOrdinal]);
+
+			Assert.AreEqual("query", dt.Rows[6][SchemaTableColumn.ColumnName]);
+			Assert.AreEqual(7, dt.Rows[6][SchemaTableColumn.ColumnOrdinal]);
+
 			reader.Close();
 			Assert.AreEqual(ConnectionState.Open, mConnection.State);
 			Assert.AreEqual(true, reader.IsClosed);
