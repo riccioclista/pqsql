@@ -33,7 +33,11 @@ namespace Pqsql
 		public PqsqlParameterCollection()
 		{
 			mPqPB = PqsqlBinaryFormat.pqpb_create(); // create pqparam_buffer
+			if (mPqPB == null)
+				throw new PqsqlException("Cannot create buffer for parameter collection");
 		}
+
+		#region IDisposable
 
 		~PqsqlParameterCollection()
 		{
@@ -68,13 +72,14 @@ namespace Pqsql
 			mDisposed = true;
 		}
 
+		#endregion
 
 
 		#region pqparam_buffer* setup
 
 		/// <summary>
 		/// create parameter buffer for statement input parameters.
-		/// we convert and infer the right data type in case the user supplied inconsistent type information.
+		/// we convert and infer the right datatype in case the user supplied inconsistent type information.
 		/// </summary>
 		/// <returns>pqparam_buffer as IntPtr</returns>
 		internal IntPtr CreateParameterBuffer()
@@ -117,12 +122,12 @@ namespace Pqsql
 
 						if (oid == PqsqlDbType.Unknown) // cannot resolve oid for v
 						{
-								throw new PqsqlException(string.Format(CultureInfo.InvariantCulture, "Could not infer datatype for PqsqlParameter {0} (TypeCode={1})", p.ParameterName, vtc));
+							throw new PqsqlException(string.Format(CultureInfo.InvariantCulture, "Could not infer datatype for PqsqlParameter {0} (TypeCode={1})", p.ParameterName, vtc));
 						}
 					}
 
-					PqsqlTypeRegistry.PqsqlTypeName tn = PqsqlTypeRegistry.Get(oid & ~PqsqlDbType.Array);
-					if (tn == null)
+					PqsqlTypeRegistry.PqsqlTypeParameter tp = PqsqlTypeRegistry.Get(oid & ~PqsqlDbType.Array);
+					if (tp == null)
 					{
 						// do not try to fetch datatype specs with PqsqlTypeRegistry.FetchType() here, just bail out
 						throw new NotSupportedException(string.Format(CultureInfo.InvariantCulture, "Datatype {0} is not supported", oid & ~PqsqlDbType.Array));
@@ -131,7 +136,7 @@ namespace Pqsql
 					// try to convert to the proper datatype in case the user supplied a wrong PqsqlDbType
 					if (v != null && v != DBNull.Value && (oid & PqsqlDbType.Array) != PqsqlDbType.Array)
 					{
-						TypeCode tc = tn.TypeCode;
+						TypeCode tc = tp.TypeCode;
 
 						if (vtc != TypeCode.Empty && vtc != tc)
 						{
@@ -140,7 +145,7 @@ namespace Pqsql
 					}
 
 					// add parameter to the parameter buffer
-					AddParameterValue(tn, oid, v);
+					AddParameterValue(tp, oid, v);
 				}
 
 				mChanged = false;
@@ -150,8 +155,12 @@ namespace Pqsql
 		}
 
 		// dispatch parameter type and add it to parameter buffer mPqPB
-		private void AddParameterValue(PqsqlTypeRegistry.PqsqlTypeName tn, PqsqlDbType oid, object v)
+		private void AddParameterValue(PqsqlTypeRegistry.PqsqlTypeParameter tp, PqsqlDbType oid, object v)
 		{
+#if CODECONTRACTS
+			Contract.Assume(mPqPB != IntPtr.Zero);
+#endif
+
 			if (v == null || v == DBNull.Value)
 			{
 				// null arrays must have oid of element type
@@ -159,15 +168,15 @@ namespace Pqsql
 			}
 			else if ((oid & PqsqlDbType.Array) == PqsqlDbType.Array)
 			{
-				PqsqlTypeRegistry.SetArrayValue(oid, tn)(mPqPB, v);
+				SetArrayValue(mPqPB, v, oid, tp);
 			}
 			else
 			{
 #if CODECONTRACTS
-				Contract.Assume(tn.SetValue != null);
+				Contract.Assume(tp.SetValue != null);
 #endif
 
-				tn.SetValue(mPqPB, v, oid);
+				tp.SetValue(mPqPB, v, oid);
 			}
 		}
 
@@ -248,6 +257,9 @@ namespace Pqsql
 		}
 
 		#endregion
+
+
+		#region DbParameterCollection
 
 		// Summary:
 		//     Specifies the number of items in the collection.
@@ -803,5 +815,172 @@ namespace Pqsql
 		{
 			this[parameterName] = (PqsqlParameter) value;
 		}
+
+		#endregion
+
+
+		#region add item to array
+
+		// adds array item length prefix and then invokes set
+		internal static void SetTypeArray<T>(IntPtr a, int length, Action<IntPtr,T> set, T v) where T : struct
+		{
+			PqsqlBinaryFormat.pqbf_set_array_itemlength(a, length);
+			set(a, v);
+		}
+
+		// adds o as double array element to PQExpBuffer a
+		internal static void SetNumericArray(IntPtr a, object o)
+		{
+			double d = Convert.ToDouble(o, CultureInfo.InvariantCulture);
+
+			long len0 = PqsqlBinaryFormat.pqbf_get_buflen(a); // get start position
+
+			PqsqlBinaryFormat.pqbf_set_array_itemlength(a, -2); // first set an invalid item length
+			PqsqlBinaryFormat.pqbf_set_numeric(a, d); // encode numeric value (variable length)
+
+			int len = (int) (PqsqlBinaryFormat.pqbf_get_buflen(a) - len0); // get new buffer length
+			// update array item length == len - 4 bytes
+			PqsqlBinaryFormat.pqbf_update_array_itemlength(a, -len, len - 4);
+		}
+
+		// adds o as string array element to PQExpBuffer a
+		internal static void SetTextArray(IntPtr a, object o)
+		{
+			string v = (string) o;
+
+			long len0 = PqsqlBinaryFormat.pqbf_get_buflen(a); // get start position
+
+			PqsqlBinaryFormat.pqbf_set_array_itemlength(a, -2); // first set an invalid item length
+
+			unsafe
+			{
+				fixed (char* t = v)
+				{
+					PqsqlBinaryFormat.pqbf_set_unicode_text(a, t); // encode text value (variable length)
+				}
+			}
+
+			int len = (int) (PqsqlBinaryFormat.pqbf_get_buflen(a) - len0); // get new buffer length
+			// update array item length == len - 4 bytes
+			PqsqlBinaryFormat.pqbf_update_array_itemlength(a, -len, len - 4);
+		}
+
+		// adds o as DateTime array element into PQExpBuffer a
+		internal static void SetTimestampArray(IntPtr a, object o)
+		{
+			DateTime dt = (DateTime) o;
+
+			// we always interpret dt as Utc timestamp and ignore DateTime.Kind value
+			long ticks = dt.Ticks - PqsqlBinaryFormat.UnixEpochTicks;
+			long sec = ticks / TimeSpan.TicksPerSecond;
+			int usec = (int) (ticks % TimeSpan.TicksPerSecond / 10);
+			PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 8);
+			PqsqlBinaryFormat.pqbf_set_timestamp(a, sec, usec);
+		}
+
+
+		private static void SetArrayValue(IntPtr pb, object val, PqsqlDbType oid, PqsqlTypeRegistry.PqsqlTypeParameter n)
+		{
+#if CODECONTRACTS
+			Contract.Requires<ArgumentNullException>(n != null);
+#else
+			if (n == null)
+				throw new ArgumentNullException(nameof(n));
+#endif
+
+			oid &= ~PqsqlDbType.Array; // remove Array flag
+			PqsqlDbType arrayoid = n.ArrayDbType;
+			Action<IntPtr, object> setArrayItem = n.SetArrayItem;
+
+			Array aparam = val as Array;
+			int rank = aparam.Rank;
+
+			// TODO we only support one-dimensional array for now
+			if (rank != 1)
+				throw new NotImplementedException("only one-dimensional arrays supported");
+
+			int[] dim = new int[rank];
+			int[] lbound = new int[rank];
+
+			// always set 1-based numbering for indexes, we cannot reuse lower and upper bounds from aparam
+			for (int i = 0; i < rank; i++)
+			{
+				lbound[i] = 1;
+				dim[i] = aparam.GetLength(i);
+			}
+
+			IntPtr a = IntPtr.Zero;
+			try
+			{
+				a = UnsafeNativeMethods.PqsqlWrapper.createPQExpBuffer();
+
+				if (a == IntPtr.Zero)
+					throw new PqsqlException("Cannot create buffer for array parameter");
+
+				// check for null values
+				int hasNulls = 0;
+				foreach (object o in aparam)
+				{
+					if (o == null || o == DBNull.Value)
+					{
+						hasNulls = 1;
+						break;
+					}
+				}
+
+				// create array header
+				PqsqlBinaryFormat.pqbf_set_array(a, rank, hasNulls, (uint) oid, dim, lbound);
+
+				// copy array items to buffer
+				foreach (object o in aparam)
+				{
+					if (o == null || o == DBNull.Value) // null values have itemlength -1 only
+					{
+						PqsqlBinaryFormat.pqbf_set_array_itemlength(a, -1);
+					}
+					else
+					{
+						setArrayItem(a, o);
+					}
+				}
+
+				// add array to parameter buffer
+				PqsqlBinaryFormat.pqbf_add_array(pb, a, (uint) arrayoid);
+			}
+			finally
+			{
+				if (a != IntPtr.Zero)
+					UnsafeNativeMethods.PqsqlWrapper.destroyPQExpBuffer(a);
+			}
+		}
+
+		#endregion
+
+
+		#region add item to parameter buffer
+
+		// sets val as string with Oid oid (PqsqlDbType.BPChar, PqsqlDbType.Text, PqsqlDbType.Varchar, PqsqlDbType.Name, PqsqlDbType.Char)
+		// into pqparam_buffer pb
+		internal static unsafe void SetText(IntPtr pb, object val, PqsqlDbType oid)
+		{
+			fixed (char* t = (string) val)
+			{
+				PqsqlBinaryFormat.pqbf_add_unicode_text(pb, t, (uint) oid);
+			}
+		}
+
+		// sets val as DateTime with Oid oid (PqsqlDbType.Timestamp, PqsqlDbType.TimestampTZ) into pqparam_buffer pb
+		internal static void SetTimestamp(IntPtr pb, object val, PqsqlDbType oid)
+		{
+			DateTime dt = (DateTime) val;
+
+			// we always interpret dt as Utc timestamp and ignore DateTime.Kind value
+			long ticks = dt.Ticks - PqsqlBinaryFormat.UnixEpochTicks;
+			long sec = ticks / TimeSpan.TicksPerSecond;
+			int usec = (int) (ticks % TimeSpan.TicksPerSecond / 10);
+			PqsqlBinaryFormat.pqbf_add_timestamp(pb, sec, usec, (uint) oid);
+		}
+
+		#endregion
 	}
 }
