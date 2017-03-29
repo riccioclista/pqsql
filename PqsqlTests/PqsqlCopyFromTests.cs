@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Data;
+using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Pqsql;
 
@@ -118,7 +119,7 @@ namespace PqsqlTests
 				Assert.AreEqual(4, j);
 
 				j = copy.WriteText(text + i);
-				//Assert.AreEqual(-1, j);
+				Assert.AreEqual(Encoding.UTF8.GetByteCount(text + i), j); // length without nul byte
 			}
 			copy.WriteNull();
 			copy.WriteNull();
@@ -223,5 +224,83 @@ namespace PqsqlTests
 			t.Rollback();
 		}
 
+		[TestMethod]
+		[ExpectedException(typeof(PqsqlException), "COPY FROM timeout should have been thrown")]
+		public void PqsqlCopyFromTest4()
+		{
+			PqsqlTransaction tran = null;
+			PqsqlCopyFrom copy = null;
+
+			try
+			{
+				tran = mConnection.BeginTransaction();
+				mCmd.Transaction = tran;
+
+				mCmd.CommandText = "CREATE TEMP TABLE temp (id int4, val int4, txt text)";
+				mCmd.CommandTimeout = 200;
+				mCmd.CommandType = CommandType.Text;
+
+				int q = mCmd.ExecuteNonQuery();
+				Assert.AreEqual(0, q);
+
+				copy = new PqsqlCopyFrom(mConnection)
+				{
+					Table = "temp",
+					CopyTimeout = 1
+				};
+
+				copy.Start();
+
+				System.Threading.Thread.Sleep(1500);
+
+				copy.End();
+
+				Assert.Fail();
+			}
+			finally
+			{
+				copy?.Dispose();
+				tran?.Dispose();
+			}
+		}
+
+		[TestMethod]
+		[ExpectedException(typeof(PqsqlException), "COPY FROM unexpected EOF error should have been thrown")]
+		public void PqsqlCopyFromTest5()
+		{
+			PqsqlTransaction tran = null;
+			PqsqlCopyFrom copy = null;
+
+			try
+			{
+				tran = mConnection.BeginTransaction();
+				mCmd.Transaction = tran;
+
+				mCmd.CommandText = "CREATE TEMP TABLE temp (id int4, val int4, txt text)";
+				mCmd.CommandTimeout = 200;
+				mCmd.CommandType = CommandType.Text;
+
+				int q = mCmd.ExecuteNonQuery();
+				Assert.AreEqual(0, q);
+
+				copy = new PqsqlCopyFrom(mConnection)
+				{
+					Table = "temp",
+					CopyTimeout = 5
+				};
+
+				copy.Start();
+				copy.WriteInt4(42); // only write one column
+				copy.End();
+				copy.Close();
+
+				Assert.Fail();
+			}
+			finally
+			{
+				copy?.Dispose();
+				tran?.Dispose();
+			}
+		}
 	}
 }
