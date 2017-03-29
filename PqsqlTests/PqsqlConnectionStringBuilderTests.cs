@@ -7,11 +7,32 @@ namespace PqsqlTests
 	[TestClass]
 	public class PqsqlConnectionStringBuilderTests
 	{
+		private static string connectionString = string.Empty;
+
+		#region Additional test attributes
+
+		[ClassInitialize]
+		public static void ClassInitialize(TestContext context)
+		{
+			connectionString = context.Properties["connectionString"].ToString();
+		}
+
+		[TestInitialize]
+		public void TestInitialize()
+		{
+		}
+
+		[TestCleanup]
+		public void TestCleanup()
+		{
+		}
+
+		#endregion
 
 		[TestMethod]
 		public void PqsqlConnectionStringBuilderTest1()
 		{
-			PqsqlConnectionStringBuilder builder = new PqsqlConnectionStringBuilder("host=localhost; port=5432; user=postgres; dbname=postgres; connect_timeout=3");
+			PqsqlConnectionStringBuilder builder = new PqsqlConnectionStringBuilder(connectionString);
 			builder[PqsqlConnectionStringBuilder.keepalives] = "1";
 			builder[PqsqlConnectionStringBuilder.keepalives_idle] = "23";
 			builder[PqsqlConnectionStringBuilder.keepalives_count] = "3";

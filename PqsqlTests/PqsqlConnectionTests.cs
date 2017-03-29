@@ -14,27 +14,45 @@ namespace PqsqlTests
 	[TestClass]
 	public class PqsqlConnectionTests
 	{
+		private static string connectionString = string.Empty;
 
-		private static readonly string connectionstring = "host=localhost; port=5432; user=postgres; dbname=postgres; connect_timeout=3";
+		#region Additional test attributes
 
+		[ClassInitialize]
+		public static void ClassInitialize(TestContext context)
+		{
+			connectionString = context.Properties["connectionString"].ToString();
+		}
+
+		[TestInitialize]
+		public void TestInitialize()
+		{
+		}
+
+		[TestCleanup]
+		public void TestCleanup()
+		{
+		}
+
+		#endregion
 		[TestMethod]
 		public void PqsqlConnectionTest1()
 		{
-			PqsqlConnection connection = new PqsqlConnection("");
+			PqsqlConnection connection = new PqsqlConnection(string.Empty);
 
 			Assert.AreEqual(ConnectionState.Closed, connection.State, "wrong connection state");
-			Assert.AreEqual(String.Empty, connection.ConnectionString, "wrong connection string");
+			Assert.AreEqual(string.Empty, connection.ConnectionString, "wrong connection string");
 			Assert.AreEqual(0, connection.ConnectionTimeout, "wrong connection timeout");
-			Assert.AreEqual(String.Empty, connection.Database, "wrong connection database");
+			Assert.AreEqual(string.Empty, connection.Database, "wrong connection database");
 		}
 
 		[TestMethod]
 		public void PqsqlConnectionTest2()
 		{
-			PqsqlConnection connection = new PqsqlConnection(connectionstring);
+			PqsqlConnection connection = new PqsqlConnection(connectionString);
 
 			Assert.AreEqual(ConnectionState.Closed, connection.State, "wrong connection state");
-			Assert.AreEqual("host=localhost;port=5432;user=postgres;dbname=postgres;connect_timeout=3", connection.ConnectionString, "wrong connection string");
+			Assert.AreEqual(connectionString.Replace(" ","").Replace("\t","").Replace("\n",""), connection.ConnectionString, "wrong connection string");
 			Assert.AreEqual(3, connection.ConnectionTimeout, "wrong connection timeout");
 			Assert.AreEqual("postgres", connection.Database, "wrong connection database");
 
@@ -52,7 +70,7 @@ namespace PqsqlTests
 		{
 			PqsqlConnectionPool.Clear();
 
-			PqsqlConnection connection = new PqsqlConnection(connectionstring);
+			PqsqlConnection connection = new PqsqlConnection(connectionString);
 
 			connection.Open();
 			Assert.AreEqual(ConnectionState.Open, connection.State, "wrong connection state");
@@ -78,7 +96,7 @@ namespace PqsqlTests
 		[TestMethod]
 		public void PqsqlConnectionTest4()
 		{
-			PqsqlConnection connection = new PqsqlConnection(connectionstring);
+			PqsqlConnection connection = new PqsqlConnection(connectionString);
 
 			connection.Open();
 			Assert.AreEqual(ConnectionState.Open, connection.State, "wrong connection state");
@@ -114,7 +132,7 @@ namespace PqsqlTests
 		[TestMethod]
 		public void PqsqlConnectionTest5()
 		{
-			PqsqlConnection connection = new PqsqlConnection(connectionstring);
+			PqsqlConnection connection = new PqsqlConnection(connectionString);
 
 			connection.Open();
 			Assert.AreEqual(ConnectionState.Open, connection.State, "wrong connection state");
@@ -131,7 +149,7 @@ namespace PqsqlTests
 		[ExpectedException(typeof(PqsqlException), "The connection should have been terminated.")]
 		public void PqsqlConnectionTest6()
 		{
-			PqsqlConnection connection = new PqsqlConnection(connectionstring);
+			PqsqlConnection connection = new PqsqlConnection(connectionString);
 
 			connection.Open();
 			Assert.AreEqual(ConnectionState.Open, connection.State, "wrong connection state");
@@ -158,7 +176,7 @@ namespace PqsqlTests
 		[TestMethod]
 		public void PqsqlConnectionTest7()
 		{
-			PqsqlConnection connection = new PqsqlConnection(connectionstring);
+			PqsqlConnection connection = new PqsqlConnection(connectionString);
 
 			bool opened = false;
 			bool closed = true;
@@ -204,7 +222,7 @@ namespace PqsqlTests
 		[ExpectedException(typeof(NotSupportedException), "PqsqlConnection.GetSchema")]
 		public void PqsqlConnectionTest8()
 		{
-			PqsqlConnection connection = new PqsqlConnection(connectionstring);
+			PqsqlConnection connection = new PqsqlConnection(connectionString);
 			DataTable connschema = connection.GetSchema();
 			Assert.Fail();
 		}
@@ -212,7 +230,7 @@ namespace PqsqlTests
 		[TestMethod]
 		public void PqsqlConnectionTest9()
 		{
-			PqsqlConnection connection = new PqsqlConnection(connectionstring);
+			PqsqlConnection connection = new PqsqlConnection(connectionString);
 			string s = connection.GetErrorMessage();
 			Assert.AreEqual(string.Empty, s);
 

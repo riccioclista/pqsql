@@ -7,18 +7,26 @@ namespace PqsqlTests
 	[TestClass]
 	public class PqsqlCommandTests
 	{
+		private static string connectionString = string.Empty;
+
 		private PqsqlConnection mConnection;
 
 		#region Additional test attributes
 
-		[TestInitialize]
-		public void MyTestInitialize()
+		[ClassInitialize]
+		public static void ClassInitialize(TestContext context)
 		{
-			mConnection = new PqsqlConnection("host=localhost; port=5432; user=postgres; dbname=postgres; connect_timeout=3");
+			connectionString = context.Properties["connectionString"].ToString();
+		}
+
+		[TestInitialize]
+		public void TestInitialize()
+		{
+			mConnection = new PqsqlConnection(connectionString);
 		}
 
 		[TestCleanup]
-		public void MyTestCleanup()
+		public void TestCleanup()
 		{
 			mConnection.Dispose();
 		}

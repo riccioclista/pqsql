@@ -1,4 +1,6 @@
 ﻿using System.Data.Common;
+using System.Diagnostics;
+using System.Globalization;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Pqsql;
 
@@ -21,6 +23,8 @@ namespace PqsqlTests
 			Assert.IsTrue(major >= 9);
 			Assert.IsTrue((major == 9 && minor >= 4) || major > 9);
 			Assert.IsTrue(minor >= 0 && minor < 100 && revision >= 0 && revision < 100);
+
+			Debug.WriteLine(string.Format(CultureInfo.InvariantCulture, "Found libpq {0}.{1}.{2}", major, minor, revision));
 
 			DbConnectionStringBuilder connbuilder = PqsqlProviderFactory.Instance.CreateConnectionStringBuilder();
 			Assert.IsNotNull(connbuilder);

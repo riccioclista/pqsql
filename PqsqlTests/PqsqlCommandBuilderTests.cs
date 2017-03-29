@@ -7,6 +7,28 @@ namespace PqsqlTests
 	[TestClass]
 	public class PqsqlCommandBuilderTests
 	{
+		private static string connectionString = string.Empty;
+
+		#region Additional test attributes
+
+		[ClassInitialize]
+		public static void ClassInitialize(TestContext context)
+		{
+			connectionString = context.Properties["connectionString"].ToString();
+		}
+
+		[TestInitialize]
+		public void TestInitialize()
+		{
+		}
+
+		[TestCleanup]
+		public void TestCleanup()
+		{
+		}
+
+		#endregion
+
 		[TestMethod]
 		public void PqsqlCommandBuilderTest1()
 		{
@@ -25,7 +47,7 @@ namespace PqsqlTests
 		[TestMethod]
 		public void PqsqlCommandBuilderTest2()
 		{
-			using (PqsqlConnection connection = new PqsqlConnection("host=localhost; port=5432; user=postgres; dbname=postgres; connect_timeout=3"))
+			using (PqsqlConnection connection = new PqsqlConnection(connectionString))
 			using (PqsqlCommand command = connection.CreateCommand())
 			{
 				PqsqlTransaction transaction = connection.BeginTransaction();
