@@ -637,13 +637,17 @@ namespace Pqsql
 		{
 			long begin = LengthCheckReset();
 
-			long total_ticks = value.Ticks;
 			int total_days = value.Days;
-			int month = (int) 365.25 * total_days / 12;
-			int num_days_month = (int) (12 * month / 365.25);
-			int day = total_days - num_days_month;
-			long day_month_ticks = day * TimeSpan.TicksPerDay + num_days_month * TimeSpan.TicksPerDay;
-			long offset = (total_ticks - day_month_ticks) / TimeSpan.TicksPerDay;
+
+			// TimeSpan is a time period expressed in 100-nanosecond units,
+			// whereas interval is in 1-microsecond resolution
+			long offset = (value.Ticks - total_days * TimeSpan.TicksPerDay) / 10;
+
+			// from timestamp.h:
+			// #define DAYS_PER_YEAR   365.25  /* assumes leap year every four years */
+			// #define MONTHS_PER_YEAR 12
+			int month = (int) (12 * total_days / 365.25);
+			int day = total_days - (int) (month * 365.25 / 12);
 
 			PqsqlBinaryFormat.pqbf_set_interval(mExpBuf, offset, day, month);
 			unsafe
