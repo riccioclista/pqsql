@@ -95,5 +95,61 @@ namespace PqsqlTests
 				transaction.Rollback();
 			}
 		}
+
+		[TestMethod]
+		public void PqsqlCommandBuilderTest3()
+		{
+			using (PqsqlConnection connection = new PqsqlConnection(connectionString))
+			using (PqsqlCommand command = connection.CreateCommand())
+			{
+				PqsqlTransaction transaction = connection.BeginTransaction();
+				command.Transaction = transaction;
+				command.CommandText = "create temp table temptab (c0 int4 primary key, c1 float8)";
+				command.CommandType = CommandType.Text;
+				command.ExecuteNonQuery();
+				transaction.Commit(); // temp table must be visible in the next transaction
+
+				transaction = connection.BeginTransaction();
+
+				PqsqlDataAdapter adapter = new PqsqlDataAdapter("select * from temptab", connection)
+				{
+					SelectCommand =
+					{
+						Transaction = transaction
+					}
+				};
+				PqsqlCommandBuilder builder = new PqsqlCommandBuilder(adapter);
+
+				// INSERT INTO "postgres"."pg_temp_2"."temptab" ("c0", "c1") VALUES (:p1, :p2)
+				PqsqlCommand inserter = builder.GetInsertCommand();
+				inserter.Parameters["p1"].Value = 1;
+				inserter.Parameters["p2"].Value = 2.1;
+				int inserted = inserter.ExecuteNonQuery();
+				Assert.AreEqual(1, inserted);
+
+				// UPDATE "postgres"."pg_temp_2"."temptab"
+				// SET "c0" = :p1, "c1" = :p2
+				// WHERE (("c0" = :p3) AND ((:p4 = 1 AND "c1" IS NULL) OR ("c1" = :p5)))
+				PqsqlCommand updater = builder.GetUpdateCommand();
+				updater.Parameters["p1"].Value = 2;
+				updater.Parameters["p2"].Value = 2.2;
+				updater.Parameters["p3"].Value = 1;
+				updater.Parameters["p4"].Value = 0;
+				updater.Parameters["p5"].Value = 2.1;
+				int updated = updater.ExecuteNonQuery();
+				Assert.AreEqual(1, updated);
+
+				// DELETE FROM "postgres"."pg_temp_2"."temptab"
+				// WHERE (("c0" = :p1) AND ((:p2 = 1 AND "c1" IS NULL) OR ("c1" = :p3)))
+				PqsqlCommand deleter = builder.GetDeleteCommand();
+				deleter.Parameters["p1"].Value = 2;
+				deleter.Parameters["p2"].Value = 0;
+				deleter.Parameters["p3"].Value = 2.2;
+				int deleted = deleter.ExecuteNonQuery();
+				Assert.AreEqual(1, deleted);
+
+				transaction.Rollback();
+			}
+		}
 	}
 }
