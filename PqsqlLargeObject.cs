@@ -189,16 +189,57 @@ namespace Pqsql
 		// truncates LO to value
 		public override void SetLength(long value)
 		{
+			if (value < 0)
+			{
+				throw new ArgumentOutOfRangeException(nameof(value));
+			}
+
 			if (mFd < 0)
 			{
 				throw new PqsqlException(string.Format(CultureInfo.InvariantCulture, "Cannot truncate closed large object {0}", mOid));
 			}
+
+			long pos = PqsqlWrapper.lo_tell64(mPGConn, mFd);
+
+			if (pos < 0 || mPos != pos)
+			{
+				throw new PqsqlException(string.Format(CultureInfo.InvariantCulture, "Could not tell large object {0}: {1}", mOid, mConn.GetErrorMessage()));
+			}
+
+			long old = PqsqlWrapper.lo_lseek64(mPGConn, mFd, 0, (int) SeekOrigin.End);
+
+			if (old < 0)
+			{
+				throw new PqsqlException(string.Format(CultureInfo.InvariantCulture, "Could not seek large object {0}: {1}", mOid, mConn.GetErrorMessage()));
+			}
+
+			if (old == value) // we are done
+			{
+				goto seekPos;
+			}
+
+#if CODECONTRACTS
+			Contract.Assert(value >= 0);
+#endif
 
 			int ret = PqsqlWrapper.lo_truncate64(mPGConn, mFd, value);
 
 			if (ret < 0)
 			{
 				throw new PqsqlException(string.Format(CultureInfo.InvariantCulture, "Could not truncate large object {0} to {1} bytes: {2}", mOid, value, mConn.GetErrorMessage()));
+			}
+
+			if (value < pos) // lo has been truncated, update position to last byte
+			{
+				pos = value;
+			}
+
+seekPos:
+			mPos = PqsqlWrapper.lo_lseek64(mPGConn, mFd, pos, (int)SeekOrigin.Begin);
+
+			if (mPos != pos)
+			{
+				throw new PqsqlException(string.Format(CultureInfo.InvariantCulture, "Could not seek large object {0}: {1}", mOid, mConn.GetErrorMessage()));
 			}
 		}
 
