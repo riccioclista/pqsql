@@ -44,6 +44,14 @@ namespace PqsqlTests
 			Assert.AreEqual(string.Empty, connection.ConnectionString, "wrong connection string");
 			Assert.AreEqual(0, connection.ConnectionTimeout, "wrong connection timeout");
 			Assert.AreEqual(string.Empty, connection.Database, "wrong connection database");
+
+			connection.ConnectionString = connectionString;
+
+			connection.Open();
+			Assert.AreEqual(ConnectionState.Open, connection.State, "wrong connection state");
+
+			connection.ChangeDatabase("postgres");
+			Assert.AreEqual("postgres", connection.Database, "wrong connection database");
 		}
 
 		[TestMethod]
@@ -56,11 +64,23 @@ namespace PqsqlTests
 			Assert.AreEqual(3, connection.ConnectionTimeout, "wrong connection timeout");
 			Assert.AreEqual("postgres", connection.Database, "wrong connection database");
 
+			string serverVersion = connection.ServerVersion;
+			Assert.IsFalse(string.IsNullOrEmpty(serverVersion));
+			Assert.AreEqual("-1", serverVersion);
+
 			connection.Open();
 
 			Assert.AreEqual(ConnectionState.Open, connection.State, "wrong connection state");
 
+			serverVersion = connection.ServerVersion;
+			Assert.IsFalse(string.IsNullOrEmpty(serverVersion));
+			Assert.IsTrue(serverVersion.Length >= 5);
+
 			connection.Close();
+
+			serverVersion = connection.ServerVersion;
+			Assert.IsFalse(string.IsNullOrEmpty(serverVersion));
+			Assert.AreEqual("-1", serverVersion);
 
 			Assert.AreEqual(ConnectionState.Closed, connection.State, "wrong connection state");
 		}
