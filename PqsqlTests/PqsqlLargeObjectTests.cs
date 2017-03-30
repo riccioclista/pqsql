@@ -50,12 +50,22 @@ namespace PqsqlTests
 
 			lo.Open(loid, LoOpen.INV_READ | LoOpen.INV_WRITE);
 			Assert.AreEqual(0, lo.Position);
+			Assert.IsTrue(lo.CanSeek);
 
 			byte[] b = Encoding.ASCII.GetBytes("abc");
 			lo.Write(b, 0, b.Length);
+			lo.Flush();
 
 			Assert.AreEqual(3, lo.Position);
 			Assert.AreEqual(3, lo.Length);
+
+			lo.SetLength(2);
+			Assert.AreEqual(2, lo.Length);
+			Assert.AreEqual(2, lo.Position);
+
+			lo.Position = 0;
+			Assert.AreEqual(0, lo.Position);
+
 			lo.Close();
 
 			Assert.IsTrue(lo.Unlink() >= 0);
