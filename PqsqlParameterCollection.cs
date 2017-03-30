@@ -908,6 +908,26 @@ namespace Pqsql
 			PqsqlBinaryFormat.pqbf_set_timestamp(a, sec, usec);
 		}
 
+		// adds o as TimeSpan array element into PQExpBuffer a
+		internal static void SetIntervalArray(IntPtr a, object o)
+		{
+			TimeSpan ts = (TimeSpan)o;
+
+			int total_days = ts.Days;
+
+			// TimeSpan is a time period expressed in 100-nanosecond units,
+			// whereas interval is in 1-microsecond resolution
+			long offset = (ts.Ticks - total_days * TimeSpan.TicksPerDay) / 10;
+
+			// from timestamp.h:
+			// #define DAYS_PER_YEAR   365.25  /* assumes leap year every four years */
+			// #define MONTHS_PER_YEAR 12
+			int month = (int)(12 * total_days / 365.25);
+			int day = total_days - (int)(month * 365.25 / 12);
+
+			PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 16);
+			PqsqlBinaryFormat.pqbf_set_interval(a, offset, day, month);
+		}
 
 		private static void SetArrayValue(IntPtr pb, object val, PqsqlDbType oid, PqsqlTypeRegistry.PqsqlTypeParameter n)
 		{
@@ -1009,6 +1029,26 @@ namespace Pqsql
 			long sec = ticks / TimeSpan.TicksPerSecond;
 			int usec = (int) (ticks % TimeSpan.TicksPerSecond / 10);
 			PqsqlBinaryFormat.pqbf_add_timestamp(pb, sec, usec, (uint) oid);
+		}
+
+		// sets val as TimeSpan into pqparam_buffer pb
+		internal static void SetInterval(IntPtr pb, object val, PqsqlDbType oid)
+		{
+			TimeSpan ts = (TimeSpan)val;
+
+			int total_days = ts.Days;
+
+			// TimeSpan is a time period expressed in 100-nanosecond units,
+			// whereas interval is in 1-microsecond resolution
+			long offset = (ts.Ticks - total_days * TimeSpan.TicksPerDay) / 10;
+
+			// from timestamp.h:
+			// #define DAYS_PER_YEAR   365.25  /* assumes leap year every four years */
+			// #define MONTHS_PER_YEAR 12
+			int month = (int)(12 * total_days / 365.25);
+			int day = total_days - (int)(month * 365.25 / 12);
+
+			PqsqlBinaryFormat.pqbf_add_interval(pb, offset, day, month);
 		}
 
 		#endregion
