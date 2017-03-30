@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Collections;
 using System.Data;
 using System.Globalization;
+using System.Linq;
 #if CODECONTRACTS
 using System.Diagnostics.Contracts;
 #endif
@@ -403,12 +404,17 @@ namespace Pqsql
 					return;
 				}
 
+				if (string.IsNullOrEmpty(value.ParameterName))
+				{
+					throw new ArgumentOutOfRangeException(nameof(value));
+				}
+
 				mParamList[index] = value;
 
 				mLookup.Remove(old.ParameterName);
 
 #if CODECONTRACTS
-				Contract.Assume(value.ParameterName != null);
+				Contract.Assert(value.ParameterName != null);
 #endif
 
 				mLookup.Add(value.ParameterName, index);
@@ -690,17 +696,25 @@ namespace Pqsql
 
 			if (val == null)
 				throw new InvalidCastException(nameof(value) + " is not a PqsqlParameter");
-			if (val.ParameterName == null)
+
+			string newParamName = val.ParameterName;
+
+			if (newParamName == null)
 				throw new ArgumentNullException(nameof(value), "ParameterName is null");
 
-			PqsqlParameter old = mParamList[index];
-			if (old?.ParameterName != null)
-			{
-				mLookup.Remove(old.ParameterName);
-			}
+			if (mLookup.ContainsKey(newParamName))
+				throw new DuplicateNameException("A key with name " + newParamName + " already exists in the collection");
 
 			mParamList.Insert(index, val);
-			mLookup.Add(val.ParameterName, index);
+			
+			// update lookup index
+			foreach (KeyValuePair<string, int> kv in mLookup.Where(kv => kv.Value >= index).ToArray())
+			{
+				mLookup[kv.Key] = kv.Value + 1;
+			}
+
+			mLookup.Add(newParamName, index);
+
 			mChanged = true;
 		}
 		//
@@ -745,8 +759,16 @@ namespace Pqsql
 
 			if (old != null)
 			{
-				mLookup.Remove(old.ParameterName);
 				mParamList.RemoveAt(index);
+
+				mLookup.Remove(old.ParameterName);
+
+				// update lookup index
+				foreach (KeyValuePair<string, int> kv in mLookup.Where(kv => kv.Value > index).ToArray())
+				{
+					mLookup[kv.Key] = kv.Value - 1;
+				}
+
 				mChanged = true;
 			}
 		}
@@ -771,8 +793,16 @@ namespace Pqsql
 
 				if (mLookup.TryGetValue(canonical, out ret) && ret != -1)
 				{
-					mLookup.Remove(canonical);
 					mParamList.RemoveAt(ret);
+
+					mLookup.Remove(canonical);
+					
+					// update lookup index
+					foreach (KeyValuePair<string, int> kv in mLookup.Where(kv => kv.Value > ret).ToArray())
+					{
+						mLookup[kv.Key] = kv.Value - 1;
+					}
+
 					mChanged = true;
 					return;
 				}
