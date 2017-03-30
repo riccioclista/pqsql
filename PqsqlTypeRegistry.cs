@@ -379,9 +379,9 @@ namespace Pqsql
 					},
 					TypeParameter = new PqsqlTypeParameter {
 						TypeCode=TypeCode.DateTime,
-						ArrayDbType=PqsqlDbType.Array, // TODO
-						SetValue=null, // TODO (IntPtr pb,object val) => { PqsqlBinaryFormat.pqbf_add_interval(pb, (DateTime) val); }
-						SetArrayItem = null // TODO
+						ArrayDbType=PqsqlDbType.IntervalArray,
+						SetValue=PqsqlParameterCollection.SetInterval,
+						SetArrayItem = PqsqlParameterCollection.SetIntervalArray,
 					},
 					DbType=DbType.DateTime,
 				}
@@ -745,6 +745,40 @@ namespace Pqsql
 					TypeParameter = new PqsqlTypeParameter {
 						TypeCode=TypeCode.Object,
 						ArrayDbType=PqsqlDbType.TimestampTZArray,
+						SetValue=null,
+						SetArrayItem = null
+					},
+					DbType=DbType.Object,
+				}
+			},
+			{ PqsqlDbType.IntervalArray,
+				new PqsqlTypeEntry {
+					TypeValue =new PqsqlTypeValue {
+						DataTypeName="_interval",
+						ProviderType=typeof(Array),
+						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Interval, typeof(TimeSpan?), typeof(TimeSpan), (x, len) => {
+							long offset;
+							int day;
+							int month;
+							unsafe { PqsqlBinaryFormat.pqbf_get_interval(x, &offset, &day, &month); }
+							// TimeSpan is a time period expressed in 100-nanosecond units,
+							// whereas interval is in 1-microsecond resolution
+							TimeSpan ts = new TimeSpan(offset * 10 + day * TimeSpan.TicksPerDay);
+
+							// from timestamp.h:
+							// #define DAYS_PER_YEAR   365.25  /* assumes leap year every four years */
+							// #define MONTHS_PER_YEAR 12
+							if (month != 0)
+							{
+								long month_to_days = (long) (month / 12.0 * 365.25);
+								ts += TimeSpan.FromTicks(month_to_days * TimeSpan.TicksPerDay);
+							}
+							return ts;
+						}),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.Object,
+						ArrayDbType=PqsqlDbType.IntervalArray,
 						SetValue=null,
 						SetArrayItem = null
 					},

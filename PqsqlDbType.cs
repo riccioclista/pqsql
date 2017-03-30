@@ -249,6 +249,7 @@ namespace Pqsql
 		OidArray = 1028,
 		TimestampArray = 1115,
 		TimestampTZArray = 1185,
+		IntervalArray = 1187,
 		NumericArray = 1231,
 
 
