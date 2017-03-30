@@ -42,7 +42,33 @@ namespace PqsqlTests
 			using (PqsqlCommand cmd = new PqsqlCommand("show all", connection))
 			using (PqsqlDataReader r = cmd.ExecuteReader())
 			{
-				//
+				object value;
+				if (builder.TryGetValue(PqsqlConnectionStringBuilder.host, out value))
+				{
+					Assert.AreEqual(connection.DataSource, value);
+				}
+				else
+				{
+					Assert.AreEqual(connection.DataSource, string.Empty);
+				}
+				cmd.Cancel();
+			}
+
+			builder[PqsqlConnectionStringBuilder.host] = "127.0.0.1";
+
+			using (PqsqlConnection connection = new PqsqlConnection(builder))
+			using (PqsqlCommand cmd = new PqsqlCommand("show all", connection))
+			using (PqsqlDataReader r = cmd.ExecuteReader())
+			{
+				object value;
+				if (builder.TryGetValue(PqsqlConnectionStringBuilder.host, out value))
+				{
+					Assert.AreEqual(connection.DataSource, value);
+				}
+				else
+				{
+					Assert.AreEqual(connection.DataSource, string.Empty);
+				}
 				cmd.Cancel();
 			}
 		}
