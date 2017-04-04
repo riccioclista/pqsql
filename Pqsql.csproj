@@ -233,6 +233,7 @@
     <Compile Include="PqsqlException.cs" />
     <Compile Include="PqsqlLargeObject.cs" />
     <Compile Include="PqsqlParameter.cs" />
+    <Compile Include="PqsqlParameterBuffer.cs" />
     <Compile Include="PqsqlParameterCollection.cs" />
     <Compile Include="PqsqlProviderFactory.cs" />
     <Compile Include="PqsqlTransaction.cs" />
