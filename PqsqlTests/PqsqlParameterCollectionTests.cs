@@ -30,8 +30,6 @@ namespace PqsqlTests
 		public void PqsqlParameterCollectionTest2()
 		{
 			PqsqlParameterCollection coll = new PqsqlParameterCollection();
-			IntPtr pb1 = coll.CreateParameterBuffer();
-			Assert.AreNotEqual(IntPtr.Zero, pb1);
 
 			coll.AddRange(
 				new PqsqlParameter[]
@@ -42,8 +40,11 @@ namespace PqsqlTests
 				}
 				);
 
-			IntPtr pb2 = coll.CreateParameterBuffer();
-			Assert.AreEqual(pb1, pb2);
+			Assert.AreEqual(3, coll.Count);
+
+			coll.Clear();
+
+			Assert.AreEqual(0, coll.Count);
 		}
 
 		[TestMethod]

@@ -109,6 +109,7 @@
     <Compile Include="PqsqlDataAdapterTests.cs" />
     <Compile Include="PqsqlDataReaderTests.cs" />
     <Compile Include="PqsqlLargeObjectTests.cs" />
+    <Compile Include="PqsqlParameterBufferTests.cs" />
     <Compile Include="PqsqlProviderFactoryTests.cs" />
     <Compile Include="PqsqlTypeRegistryTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
