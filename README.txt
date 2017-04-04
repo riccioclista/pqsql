@@ -61,6 +61,12 @@ Installation:
 TODO
 ====
 
+Connection pooling
+------------------
+
+- add connection pooling settings to PqsqlConnectionStringBuilder
+
+
 Data types
 ----------
 
@@ -100,11 +106,6 @@ Asynchronous Notification
 -------------------------
 - add support for PqsqlConnection.Notify event https://www.postgresql.org/docs/current/static/libpq-notify.html
 - add support for PqsqlConnection.Notice event https://www.postgresql.org/docs/current/static/libpq-notice-processing.html
-
-Connection Status Functions
----------------------------
-- use PQdb for PqsqlConnection.Database, PQhost/PQport for PqsqlConnection.DataSource
-- https://www.postgresql.org/docs/current/static/libpq-status.html
 
 GetSchema
 ---------
