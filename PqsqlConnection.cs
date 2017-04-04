@@ -189,6 +189,18 @@ namespace Pqsql
 			{
 				object dbname;
 
+				if (mConnection != IntPtr.Zero)
+				{
+					unsafe
+					{
+						sbyte* dbp = PqsqlWrapper.PQdb(mConnection);
+						if (dbp != null)
+						{
+							return new string(dbp);
+						}
+					}
+				}
+
 				if (mConnectionStringBuilder.TryGetValue(PqsqlConnectionStringBuilder.dbname, out dbname))
 				{
 					return (string) dbname;
@@ -210,6 +222,18 @@ namespace Pqsql
 			get
 			{
 				object ds;
+
+				if (mConnection != IntPtr.Zero)
+				{
+					unsafe
+					{
+						sbyte* hostp = PqsqlWrapper.PQhost(mConnection);
+						if (hostp != null)
+						{
+							return new string(hostp);
+						}
+					}
+				}
 
 				if (mConnectionStringBuilder.TryGetValue(PqsqlConnectionStringBuilder.host, out ds))
 				{
