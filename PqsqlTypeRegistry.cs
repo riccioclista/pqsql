@@ -43,20 +43,20 @@ namespace Pqsql
 		}
 
 		/// <summary>
-		/// stores TypeCode, PqsqlDbType for arrays, SetValue, and SetArrayItem delegates for PqsqlParameterCollection
+		/// stores TypeCode, PqsqlDbType for arrays, SetValue, and SetArrayItem delegates for PqsqlParameterBuffer
 		/// </summary>
 		internal sealed class PqsqlTypeParameter
 		{
-			// used in PqsqlParameterCollection.CreateParameterBuffer
+			// used in PqsqlParameterBuffer.AddParameter
 			public TypeCode TypeCode { get; set; }
 
 			// used in PqsqlTypeRegistry.SetArrayValue
 			public PqsqlDbType ArrayDbType { get; set; }
 
-			// used in PqsqlParameterCollection.AddParameterValue
+			// used in PqsqlParameterBuffer.AddParameterValue
 			public Action<IntPtr, object, PqsqlDbType> SetValue { get; set; }
 
-			// used in PqsqlParameterCollection.AddParameterValue
+			// used in PqsqlParameterBuffer.AddParameterValue
 			public Action<IntPtr, object> SetArrayItem { get; set; }
 		}
 
@@ -87,7 +87,7 @@ namespace Pqsql
 						TypeCode=TypeCode.Boolean,
 						ArrayDbType=PqsqlDbType.BooleanArray,
 						SetValue=(pb, val, oid) => PqsqlBinaryFormat.pqbf_add_bool(pb, (bool) val ? 1 : 0),
-						SetArrayItem = (a, o) => PqsqlParameterCollection.SetTypeArray(a, sizeof(bool), PqsqlBinaryFormat.pqbf_set_bool, (bool) o ? 1 : 0),
+						SetArrayItem = (a, o) => PqsqlParameterBuffer.SetTypeArray(a, sizeof(bool), PqsqlBinaryFormat.pqbf_set_bool, (bool) o ? 1 : 0),
 					},
 					DbType=DbType.Boolean,
 				}
@@ -103,7 +103,7 @@ namespace Pqsql
 						TypeCode =TypeCode.Double,
 						ArrayDbType=PqsqlDbType.Float8Array,
 						SetValue=(pb, val, oid) => PqsqlBinaryFormat.pqbf_add_float8(pb, (double) val),
-						SetArrayItem = (a, o) => PqsqlParameterCollection.SetTypeArray(a, sizeof(double), PqsqlBinaryFormat.pqbf_set_float8, (double) o),
+						SetArrayItem = (a, o) => PqsqlParameterBuffer.SetTypeArray(a, sizeof(double), PqsqlBinaryFormat.pqbf_set_float8, (double) o),
 					},
 					DbType=DbType.Double,
 				}
@@ -119,7 +119,7 @@ namespace Pqsql
 						TypeCode=TypeCode.Int32,
 						ArrayDbType=PqsqlDbType.Int4Array,
 						SetValue=(pb, val, oid) => PqsqlBinaryFormat.pqbf_add_int4(pb, (int) val),
-						SetArrayItem = (a, o) => PqsqlParameterCollection.SetTypeArray(a, sizeof(int), PqsqlBinaryFormat.pqbf_set_int4, (int) o),
+						SetArrayItem = (a, o) => PqsqlParameterBuffer.SetTypeArray(a, sizeof(int), PqsqlBinaryFormat.pqbf_set_int4, (int) o),
 					},
 					DbType=DbType.Int32,
 				}
@@ -135,7 +135,7 @@ namespace Pqsql
 						TypeCode=TypeCode.Int64,
 						ArrayDbType=PqsqlDbType.Int8Array,
 						SetValue=(pb, val, oid) => PqsqlBinaryFormat.pqbf_add_int8(pb, (long) val),
-						SetArrayItem = (a, o) => PqsqlParameterCollection.SetTypeArray(a, sizeof(long), PqsqlBinaryFormat.pqbf_set_int8, (long) o),
+						SetArrayItem = (a, o) => PqsqlParameterBuffer.SetTypeArray(a, sizeof(long), PqsqlBinaryFormat.pqbf_set_int8, (long) o),
 					},
 					DbType=DbType.Int64,
 				}
@@ -154,7 +154,7 @@ namespace Pqsql
 							double d = Convert.ToDouble(val, CultureInfo.InvariantCulture);
 							PqsqlBinaryFormat.pqbf_add_numeric(pb, d);
 						},
-						SetArrayItem = PqsqlParameterCollection.SetNumericArray
+						SetArrayItem = PqsqlParameterBuffer.SetNumericArray
 					},
 					DbType=DbType.VarNumeric,
 				}
@@ -170,7 +170,7 @@ namespace Pqsql
 						TypeCode=TypeCode.Single,
 						ArrayDbType=PqsqlDbType.Float4Array,
 						SetValue=(pb, val, oid) => PqsqlBinaryFormat.pqbf_add_float4(pb, (float) val),
-						SetArrayItem = (a, o) => PqsqlParameterCollection.SetTypeArray(a, sizeof(float), PqsqlBinaryFormat.pqbf_set_float4, (float) o),
+						SetArrayItem = (a, o) => PqsqlParameterBuffer.SetTypeArray(a, sizeof(float), PqsqlBinaryFormat.pqbf_set_float4, (float) o),
 					},
 					DbType=DbType.Single,
 				}
@@ -186,7 +186,7 @@ namespace Pqsql
 						TypeCode=TypeCode.Int16,
 						ArrayDbType=PqsqlDbType.Int2Array,
 						SetValue=(pb, val, oid) => PqsqlBinaryFormat.pqbf_add_int2(pb, (short) val),
-						SetArrayItem = (a, o) => PqsqlParameterCollection.SetTypeArray(a, sizeof(short), PqsqlBinaryFormat.pqbf_set_int2, (short) o),
+						SetArrayItem = (a, o) => PqsqlParameterBuffer.SetTypeArray(a, sizeof(short), PqsqlBinaryFormat.pqbf_set_int2, (short) o),
 					},
 					DbType =DbType.Int16,
 				}
@@ -201,8 +201,8 @@ namespace Pqsql
 					TypeParameter = new PqsqlTypeParameter {
 						TypeCode=TypeCode.String,
 						ArrayDbType=PqsqlDbType.Array, // TODO
-						SetValue= PqsqlParameterCollection.SetText,
-						SetArrayItem= PqsqlParameterCollection.SetTextArray
+						SetValue= PqsqlParameterBuffer.SetText,
+						SetArrayItem= PqsqlParameterBuffer.SetTextArray
 					},
 					DbType=DbType.StringFixedLength,
 				}
@@ -217,8 +217,8 @@ namespace Pqsql
 					TypeParameter = new PqsqlTypeParameter {
 						TypeCode=TypeCode.String,
 						ArrayDbType=PqsqlDbType.TextArray,
-						SetValue = PqsqlParameterCollection.SetText,
-						SetArrayItem= PqsqlParameterCollection.SetTextArray
+						SetValue = PqsqlParameterBuffer.SetText,
+						SetArrayItem= PqsqlParameterBuffer.SetTextArray
 					},
 					DbType=DbType.String,
 				}
@@ -233,8 +233,8 @@ namespace Pqsql
 					TypeParameter = new PqsqlTypeParameter {
 						TypeCode=TypeCode.String,
 						ArrayDbType=PqsqlDbType.VarcharArray,
-						SetValue = PqsqlParameterCollection.SetText,
-						SetArrayItem= PqsqlParameterCollection.SetTextArray
+						SetValue = PqsqlParameterBuffer.SetText,
+						SetArrayItem= PqsqlParameterBuffer.SetTextArray
 					},
 					DbType=DbType.String,
 				}
@@ -249,8 +249,8 @@ namespace Pqsql
 					TypeParameter = new PqsqlTypeParameter {
 						TypeCode=TypeCode.String,
 						ArrayDbType=PqsqlDbType.NameArray,
-						SetValue = PqsqlParameterCollection.SetText,
-						SetArrayItem= PqsqlParameterCollection.SetTextArray
+						SetValue = PqsqlParameterBuffer.SetText,
+						SetArrayItem= PqsqlParameterBuffer.SetTextArray
 					},				
 					DbType=DbType.StringFixedLength,
 				}
@@ -348,8 +348,8 @@ namespace Pqsql
 					TypeParameter = new PqsqlTypeParameter {
 						TypeCode=TypeCode.DateTime,
 						ArrayDbType=PqsqlDbType.TimestampArray,
-						SetValue = PqsqlParameterCollection.SetTimestamp,
-						SetArrayItem = PqsqlParameterCollection.SetTimestampArray
+						SetValue = PqsqlParameterBuffer.SetTimestamp,
+						SetArrayItem = PqsqlParameterBuffer.SetTimestampArray
 					},
 					DbType=DbType.DateTime,
 				}
@@ -364,8 +364,8 @@ namespace Pqsql
 					TypeParameter = new PqsqlTypeParameter {
 						TypeCode=TypeCode.DateTime,
 						ArrayDbType=PqsqlDbType.TimestampTZArray,
-						SetValue = PqsqlParameterCollection.SetTimestamp,
-						SetArrayItem = PqsqlParameterCollection.SetTimestampArray
+						SetValue = PqsqlParameterBuffer.SetTimestamp,
+						SetArrayItem = PqsqlParameterBuffer.SetTimestampArray
 					},
 					DbType=DbType.DateTimeOffset,
 				}
@@ -380,8 +380,8 @@ namespace Pqsql
 					TypeParameter = new PqsqlTypeParameter {
 						TypeCode=TypeCode.DateTime,
 						ArrayDbType=PqsqlDbType.IntervalArray,
-						SetValue=PqsqlParameterCollection.SetInterval,
-						SetArrayItem = PqsqlParameterCollection.SetIntervalArray,
+						SetValue=PqsqlParameterBuffer.SetInterval,
+						SetArrayItem = PqsqlParameterBuffer.SetIntervalArray,
 					},
 					DbType=DbType.DateTime,
 				}
@@ -507,8 +507,8 @@ namespace Pqsql
 					TypeParameter = new PqsqlTypeParameter {
 						TypeCode=TypeCode.String,
 						ArrayDbType=PqsqlDbType.Array, // TODO
-						SetValue = PqsqlParameterCollection.SetText,
-						SetArrayItem = PqsqlParameterCollection.SetTextArray
+						SetValue = PqsqlParameterBuffer.SetText,
+						SetArrayItem = PqsqlParameterBuffer.SetTextArray
 					},
 					DbType=DbType.String,
 				}
@@ -524,7 +524,7 @@ namespace Pqsql
 						TypeCode=TypeCode.UInt32,
 						ArrayDbType=PqsqlDbType.OidArray,
 						SetValue=(pb, val, oid) => PqsqlBinaryFormat.pqbf_add_oid(pb, (uint) val),
-						SetArrayItem = (a, o) => PqsqlParameterCollection.SetTypeArray(a, sizeof(uint), PqsqlBinaryFormat.pqbf_set_oid, (uint) o),
+						SetArrayItem = (a, o) => PqsqlParameterBuffer.SetTypeArray(a, sizeof(uint), PqsqlBinaryFormat.pqbf_set_oid, (uint) o),
 					},
 					DbType=DbType.UInt32,
 				}
@@ -539,7 +539,7 @@ namespace Pqsql
 					TypeParameter = new PqsqlTypeParameter {
 						TypeCode=TypeCode.String,
 						ArrayDbType=PqsqlDbType.Array, // TODO
-						SetValue = PqsqlParameterCollection.SetText,
+						SetValue = PqsqlParameterBuffer.SetText,
 						SetArrayItem = null // TODO
 					},
 					DbType=DbType.String,
@@ -604,7 +604,7 @@ namespace Pqsql
 						TypeCode=TypeCode.Object,
 						ArrayDbType=PqsqlDbType.TextArray,
 						SetValue=null,
-						SetArrayItem = PqsqlParameterCollection.SetTextArray
+						SetArrayItem = PqsqlParameterBuffer.SetTextArray
 					},
 					DbType=DbType.Object,
 				}
@@ -620,7 +620,7 @@ namespace Pqsql
 						TypeCode=TypeCode.Object,
 						ArrayDbType=PqsqlDbType.NameArray,
 						SetValue = null,
-						SetArrayItem = PqsqlParameterCollection.SetTextArray
+						SetArrayItem = PqsqlParameterBuffer.SetTextArray
 					},
 					DbType=DbType.Object,
 				}
@@ -636,7 +636,7 @@ namespace Pqsql
 						TypeCode=TypeCode.Object,
 						ArrayDbType=PqsqlDbType.VarcharArray,
 						SetValue = null,
-						SetArrayItem = PqsqlParameterCollection.SetTextArray
+						SetArrayItem = PqsqlParameterBuffer.SetTextArray
 					},
 					DbType=DbType.Object,
 				}
@@ -911,9 +911,9 @@ namespace Pqsql
 		private static readonly ConcurrentDictionary<string, Dictionary<PqsqlDbType, PqsqlTypeEntry>> mUserTypesDict  = new ConcurrentDictionary<string, Dictionary<PqsqlDbType, PqsqlTypeEntry>>();
 
 
-		#region access types for PqsqlParameterCollection
+		#region access types for PqsqlParameterBuffer
 
-		// used in PqsqlParameterCollection.CreateParameterBuffer
+		// used in PqsqlParameterBuffer.AddParameter
 		// TODO user-defined datatypes not supported
 		internal static PqsqlTypeParameter Get(PqsqlDbType oid)
 		{
@@ -1091,8 +1091,8 @@ namespace Pqsql
 								TypeParameter = new PqsqlTypeParameter {
 									TypeCode = TypeCode.String,
 									ArrayDbType = PqsqlDbType.Array,
-									SetValue = PqsqlParameterCollection.SetText,
-									SetArrayItem = PqsqlParameterCollection.SetTextArray
+									SetValue = PqsqlParameterBuffer.SetText,
+									SetArrayItem = PqsqlParameterBuffer.SetTextArray
 								},
 								DbType = DbType.String,
 							};

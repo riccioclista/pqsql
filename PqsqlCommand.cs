@@ -84,7 +84,7 @@ namespace Pqsql
 
 			if (disposing)
 			{
-				mParams.Dispose();
+				// give up references to transaction and connection
 				mTransaction = null;
 				mConn = null;
 			}

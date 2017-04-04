@@ -2319,30 +2319,24 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 			if (utf8query == null || utf8query[0] == 0x0) // null or empty string
 				return false;
 
-			int num_param = 0;
-			IntPtr ptyps = IntPtr.Zero; // oid*
-			IntPtr pvals = IntPtr.Zero; // char**
-			IntPtr plens = IntPtr.Zero; // int*
-			IntPtr pfrms = IntPtr.Zero; // int*
-
-			PqsqlParameterCollection pc = mCmd.Parameters;
-
-			if (pc != null)
+			// create query parameters and send query
+			using (PqsqlParameterBuffer pbuf = new PqsqlParameterBuffer(mCmd.Parameters))
 			{
-				IntPtr pb = pc.CreateParameterBuffer(); // pqparam_buffer*
-				num_param = PqsqlBinaryFormat.pqpb_get_num(pb);
-				ptyps = PqsqlBinaryFormat.pqpb_get_types(pb);
-				pvals = PqsqlBinaryFormat.pqpb_get_vals(pb);
-				plens = PqsqlBinaryFormat.pqpb_get_lens(pb);
-				pfrms = PqsqlBinaryFormat.pqpb_get_frms(pb);
-			}
+				int num_param;
+				IntPtr ptyps; // oid*
+				IntPtr pvals; // char**
+				IntPtr plens; // int*
+				IntPtr pfrms; // int*
 
-			unsafe
-			{
-				fixed (byte* pq = utf8query)
+				num_param = pbuf.GetQueryParams(out ptyps, out pvals, out plens, out pfrms);
+
+				unsafe
 				{
-					if (PqsqlWrapper.PQsendQueryParams(mPGConn, pq, num_param, ptyps, pvals, plens, pfrms, 1) == 0)
-						return false;
+					fixed (byte* pq = utf8query)
+					{
+						if (PqsqlWrapper.PQsendQueryParams(mPGConn, pq, num_param, ptyps, pvals, plens, pfrms, 1) == 0)
+							return false;
+					}
 				}
 			}
 
