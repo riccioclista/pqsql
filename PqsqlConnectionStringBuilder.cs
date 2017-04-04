@@ -8,7 +8,7 @@ using System.Diagnostics.Contracts;
 
 namespace Pqsql
 {
-
+	// https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNSTRING
 	// The currently recognized parameter key words are:
 	//
 	//host
@@ -143,8 +143,55 @@ namespace Pqsql
 		{
 		}
 
+		private void CanonicalHostPort(string a)
+		{
+			object o;
+			if (TryGetValue(a, out o))
+			{
+				string dataSource = (string) o;
+				int i = dataSource.IndexOf(','); // Data Source=IP,PORT
 
-		delegate void RemoveAliasAddKey(string alias, string key);
+				Remove(a);
+
+				if (i == -1)
+				{
+					Add(host, o);
+				}
+				else
+				{
+					Add(host, dataSource.Substring(0, i));
+					Add(port, dataSource.Substring(i + 1));
+				}
+			}
+		}
+
+		private void CanonicalConnectionKeyword(string a, string k)
+		{
+			object o;
+			if (TryGetValue(a, out o))
+			{
+				Remove(a);
+				Add(k, o);
+			}
+		}
+
+		private void CanonicalConnectionTimeout(string a)
+		{
+			object timeout;
+			if (TryGetValue(a, out timeout))
+			{
+				int it = Convert.ToInt32(timeout, CultureInfo.InvariantCulture);
+
+				Remove(a);
+
+				if (it < 2)
+				{
+					it = 2;
+				}
+
+				Add(connect_timeout, it.ToString(CultureInfo.InvariantCulture));
+			}
+		}
 
 		//
 		// Summary:
@@ -181,61 +228,21 @@ namespace Pqsql
 				// now clean up connection string and use libpq keywords
 				//
 
-				// host aliases
-				RemoveAliasAddKey remAddHostPort = delegate(string a, string k)
+				// host aliases: we don't support comma-separated multi-host strings with hostAlias keys,
+				// use host=HOST1,HOST2,... and port=PORT1,PORT2 in ConnectionString instead
+				Array.ForEach(hostAlias, CanonicalHostPort);
+
+				// dbname, user, password
+				Array.ForEach(dbnameAlias, a => CanonicalConnectionKeyword(a, dbname));
+				Array.ForEach(userAlias, a => CanonicalConnectionKeyword(a, user));
+				Array.ForEach(passwordAlias, a => CanonicalConnectionKeyword(a, password));
+
+				// always set default connect_timeout of at least 2 seconds
+				Array.ForEach(connect_timeoutAlias, CanonicalConnectionTimeout);
+				if (!ContainsKey(connect_timeout))
 				{
-					object o;
-					if (TryGetValue(a, out o))
-					{
-						Remove(a);
-
-						string dataSource = (string) o;
-						int i = dataSource.IndexOf(','); // Data Source=IP,PORT
-
-						if (i == -1)
-						{
-							Add(k, o);
-						}
-						else
-						{
-							Add(host, dataSource.Substring(0, i));
-							Add(port, dataSource.Substring(i + 1));
-						}
-					}
-				};
-				Array.ForEach(hostAlias, a => remAddHostPort(a, host));
-
-				// dbname, user, password, connect_timeout
-				RemoveAliasAddKey remAdd = delegate(string a, string k)
-				{
-					object o;
-					if (TryGetValue(a, out o))
-					{
-						Remove(a);
-						Add(k, o);
-					}
-				};
-				Array.ForEach(dbnameAlias, a => remAdd(a, dbname));
-				Array.ForEach(userAlias, a => remAdd(a, user));
-				Array.ForEach(passwordAlias, a => remAdd(a, password));
-				Array.ForEach(connect_timeoutAlias, a => remAdd(a, connect_timeout));
-
-				//
-				// always set default timeout of at least 2 seconds
-				//
-
-				object timeout;
-				if (TryGetValue(connect_timeout, out timeout))
-				{
-					int it = Convert.ToInt32(timeout, CultureInfo.InvariantCulture);
-
-					if (it >= 2)
-						return;
-
-					Remove(connect_timeout);
+					Add(connect_timeout, "2");
 				}
-
-				Add(connect_timeout, "2");
 			}
 		}
 
