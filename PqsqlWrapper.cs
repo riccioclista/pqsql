@@ -628,6 +628,18 @@ namespace Pqsql
 			public static extern unsafe sbyte* PQparameterStatus(IntPtr conn, byte* paramName);
 			// const char *PQparameterStatus(const PGconn *conn, const char *paramName);
 
+			[DllImport("libpq.dll")]
+			public static extern unsafe sbyte* PQdb(IntPtr conn);
+			// char *PQdb(const PGconn *conn);
+
+			[DllImport("libpq.dll")]
+			public static extern unsafe sbyte* PQhost(IntPtr conn);
+			// char *PQhost(const PGconn *conn);
+
+			[DllImport("libpq.dll")]
+			public static extern unsafe sbyte* PQport(IntPtr conn);
+			// char *PQport(const PGconn *conn);
+
 			#endregion
 
 			//
