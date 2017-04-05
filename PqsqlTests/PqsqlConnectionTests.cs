@@ -52,6 +52,24 @@ namespace PqsqlTests
 
 			connection.ChangeDatabase("postgres");
 			Assert.AreEqual("postgres", connection.Database, "wrong connection database");
+
+			connection.Open();
+			Assert.AreEqual(ConnectionState.Open, connection.State, "wrong connection state");
+
+			connection.Open();
+			Assert.AreEqual(ConnectionState.Open, connection.State, "wrong connection state");
+
+			ExecStatusType status = connection.Exec(null);
+			Assert.AreEqual(ExecStatusType.PGRES_FATAL_ERROR, status);
+
+			IntPtr res;
+			status = connection.Exec(null, out res);
+			Assert.AreEqual(ExecStatusType.PGRES_FATAL_ERROR, status);
+			Assert.AreEqual(IntPtr.Zero, res);
+			connection.Consume(res);
+
+			connection.Dispose();
+			connection.Dispose();
 		}
 
 		[TestMethod]
