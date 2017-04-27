@@ -93,5 +93,33 @@ namespace PqsqlTests
 			coll.Clear();
 			Assert.AreEqual(0, coll.Count);
 		}
+
+		[TestMethod]
+		public void PqsqlParameterCollectionTest4()
+		{
+			PqsqlParameterCollection coll = new PqsqlParameterCollection
+			{
+				new PqsqlParameter("p1", DbType.Int32)
+			};
+
+			Assert.AreEqual(1, coll.Count);
+			Assert.AreEqual(":p1", coll[0].ParameterName);
+			Assert.AreEqual(DbType.Int32, coll[0].DbType);
+			Assert.AreEqual(ParameterDirection.Input, coll[0].Direction);
+
+			coll["p1"] = new PqsqlParameter() { ParameterName = "p2", DbType = DbType.Int32, Direction = ParameterDirection.InputOutput};
+
+			Assert.AreEqual(1, coll.Count);
+			Assert.AreEqual(":p2", coll[0].ParameterName);
+			Assert.AreEqual(DbType.Int32, coll[0].DbType);
+			Assert.AreEqual(ParameterDirection.InputOutput, coll[0].Direction);
+
+			coll["p2"] = new PqsqlParameter() { ParameterName = "p3", DbType = DbType.String };
+
+			Assert.AreEqual(1, coll.Count);
+			Assert.AreEqual(":p3", coll[0].ParameterName);
+			Assert.AreEqual(DbType.String, coll[0].DbType);
+			Assert.AreEqual(ParameterDirection.Input, coll[0].Direction);
+		}
 	}
 }
