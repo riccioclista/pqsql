@@ -378,7 +378,7 @@ namespace Pqsql
 						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetInterval(res,row,ord),
 					},
 					TypeParameter = new PqsqlTypeParameter {
-						TypeCode=TypeCode.DateTime,
+						TypeCode=TypeCode.Object,
 						ArrayDbType=PqsqlDbType.IntervalArray,
 						SetValue=PqsqlParameterBuffer.SetInterval,
 						SetArrayItem = PqsqlParameterBuffer.SetIntervalArray,
@@ -949,7 +949,7 @@ namespace Pqsql
 			{
 #if CODECONTRACTS
 				Contract.Assume(result != null);
-				Contract.Assert(result.TypeValue != null);
+				Contract.Assume(result.TypeValue != null);
 #endif
 				return result.TypeValue;
 			}
@@ -972,7 +972,7 @@ namespace Pqsql
 
 #if CODECONTRACTS
 					Contract.Assume(result != null);
-					Contract.Assert(result.TypeValue != null);
+					Contract.Assume(result.TypeValue != null);
 #endif
 
 					return result.TypeValue;
@@ -1017,7 +1017,7 @@ namespace Pqsql
 
 #if CODECONTRACTS
 					Contract.Assume(result != null);
-					Contract.Assert(result.TypeValue != null);
+					Contract.Assume(result.TypeValue != null);
 #endif
 
 					return result.TypeValue;
