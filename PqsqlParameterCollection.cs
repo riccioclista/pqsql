@@ -220,6 +220,50 @@ namespace Pqsql
 			}
 		}
 
+		// add PqsqlParameter with value to PqsqlParameterCollection without known DbType
+		public PqsqlParameter AddWithValue(string parameterName, object value)
+		{
+			if (string.IsNullOrEmpty(parameterName))
+				throw new ArgumentOutOfRangeException(nameof(parameterName), "parameter name is empty or null");
+
+			int i = IndexOf(parameterName);
+
+			PqsqlParameter p;
+
+			if (i >= 0)
+			{
+				// re-use PqsqlParameter
+				p = this[i];
+
+				// reset all properties
+				p.ResetDbType();
+				p.SourceColumn = string.Empty;
+				p.Size = 0;
+				p.Direction = ParameterDirection.Input;
+				p.SourceVersion = DataRowVersion.Current;
+				p.IsNullable = false;
+
+				// set name and value
+				p.ParameterName = parameterName;
+				p.Value = value;
+			}
+			else
+			{
+				// fresh PqsqlParameter with name and value
+				p = new PqsqlParameter
+				{
+					ParameterName = parameterName,
+					Value = value
+				};
+
+				mParamList.Add(p);
+				i = mParamList.Count - 1;
+				mLookup.Add(parameterName, i);
+			}
+
+			return p;
+		}
+
 		// Summary:
 		//     Adds a System.Data.Common.DbParameter item with the specified value to the
 		//     System.Data.Common.DbParameterCollection.
