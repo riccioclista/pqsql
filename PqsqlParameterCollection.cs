@@ -19,6 +19,11 @@ namespace Pqsql
 		// Dictionary lookups for GetValue to improve performance
 		private readonly Dictionary<string, int> mLookup = new Dictionary<string, int>();
 
+		// internal constructor
+		internal PqsqlParameterCollection()
+		{
+		}
+
 		#region DbParameterCollection
 
 		// Summary:
