@@ -211,7 +211,7 @@ namespace Pqsql
 				if (i == -1)
 					throw new ArgumentOutOfRangeException(nameof(parameterName), "Parameter not found");
 
-				mParamList[i] = value;
+				this[i] = value;
 			}
 		}
 
