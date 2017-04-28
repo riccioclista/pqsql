@@ -1,4 +1,5 @@
 ﻿using System.Data;
+using System.Data.Common;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Pqsql;
 
@@ -64,10 +65,13 @@ namespace PqsqlTests
 					SelectCommand =
 					{
 						Transaction = transaction
-					}
+					},
 				};
-				PqsqlCommandBuilder builder = new PqsqlCommandBuilder(adapter);
 				
+				adapter.RowUpdated += Adapter_RowUpdated;
+
+				PqsqlCommandBuilder builder = new PqsqlCommandBuilder(adapter);
+
 				DataSet ds = new DataSet();
 				adapter.FillSchema(ds, SchemaType.Source);
 				adapter.Fill(ds, "temptab");
@@ -94,6 +98,11 @@ namespace PqsqlTests
 
 				transaction.Rollback();
 			}
+		}
+
+		private void Adapter_RowUpdated(object sender, RowUpdatedEventArgs e)
+		{
+			Assert.AreEqual(UpdateStatus.Continue, e.Status);
 		}
 
 		[TestMethod]
