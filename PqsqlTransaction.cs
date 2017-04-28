@@ -23,19 +23,6 @@ namespace Pqsql
 		internal static readonly byte[] RollbackStatement = PqsqlUTF8Statement.CreateUTF8Statement("ROLLBACK");
 
 
-		// Summary:
-		//     Initializes a new System.Data.Common.DbTransaction object.
-		internal PqsqlTransaction(PqsqlConnection conn)
-			: this(conn, IsolationLevel.ReadCommitted)
-		{
-#if CODECONTRACTS
-			Contract.Requires<ArgumentNullException>(conn != null);
-#else
-			if (conn == null)
-				throw new ArgumentNullException(nameof(conn));
-#endif
-		}
-
 		internal PqsqlTransaction(PqsqlConnection conn, IsolationLevel isolationLevel)
 		{
 #if CODECONTRACTS
