@@ -142,7 +142,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 
 		// Summary:
 		//     Initializes a new instance of the PqsqlDataReader class.
-		public PqsqlDataReader(PqsqlCommand command, CommandBehavior behavior, string[] statements)
+		internal PqsqlDataReader(PqsqlCommand command, CommandBehavior behavior, string[] statements)
 		{
 #if CODECONTRACTS
 			Contract.Requires<ArgumentNullException>(command != null);
