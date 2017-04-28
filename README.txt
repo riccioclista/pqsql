@@ -11,6 +11,20 @@ http://www.enterprisedb.com/postgresql-9410-binaries-win64
 into C:\pgsql
 
 
+Build
+-----
+
+Setup environment variables:
+	"C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\bin\amd64\vcvars64.bat"
+
+Release:
+
+	MSBuild.exe Pqsql-VS2015.sln /p:Configuration=Release /p:Platform=x64
+
+Debug:
+
+	MSBuild.exe Pqsql-VS2015.sln /p:Configuration=Debug /p:Platform=x64
+
 
 Dependencies of Pqsql
 =====================
@@ -43,8 +57,16 @@ for libpqbinfmt:
 - pgsql\bin\libintl-8.dll
 
 
-pgBouncer
----------
+
+Code Contracts for .NET (only for Debug configuration)
+------------------------------------------------------
+
+https://marketplace.visualstudio.com/items?itemName=RiSEResearchinSoftwareEngineering.CodeContractsforNET
+
+
+
+pgBouncer (optional)
+--------------------
 
 https://pgbouncer.github.io/
 pgbouncer-1.6.1-win-x64.zip: http://winpg.jp/~saito/pgbouncer/try_64bit/
@@ -58,13 +80,49 @@ Installation:
 
 
 
+
+Tests
+=====
+
+You can run the tests in the Debug configuration:
+
+   "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\bin\amd64\vcvars64.bat"
+
+   MSBuild.exe Pqsql-VS2015.sln /p:Configuration=Debug /p:Platform=x64
+
+   % setup libpq environment variables
+   % E.g.
+   set PGSERVICE=servicename
+   set PGPASSWORD=secure
+
+   vstest.console.exe bin\x64\Debug\PqsqlTests.dll /Settings:Pqsql.runsettings /logger:trx
+
+
+
 TODO
 ====
+
+Fix deprecated methods
+----------------------
+http://go.microsoft.com/fwlink/?linkid=14202
+https://msdn.microsoft.com/en-us/library/hh419161.aspx#data
+
 
 Connection pooling
 ------------------
 
 - add connection pooling settings to PqsqlConnectionStringBuilder
+
+
+Performance counters
+--------------------
+https://msdn.microsoft.com/en-us/library/ms254503(v=vs.110).aspx
+https://www.devart.com/dotconnect/oracle/docs/PerformanceCounters.html
+
+
+Implement CommandBehavior.SequentialAccess
+------------------------------------------
+https://msdn.microsoft.com/en-us/library/87z0hy49(v=vs.110).aspx
 
 
 Data types
