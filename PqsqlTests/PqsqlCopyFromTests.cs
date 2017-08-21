@@ -312,5 +312,74 @@ namespace PqsqlTests
 				tran?.Dispose();
 			}
 		}
+
+		[TestMethod]
+		[ExpectedException(typeof(InvalidOperationException), "Table property is null should have been thrown")]
+		public void PqsqlCopyFromTest6()
+		{
+			PqsqlTransaction tran = null;
+			PqsqlCopyFrom copy = null;
+
+			try
+			{
+				tran = mConnection.BeginTransaction();
+				mCmd.Transaction = tran;
+
+				copy = new PqsqlCopyFrom(mConnection)
+				{
+					CopyTimeout = 5
+				};
+
+				copy.Start();
+
+				Assert.Fail();
+			}
+			finally
+			{
+				copy?.Dispose();
+				tran?.Dispose();
+			}
+		}
+
+		[TestMethod]
+		[ExpectedException(typeof(InvalidOperationException), "Start before write should have been thrown")]
+		public void PqsqlCopyFromTest7()
+		{
+			PqsqlTransaction tran = null;
+			PqsqlCopyFrom copy = null;
+
+			try
+			{
+				tran = mConnection.BeginTransaction();
+				mCmd.Transaction = tran;
+
+				mCmd.CommandText = "CREATE TEMP TABLE temp (id int4, val int4, txt text)";
+				mCmd.CommandTimeout = 200;
+				mCmd.CommandType = CommandType.Text;
+
+				int q = mCmd.ExecuteNonQuery();
+				Assert.AreEqual(0, q);
+
+				copy = new PqsqlCopyFrom(mConnection)
+				{
+					Table = "temp",
+					CopyTimeout = 5
+				};
+
+				copy.WriteInt4(42); // write without Start()
+				copy.WriteInt4(42); // write without Start()
+				copy.WriteText("42"); // write without Start()
+				copy.End();
+				copy.Close();
+
+				Assert.Fail();
+			}
+			finally
+			{
+				copy?.Dispose();
+				tran?.Dispose();
+			}
+		}
+
 	}
 }
