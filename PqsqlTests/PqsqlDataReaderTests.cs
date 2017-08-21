@@ -45,15 +45,15 @@ namespace PqsqlTests
 		public void PqsqlDataReaderTest1()
 		{
 			// TODO we don't support xid and inet datatypes yet
-			mCmd.CommandText = "select datid,datname,pid,application_name,backend_start,waiting,query from pg_stat_activity";
+			mCmd.CommandText = "select datid,datname,pid,application_name,backend_start,query from pg_stat_activity";
 			PqsqlDataReader reader = mCmd.ExecuteReader();
 			Assert.AreEqual(false, reader.IsClosed);
-			Assert.AreEqual(7, reader.FieldCount);
+			Assert.AreEqual(6, reader.FieldCount);
 
 			DataTable dt = reader.GetSchemaTable();
 			Assert.AreNotEqual(null, dt);
 
-			Assert.AreEqual(7, dt.Rows.Count);
+			Assert.AreEqual(6, dt.Rows.Count);
 
 			Assert.AreEqual("datid", dt.Rows[0][SchemaTableColumn.ColumnName]);
 			Assert.AreEqual(1, dt.Rows[0][SchemaTableColumn.ColumnOrdinal]);
@@ -70,11 +70,8 @@ namespace PqsqlTests
 			Assert.AreEqual("backend_start", dt.Rows[4][SchemaTableColumn.ColumnName]);
 			Assert.AreEqual(5, dt.Rows[4][SchemaTableColumn.ColumnOrdinal]);
 
-			Assert.AreEqual("waiting", dt.Rows[5][SchemaTableColumn.ColumnName]);
+			Assert.AreEqual("query", dt.Rows[5][SchemaTableColumn.ColumnName]);
 			Assert.AreEqual(6, dt.Rows[5][SchemaTableColumn.ColumnOrdinal]);
-
-			Assert.AreEqual("query", dt.Rows[6][SchemaTableColumn.ColumnName]);
-			Assert.AreEqual(7, dt.Rows[6][SchemaTableColumn.ColumnOrdinal]);
 
 			reader.Close();
 			Assert.AreEqual(ConnectionState.Open, mConnection.State);
@@ -85,7 +82,7 @@ namespace PqsqlTests
 		public void PqsqlDataReaderTest2()
 		{
 			// TODO we don't support xid and inet datatypes yet
-			mCmd.CommandText = "select datid,datname,pid,application_name,backend_start,waiting,query from pg_stat_activity";
+			mCmd.CommandText = "select datid,datname,pid,application_name,backend_start,query from pg_stat_activity";
 			PqsqlDataReader reader = mCmd.ExecuteReader(CommandBehavior.CloseConnection);
 			Assert.AreEqual(false, reader.IsClosed);
 			Assert.AreEqual(-1, reader.RecordsAffected);
@@ -109,7 +106,7 @@ namespace PqsqlTests
 		[TestMethod]
 		public void PqsqlDataReaderTest3()
 		{
-			mCmd.CommandText = "select datid,datname,pid,application_name,backend_start,waiting,query from pg_stat_activity";
+			mCmd.CommandText = "select datid,datname,pid,application_name,backend_start,query from pg_stat_activity";
 			PqsqlDataReader reader = mCmd.ExecuteReader(CommandBehavior.CloseConnection);
 			Assert.AreEqual(false, reader.IsClosed);
 			Assert.AreEqual(-1, reader.RecordsAffected);
