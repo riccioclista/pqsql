@@ -121,13 +121,17 @@
     <ClCompile Include="pqparam_buffer.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="builtins.h" />
+    <ClInclude Include="c.h" />
+    <ClInclude Include="fmgr.h" />
     <ClInclude Include="numeric.h" />
+    <ClInclude Include="pg_type.h" />
+    <ClInclude Include="postgres.h" />
     <ClInclude Include="pqbinfmt.h" />
     <ClInclude Include="pqbincopy.h" />
     <ClInclude Include="pqbinfmt_config.h" />
     <ClInclude Include="pqexpbuffer.h" />
     <ClInclude Include="pqparam_buffer.h" />
-    <ClInclude Include="pq_types.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="libpqbinfmt.rc" />
