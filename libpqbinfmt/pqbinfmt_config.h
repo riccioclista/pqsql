@@ -1,4 +1,12 @@
-﻿#ifndef __PQ_BINFMT_CONFIG_H
+﻿/**
+ * @file pqbinfmt_config.h
+ * @brief utility macros
+ * @date 2015-09-30
+ * @author Thomas Krennwallner <krennwallner@ximes.com>
+ * @copyright Copyright (c) 2015-2017, XIMES GmbH
+ */
+
+#ifndef __PQ_BINFMT_CONFIG_H
 #define __PQ_BINFMT_CONFIG_H
 
 #if defined _WIN32
