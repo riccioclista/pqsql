@@ -258,7 +258,7 @@ namespace Pqsql
 
 				mParamList.Add(p);
 				i = mParamList.Count - 1;
-				mLookup.Add(parameterName, i);
+				mLookup.Add(p.ParameterName, i);
 			}
 
 			return p;
