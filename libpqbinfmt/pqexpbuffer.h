@@ -15,7 +15,7 @@
  * a usable vsnprintf(), then a copy of our own implementation of it will
  * be linked into libpq.
  *
- * Portions Copyright (c) 1996-2014, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2016, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * src/interfaces/libpq/pqexpbuffer.h
@@ -54,10 +54,11 @@ extern "C" {
  */
 typedef struct PQExpBufferData
 {
-  char       *data;
-  size_t      len;
-  size_t      maxlen;
+	char	   *data;
+	size_t		len;
+	size_t		maxlen;
 } PQExpBufferData;
+
 typedef PQExpBufferData *PQExpBuffer;
 
 /*------------------------
@@ -113,6 +114,34 @@ extern void termPQExpBuffer(PQExpBuffer str);
  * Note: if possible, a "broken" PQExpBuffer is returned to normal.
  */
 extern void resetPQExpBuffer(PQExpBuffer str);
+
+/*------------------------
+ * enlargePQExpBuffer
+ * Make sure there is enough space for 'needed' more bytes in the buffer
+ * ('needed' does not include the terminating null).
+ *
+ * Returns 1 if OK, 0 if failed to enlarge buffer.  (In the latter case
+ * the buffer is left in "broken" state.)
+ */
+extern int	enlargePQExpBuffer(PQExpBuffer str, size_t needed);
+
+/*------------------------
+ * printfPQExpBuffer
+ * Format text data under the control of fmt (an sprintf-like format string)
+ * and insert it into str.  More space is allocated to str if necessary.
+ * This is a convenience routine that does the same thing as
+ * resetPQExpBuffer() followed by appendPQExpBuffer().
+ */
+/* extern void printfPQExpBuffer(PQExpBuffer str, const char *fmt,...) pg_attribute_printf(2, 3); */
+
+/*------------------------
+ * appendPQExpBuffer
+ * Format text data under the control of fmt (an sprintf-like format string)
+ * and append it to whatever is already in str.  More space is allocated
+ * to str if necessary.  This is sort of like a combination of sprintf and
+ * strcat.
+ */
+/* extern void appendPQExpBuffer(PQExpBuffer str, const char *fmt,...) pg_attribute_printf(2, 3); */
 
 /*------------------------
  * appendPQExpBufferStr
