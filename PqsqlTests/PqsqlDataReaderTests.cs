@@ -500,5 +500,47 @@ namespace PqsqlTests
 			}
 		}
 
+		[TestMethod]
+		public void PqsqlDataReaderTest9()
+		{
+			mCmd.CommandText = @"select 1234567890123456789::int8, 0::oid, '00000000-0000-0000-0000-000000000000'::uuid, 47.11::float4, E'\\000\\001\\002\\003'::bytea, null as ""lastcol""";
+
+			using (PqsqlDataReader reader = mCmd.ExecuteReader())
+			{
+				Assert.IsTrue(reader.HasRows);
+
+				reader.Read();
+
+				long c0 = reader.GetInt64(0);
+				uint c1 = reader.GetOid(1);
+				Guid c2 = reader.GetGuid(2);
+				float c3 = reader.GetFloat(3);
+
+				long len = reader.GetBytes(4, 0, null, 0, 0);
+				Assert.AreEqual((long)4, len);
+				byte[] c4 = new byte[len];
+				long read = reader.GetBytes(4, 0, c4, 0, (int)len);
+				Assert.AreEqual(read, len);
+
+				Assert.AreEqual(1234567890123456789, c0);
+				Assert.AreEqual((uint)0, c1);
+				Assert.AreEqual(Guid.Empty, c2);
+				Assert.AreEqual((float)47.11, c3);
+
+				byte[] buf = {0, 1, 2, 3};
+				Assert.AreEqual(buf[0], c4[0]);
+				Assert.AreEqual(buf[1], c4[1]);
+				Assert.AreEqual(buf[2], c4[2]);
+				Assert.AreEqual(buf[3], c4[3]);
+
+				object last = reader[5];
+				Assert.AreEqual(DBNull.Value, last);
+
+				last = reader["lastcol"];
+				Assert.AreEqual(DBNull.Value, last);
+
+				reader.Close();
+			}
+		}
 	}
 }
