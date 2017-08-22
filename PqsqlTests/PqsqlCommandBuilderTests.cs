@@ -35,6 +35,9 @@ namespace PqsqlTests
 		{
 			PqsqlCommandBuilder builder = new PqsqlCommandBuilder();
 
+			Assert.AreEqual(builder.QuotePrefix, "\"");
+			Assert.AreEqual(builder.QuoteSuffix, "\"");
+
 			string qid = builder.QuoteIdentifier("a\"bc");
 			Assert.AreEqual("\"a\"\"bc\"", qid, "wrong QuoteIdentifier");
 
@@ -43,6 +46,12 @@ namespace PqsqlTests
 
 			qid = builder.QuoteIdentifier("a\"bc");
 			Assert.AreEqual("a\"bc", qid, "wrong QuoteIdentifier");
+
+			builder.QuotePrefix = "\"";
+			builder.QuoteSuffix = "\"";
+
+			string uqid = builder.UnquoteIdentifier("\"a\"\"bc\"");
+			Assert.AreEqual(qid, uqid, "wrong UnquoteIdentifier");
 		}
 
 		[TestMethod]

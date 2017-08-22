@@ -14,6 +14,11 @@ namespace PqsqlTests
 		{
 			PqsqlParameterCollection coll = new PqsqlParameterCollection();
 			Assert.IsFalse(coll.Contains("p1"));
+			Assert.IsFalse(coll.IsFixedSize);
+			Assert.IsFalse(coll.IsReadOnly);
+			Assert.IsNotNull(coll.SyncRoot);
+			Assert.AreEqual(-1, coll.Add(null));
+
 
 			coll.AddRange(new PqsqlParameter[] { new PqsqlParameter("p1", DbType.Int32), });
 			Assert.IsTrue(coll.Contains("p1"));
