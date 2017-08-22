@@ -121,5 +121,59 @@ namespace PqsqlTests
 			Assert.AreEqual(DbType.String, coll[0].DbType);
 			Assert.AreEqual(ParameterDirection.Input, coll[0].Direction);
 		}
+
+		[TestMethod]
+		public void PqsqlParameterCollectionTest5()
+		{
+			PqsqlParameterCollection coll = new PqsqlParameterCollection();
+
+			PqsqlParameter p1 = coll.AddWithValue("p1", DBNull.Value);
+			PqsqlParameter p2 = coll.AddWithValue("p2", 123);
+			PqsqlParameter p0 = coll.AddWithValue("p0", "text");
+
+			Assert.AreEqual(3, coll.Count);
+
+			Assert.AreEqual(p1.ParameterName, coll[0].ParameterName);
+			Assert.AreEqual(p1.DbType, coll[0].DbType);
+			Assert.AreEqual(p1.Direction, coll[0].Direction);
+			Assert.AreEqual(p1.Value, coll[0].Value);
+
+			Assert.AreEqual(p2.ParameterName, coll[1].ParameterName);
+			Assert.AreEqual(p2.DbType, coll[1].DbType);
+			Assert.AreEqual(p2.Direction, coll[1].Direction);
+			Assert.AreEqual(p2.Value, coll[1].Value);
+
+			Assert.AreEqual(p0.ParameterName, coll[2].ParameterName);
+			Assert.AreEqual(p0.DbType, coll[2].DbType);
+			Assert.AreEqual(p0.Direction, coll[2].Direction);
+			Assert.AreEqual(p0.Value, coll[2].Value);
+
+			Assert.AreEqual(p0.ParameterName, ":p0");
+			Assert.AreEqual(p0.DbType, DbType.Object);
+			Assert.AreEqual(p0.Direction, ParameterDirection.Input);
+			Assert.AreEqual(p0.Value, "text");
+
+			Assert.AreEqual(p1.ParameterName, ":p1");
+			Assert.AreEqual(p1.DbType, DbType.Object);
+			Assert.AreEqual(p1.Direction, ParameterDirection.Input);
+			Assert.AreEqual(p1.Value, DBNull.Value);
+
+			Assert.AreEqual(p2.ParameterName, ":p2");
+			Assert.AreEqual(p2.DbType, DbType.Object);
+			Assert.AreEqual(p2.Direction, ParameterDirection.Input);
+			Assert.AreEqual(p2.Value, 123);
+
+			PqsqlParameter p2_new = coll.AddWithValue("p2", 74.11);
+
+			Assert.AreEqual(p2_new.ParameterName, coll[1].ParameterName);
+			Assert.AreEqual(p2_new.DbType, coll[1].DbType);
+			Assert.AreEqual(p2_new.Direction, coll[1].Direction);
+			Assert.AreEqual(p2_new.Value, coll[1].Value);
+
+			Assert.AreEqual(p2_new.ParameterName, ":p2");
+			Assert.AreEqual(p2_new.DbType, DbType.Object);
+			Assert.AreEqual(p2_new.Direction, ParameterDirection.Input);
+			Assert.AreEqual(p2_new.Value, 74.11);
+		}
 	}
 }
