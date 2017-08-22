@@ -1,9 +1,17 @@
+/**
+ * @file float.c
+ * @brief encode/decode float binary format to native datatype for PQgetvalue() and pqparam_buffer
+ * @date 2015-09-30
+ * @author Thomas Krennwallner <krennwallner@ximes.com>
+ * @see https://www.postgresql.org/docs/current/static/libpq-exec.html
+ * @note postgresql source src/backend/utils/adt/float.c
+ */
 /*-------------------------------------------------------------------------
  *
  * float.c
  *	  Functions for the built-in floating-point types.
  *
- * Portions Copyright (c) 1996-2015, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2016, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -11,14 +19,6 @@
  *	  src/backend/utils/adt/float.c
  *
  *-------------------------------------------------------------------------
- */
-/**
- * @file float.c
- * @brief encode/decode float binary format to native datatype for PQgetvalue() and pqparam_buffer
- * @date 2015-09-30 
- * @author Thomas Krennwallner <krennwallner@ximes.com>
- * @see https://www.postgresql.org/docs/current/static/libpq-exec.html
- * @note postgresql source src/backend/utils/adt/float.c
  */
 
 #include <ctype.h>
@@ -31,16 +31,48 @@
 #include <string.h>
 #include <stdint.h>
 
+#define DLL_EXPORT
+#include "pqbinfmt_config.h"
+
+#include "c.h"
+#include "fmgr.h"
+#include "builtins.h"
+#include "postgres.h"
+
+/*
+ * Visual C++ sometimes misses isinf
+ */
+#if !defined(isinf)
+int
+isinf(double x)
+{
+        int                     fpclass = _fpclass(x);
+
+        if (fpclass == _FPCLASS_PINF)
+                return 1;
+        if (fpclass == _FPCLASS_NINF)
+                return -1;
+        return 0;
+}
+#endif
+
+#define pg_strncasecmp(s1,s2,c) _strnicmp(s1,s2,c)
+
+
+
 #ifndef M_PI
 /* from my RH5.2 gcc math.h file - thomas 2000-04-03 */
 #define M_PI 3.14159265358979323846
 #endif
 
+/* Radians per degree, a.k.a. PI / 180 */
+#define RADIANS_PER_DEGREE 0.0174532925199432957692
+
 /* Visual C++ etc lacks NAN, and won't accept 0.0/0.0.  NAN definition from
  * http://msdn.microsoft.com/library/default.asp?url=/library/en-us/vclang/html/vclrfNotNumberNANItems.asp
  */
 #if defined(WIN32) && !defined(NAN)
-static const uint32_t nan[2] = {0xffffffff, 0x7fffffff};
+static const uint32 nan[2] = {0xffffffff, 0x7fffffff};
 
 #define NAN (*(const double *) nan)
 #endif
@@ -48,22 +80,6 @@ static const uint32_t nan[2] = {0xffffffff, 0x7fffffff};
 /* not sure what the following should be, but better to make it over-sufficient */
 #define MAXFLOATWIDTH	64
 #define MAXDOUBLEWIDTH	128
-
-/*
- * check to see if a float4/8 val has underflowed or overflowed
- */
-#define CHECKFLOATVAL(val, inf_is_valid, zero_is_valid)			\
-do {															\
-	if (isinf(val) && !(inf_is_valid))							\
-		val = 0; \
-	if ((val) == 0.0 && !(zero_is_valid))						\
-		val = 0; \
-} while(0)
-
-
-/* ========== USER I/O ROUTINES ========== */
-
-
 
 /*
  * Routines to provide reasonably platform-independent handling of
@@ -124,40 +140,48 @@ is_infinite(double val)
 		return -1;
 }
 
-/*
- * Visual C++ sometimes misses isinf
- */
-#if !defined(isinf)
-int
-isinf(double x)
-{
-        int                     fpclass = _fpclass(x);
 
-        if (fpclass == _FPCLASS_PINF)
-                return 1;
-        if (fpclass == _FPCLASS_NINF)
-                return -1;
-        return 0;
-}
-#endif
 
-#define STRNCASECMP(s1,s2,c) _strnicmp(s1,s2,c) 
+/* ========== USER I/O ROUTINES ========== */
+
+
 /*
  *		float8in		- converts "num" to float8
  */
-double
-float8in(char* num)
+Datum
+float8in(char *num)
 {
-	//char	   *orig_num;
+#if 0
+	char	   *num = PG_GETARG_CSTRING(0);
+#endif
+
+	PG_RETURN_FLOAT8(float8in_internal(num, NULL, "double precision", num));
+}
+
+/*
+ * float8in_internal - guts of float8in()
+ *
+ * This is exposed for use by functions that want a reasonably
+ * platform-independent way of inputting doubles.  The behavior is
+ * essentially like strtod + ereport on error, but note the following
+ * differences:
+ * 1. Both leading and trailing whitespace are skipped.
+ * 2. If endptr_p is NULL, we throw error if there's trailing junk.
+ * Otherwise, it's up to the caller to complain about trailing junk.
+ * 3. In event of a syntax error, the report mentions the given type_name
+ * and prints orig_string as the input; this is meant to support use of
+ * this function with types such as "box" and "point", where what we are
+ * parsing here is just a substring of orig_string.
+ *
+ * "num" could validly be declared "const char *", but that results in an
+ * unreasonable amount of extra casting both here and in callers, so we don't.
+ */
+double
+float8in_internal(char *num, char **endptr_p,
+				  const char *type_name, const char *orig_string)
+{
 	double		val;
 	char	   *endptr;
-
-	/*
-	 * endptr points to the first character _after_ the sequence we recognized
-	 * as a valid floating point number. orig_num points to the original input
-	 * string.
-	 */
-	//orig_num = num;
 
 	/* skip leading whitespace */
 	while (*num != '\0' && isspace((unsigned char) *num))
@@ -168,11 +192,14 @@ float8in(char* num)
 	 * strtod() on different platforms.
 	 */
 	if (*num == '\0')
+#if 1
 		return 0;
-///		ereport(ERROR,
-///				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-///			 errmsg("invalid input syntax for type double precision: \"%s\"",
-///					orig_num)));
+#else
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+				 errmsg("invalid input syntax for type %s: \"%s\"",
+						type_name, orig_string)));
+#endif
 
 	errno = 0;
 	val = strtod(num, &endptr);
@@ -192,37 +219,37 @@ float8in(char* num)
 		 * forms of NaN, but we consider these forms unportable and don't try
 		 * to support them.  You can use 'em if your strtod() takes 'em.
 		 */
-		if (STRNCASECMP(num, "NaN", 3) == 0)
+		if (pg_strncasecmp(num, "NaN", 3) == 0)
 		{
 			val = get_float8_nan();
 			endptr = num + 3;
 		}
-		else if (STRNCASECMP(num, "Infinity", 8) == 0)
+		else if (pg_strncasecmp(num, "Infinity", 8) == 0)
 		{
 			val = get_float8_infinity();
 			endptr = num + 8;
 		}
-		else if (STRNCASECMP(num, "+Infinity", 9) == 0)
+		else if (pg_strncasecmp(num, "+Infinity", 9) == 0)
 		{
 			val = get_float8_infinity();
 			endptr = num + 9;
 		}
-		else if (STRNCASECMP(num, "-Infinity", 9) == 0)
+		else if (pg_strncasecmp(num, "-Infinity", 9) == 0)
 		{
 			val = -get_float8_infinity();
 			endptr = num + 9;
 		}
-		else if (STRNCASECMP(num, "inf", 3) == 0)
+		else if (pg_strncasecmp(num, "inf", 3) == 0)
 		{
 			val = get_float8_infinity();
 			endptr = num + 3;
 		}
-		else if (STRNCASECMP(num, "+inf", 4) == 0)
+		else if (pg_strncasecmp(num, "+inf", 4) == 0)
 		{
 			val = get_float8_infinity();
 			endptr = num + 4;
 		}
-		else if (STRNCASECMP(num, "-inf", 4) == 0)
+		else if (pg_strncasecmp(num, "-inf", 4) == 0)
 		{
 			val = -get_float8_infinity();
 			endptr = num + 4;
@@ -235,20 +262,35 @@ float8in(char* num)
 			 * precision).  We'd prefer not to throw error for that, so try to
 			 * detect whether it's a "real" out-of-range condition by checking
 			 * to see if the result is zero or huge.
+			 *
+			 * On error, we intentionally complain about double precision not
+			 * the given type name, and we print only the part of the string
+			 * that is the current number.
 			 */
 			if (val == 0.0 || val >= HUGE_VAL || val <= -HUGE_VAL)
+			{
+#if 1
 				return 0;
-///				ereport(ERROR,
-///						(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
-///				   errmsg("\"%s\" is out of range for type double precision",
-///						  orig_num)));
+#else
+				char	   *errnumber = pstrdup(num);
+
+				errnumber[endptr - num] = '\0';
+				ereport(ERROR,
+						(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+				   errmsg("\"%s\" is out of range for type double precision",
+						  errnumber)));
+#endif
+			}
 		}
 		else
+#if 1
 			return 0;
-///			ereport(ERROR,
-///					(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-///			 errmsg("invalid input syntax for type double precision: \"%s\"",
-///					orig_num)));
+#else
+			ereport(ERROR,
+					(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+					 errmsg("invalid input syntax for type %s: \"%s\"",
+							type_name, orig_string)));
+#endif
 	}
 #ifdef HAVE_BUGGY_SOLARIS_STRTOD
 	else
@@ -267,15 +309,18 @@ float8in(char* num)
 	while (*endptr != '\0' && isspace((unsigned char) *endptr))
 		endptr++;
 
-	/* if there is any junk left at the end of the string, bail out */
-	if (*endptr != '\0')
+	/* report stopping point if wanted, else complain if not end of string */
+	if (endptr_p)
+		*endptr_p = endptr;
+	else if (*endptr != '\0')
+#if 1
 		return 0;
-///		ereport(ERROR,
-///				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-///			 errmsg("invalid input syntax for type double precision: \"%s\"",
-///					orig_num)));
-
-	CHECKFLOATVAL(val, 1, 1);
+#else
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+				 errmsg("invalid input syntax for type %s: \"%s\"",
+						type_name, orig_string)));
+#endif
 
 	return val;
 }
