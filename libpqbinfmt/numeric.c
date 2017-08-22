@@ -1,3 +1,11 @@
+/**
+ * @file numeric.c
+ * @brief encode/decode numeric binary format to native datatype for PQgetvalue() and pqparam_buffer
+ * @date 2015-09-30
+ * @author Thomas Krennwallner <krennwallner@ximes.com>
+ * @see https://www.postgresql.org/docs/current/static/libpq-exec.html
+ * @note postgresql source src/backend/utils/adt/numeric.c
+ */
 /*-------------------------------------------------------------------------
  *
  * numeric.c
@@ -11,20 +19,12 @@
  * Transactions on Mathematical Software, Vol. 24, No. 4, December 1998,
  * pages 359-367.
  *
- * Copyright (c) 1998-2015, PostgreSQL Global Development Group
+ * Copyright (c) 1998-2016, PostgreSQL Global Development Group
  *
  * IDENTIFICATION
  *	  src/backend/utils/adt/numeric.c
  *
  *-------------------------------------------------------------------------
- */
-/**
- * @file numeric.c
- * @brief encode/decode numeric binary format to native datatype for PQgetvalue() and pqparam_buffer
- * @date 2015-09-30 
- * @author Thomas Krennwallner <krennwallner@ximes.com>
- * @see https://www.postgresql.org/docs/current/static/libpq-exec.html
- * @note postgresql source src/backend/utils/adt/numeric.c
  */
 
 #include <ctype.h>
@@ -40,21 +40,21 @@
 #endif /* _WIN32 */
 #include <assert.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 #define DLL_EXPORT
 #include "pqbinfmt_config.h"
+
+#include "c.h"
+#include "fmgr.h"
+#include "builtins.h"
+#include "postgres.h"
 #include "numeric.h"
-#include "pqparam_buffer.h"
-#include "pq_types.h"
-#include "pqbinfmt.h"
 
-#ifndef TRUE
-#define TRUE 1
-#endif
+#define pstrdup(str) strdup(str)
+#define palloc(size) malloc(size)
+#define pfree(ptr) free(ptr)
 
-#ifndef FALSE
-#define FALSE 0
-#endif
 
 /* ----------
  * Uncomment the following to enable compilation of dump_numeric()
@@ -112,7 +112,7 @@ typedef signed char NumericDigit;
 #define MUL_GUARD_DIGITS	2	/* these are measured in NBASE digits */
 #define DIV_GUARD_DIGITS	4
 
-typedef int16_t NumericDigit;
+typedef int16 NumericDigit;
 #endif
 
 /*
@@ -145,31 +145,29 @@ typedef int16_t NumericDigit;
  * The weight is arbitrary in that case, but we normally set it to zero.
  */
 
-#define FLEXIBLE_ARRAY_MEMBER
-
 struct NumericShort
 {
-	uint16_t		n_header;		/* Sign + display scale + weight */
+	uint16		n_header;		/* Sign + display scale + weight */
 	NumericDigit n_data[FLEXIBLE_ARRAY_MEMBER]; /* Digits */
 };
 
 struct NumericLong
 {
-	uint16_t		n_sign_dscale;	/* Sign + display scale */
-	int16_t		n_weight;		/* Weight of 1st digit	*/
+	uint16		n_sign_dscale;	/* Sign + display scale */
+	int16		n_weight;		/* Weight of 1st digit	*/
 	NumericDigit n_data[FLEXIBLE_ARRAY_MEMBER]; /* Digits */
 };
 
 union NumericChoice
 {
-	uint16_t		n_header;		/* Header word */
+	uint16		n_header;		/* Header word */
 	struct NumericLong n_long;	/* Long form (4-byte header) */
 	struct NumericShort n_short;	/* Short form (2-byte header) */
 };
 
 struct NumericData
 {
-	int32_t		vl_len_;		/* varlena header (do not touch directly!) */
+	int32		vl_len_;		/* varlena header (do not touch directly!) */
 	union NumericChoice choice; /* choice of format */
 };
 
@@ -188,8 +186,8 @@ struct NumericData
 #define NUMERIC_IS_NAN(n)		(NUMERIC_FLAGBITS(n) == NUMERIC_NAN)
 #define NUMERIC_IS_SHORT(n)		(NUMERIC_FLAGBITS(n) == NUMERIC_SHORT)
 
-#define NUMERIC_HDRSZ	(VARHDRSZ + sizeof(uint16_t) + sizeof(int16_t))
-#define NUMERIC_HDRSZ_SHORT (VARHDRSZ + sizeof(uint16_t))
+#define NUMERIC_HDRSZ	(VARHDRSZ + sizeof(uint16) + sizeof(int16))
+#define NUMERIC_HDRSZ_SHORT (VARHDRSZ + sizeof(uint16))
 
 /*
  * If the flag bits are NUMERIC_SHORT or NUMERIC_NAN, we want the short header;
@@ -198,8 +196,8 @@ struct NumericData
  */
 #define NUMERIC_HEADER_IS_SHORT(n)	(((n)->choice.n_header & 0x8000) != 0)
 #define NUMERIC_HEADER_SIZE(n) \
-	(VARHDRSZ + sizeof(uint16_t) + \
-	 (NUMERIC_HEADER_IS_SHORT(n) ? 0 : sizeof(int16_t)))
+	(VARHDRSZ + sizeof(uint16) + \
+	 (NUMERIC_HEADER_IS_SHORT(n) ? 0 : sizeof(int16)))
 
 /*
  * Short format definitions.
@@ -242,6 +240,7 @@ struct NumericData
  *
  * The value represented by a NumericVar is determined by the sign, weight,
  * ndigits, and digits[] array.
+ *
  * Note: the first digit of a NumericVar's value is assumed to be multiplied
  * by NBASE ** weight.  Another way to say it is that there are weight+1
  * digits before the decimal point.  It is possible to have weight < 0.
@@ -272,6 +271,11 @@ struct NumericData
  * point, and is always >= 0 at present.
  * Note that rscale is not stored in variables --- it's figured on-the-fly
  * from the dscales of the inputs.
+ *
+ * While we consistently use "weight" to refer to the base-NBASE weight of
+ * a numeric value, it is convenient in some scale-related calculations to
+ * make use of the base-10 weight (ie, the approximate log10 of the value).
+ * To avoid confusion, such a decimal-units weight is called a "dweight".
  *
  * NB: All the variable-level functions are written in a style that makes it
  * possible to give one and the same variable as argument and destination.
@@ -354,20 +358,6 @@ static NumericVar const_zero_point_nine =
 {1, -1, NUMERIC_POS, 1, NULL, const_zero_point_nine_data};
 
 #if DEC_DIGITS == 4
-static NumericDigit const_zero_point_01_data[1] = {100};
-static NumericVar const_zero_point_01 =
-{1, -1, NUMERIC_POS, 2, NULL, const_zero_point_01_data};
-#elif DEC_DIGITS == 2
-static NumericDigit const_zero_point_01_data[1] = {1};
-static NumericVar const_zero_point_01 =
-{1, -1, NUMERIC_POS, 2, NULL, const_zero_point_01_data};
-#elif DEC_DIGITS == 1
-static NumericDigit const_zero_point_01_data[1] = {1};
-static NumericVar const_zero_point_01 =
-{1, -2, NUMERIC_POS, 2, NULL, const_zero_point_01_data};
-#endif
-
-#if DEC_DIGITS == 4
 static NumericDigit const_one_point_one_data[2] = {1, 1000};
 #elif DEC_DIGITS == 2
 static NumericDigit const_one_point_one_data[2] = {1, 10};
@@ -399,44 +389,14 @@ static void dump_var(const char *str, NumericVar *var);
 #endif
 
 #define digitbuf_alloc(ndigits)  \
-	((NumericDigit *) malloc((ndigits) * sizeof(NumericDigit)))
+	((NumericDigit *) palloc((ndigits) * sizeof(NumericDigit)))
 #define digitbuf_free(buf)	\
 	do { \
 		 if ((buf) != NULL) \
-			 free(buf); \
+			 pfree(buf); \
 	} while (0)
 
-#define init_var(v)		memset(v, 0, sizeof(NumericVar))
-
-
-/*
- * These structs describe the header of a varlena object that may have been
- * TOASTed.  Generally, don't reference these structs directly, but use the
- * macros below.
- *
- * We use separate structs for the aligned and unaligned cases because the
- * compiler might otherwise think it could generate code that assumes
- * alignment while touching fields of a 1-byte-header varlena.
- */
-typedef union
-{
-        struct                                          /* Normal varlena (4-byte length) */
-        {
-                uint32_t          va_header;
-                char            va_data[FLEXIBLE_ARRAY_MEMBER];
-        }                       va_4byte;
-        struct                                          /* Compressed-in-line format */
-        {
-                uint32_t          va_header;
-                uint32_t          va_rawsize; /* Original data size (excludes header) */
-                char            va_data[FLEXIBLE_ARRAY_MEMBER];         /* Compressed data */
-        }                       va_compressed;
-} varattrib_4b;
-
-/* VARSIZE_4B() should only be used on known-aligned data */
-#define VARSIZE_4B(PTR) \
-        ((((varattrib_4b *) (PTR))->va_4byte.va_header >> 2) & 0x3FFFFFFF)
-#define VARSIZE(PTR)                                            VARSIZE_4B(PTR)
+#define init_var(v)		MemSetAligned(v, 0, sizeof(NumericVar))
 
 #define NUMERIC_DIGITS(num) (NUMERIC_HEADER_IS_SHORT(num) ? \
 	(num)->choice.n_short.n_data : (num)->choice.n_long.n_data)
@@ -451,20 +411,14 @@ static void alloc_var(NumericVar *var, int ndigits);
 static void free_var(NumericVar *var);
 static void zero_var(NumericVar *var);
 
-
 static const char *set_var_from_str(const char *str, const char *cp,
 				 NumericVar *dest);
 static void init_var_from_num(Numeric num, NumericVar *dest);
 static char *get_str_from_var(NumericVar *var);
 
-
 static Numeric make_result(NumericVar *var);
 
-static void apply_typmod(NumericVar *var, int32_t typmod);
-
-extern double numeric_float8(Numeric);
-extern Numeric float8_numeric(double);
-
+static void apply_typmod(NumericVar *var, int32 typmod);
 
 static void round_var(NumericVar *var, int rscale);
 static void trunc_var(NumericVar *var, int rscale);
@@ -483,9 +437,12 @@ static void strip_var(NumericVar *var);
  *
  *	Output function for numeric data type
  */
-char *
+Datum
 numeric_out(Numeric num)
 {
+# if 0
+	Numeric		num = PG_GETARG_NUMERIC(0);
+#endif
 	NumericVar	x;
 	char	   *str;
 
@@ -493,7 +450,7 @@ numeric_out(Numeric num)
 	 * Handle NaN
 	 */
 	if (NUMERIC_IS_NAN(num))
-		return strdup("NaN");
+		PG_RETURN_CSTRING(pstrdup("NaN"));
 
 	/*
 	 * Get the number in the variable format.
@@ -502,185 +459,8 @@ numeric_out(Numeric num)
 
 	str = get_str_from_var(&x);
 
-	return str;
+	PG_RETURN_CSTRING(str);
 }
-
-
-
-#define VARHDRSZ                ((int32_t) sizeof(int32_t))
-
-
-
-/*
- * oid 1700: numeric
- *
- * see
- * - numeric_recv()
- * - numeric_send()
- * from
- * - src/backend/utils/adt/numeric.c
- */
-
-
-/*
- *		numeric_recv			- converts external binary format to numeric
- *
- * External format is a sequence of int16's:
- * ndigits, weight, sign, dscale, NumericDigits.
- */
-DECLSPEC double
-pqbf_get_numeric(const char *ptr, int32_t typmod)
-{
-	NumericVar	value;
-	Numeric		res;
-	int			len,
-				i;
-	char *p;
-	double d;
-
-	BAILWITHVALUEIFNULL(ptr, DBL_MIN);
-
-	init_var(&value);
-
-	p = (char*) ptr;
-
-	len = (uint16_t) BYTESWAP2(*((uint16_t *) p));
-	if (len < 0 || len > NUMERIC_MAX_PRECISION + NUMERIC_MAX_RESULT_SCALE)
-		return 0;
-///		ereport(ERROR,
-///				(errcode(ERRCODE_INVALID_BINARY_REPRESENTATION),
-///				 errmsg("invalid length in external \"numeric\" value")));
-	p += sizeof(uint16_t);
-
-	alloc_var(&value, len);
-
-	value.weight = (uint16_t) BYTESWAP2(*((uint16_t *) p));
-	/* we allow any int16 for weight --- OK? */
-	p += sizeof(uint16_t);
-
-	value.sign = (uint16_t) BYTESWAP2(*((uint16_t *) p));
-	if (!(value.sign == NUMERIC_POS ||
-		  value.sign == NUMERIC_NEG ||
-		  value.sign == NUMERIC_NAN))
-			return 0;
-///		ereport(ERROR,
-///				(errcode(ERRCODE_INVALID_BINARY_REPRESENTATION),
-///				 errmsg("invalid sign in external \"numeric\" value")));
-	p += sizeof(uint16_t);
-
-	value.dscale = (uint16_t) BYTESWAP2(*((uint16_t *) p));
-	if ((value.dscale & NUMERIC_DSCALE_MASK) != value.dscale)
-		return 0;
-///		ereport(ERROR,
-///				(errcode(ERRCODE_INVALID_BINARY_REPRESENTATION),
-///				 errmsg("invalid scale in external \"numeric\" value")));
-	p += sizeof(uint16_t);
-
-	for (i = 0; i < len; i++)
-	{
-		NumericDigit numdig = (int16_t) BYTESWAP2(*((int16_t *) p)); // pq_getmsgint(buf, sizeof(NumericDigit));
-
-		if (numdig < 0 || numdig >= NBASE)
-			return 0;
-///			ereport(ERROR,
-///					(errcode(ERRCODE_INVALID_BINARY_REPRESENTATION),
-///					 errmsg("invalid digit in external \"numeric\" value")));
-		value.digits[i] = numdig;
-
-		p += sizeof(int16_t);
-	}
-
-	/*
-	 * If the given dscale would hide any digits, truncate those digits away.
-	 * We could alternatively throw an error, but that would take a bunch of
-	 * extra code (about as much as trunc_var involves), and it might cause
-	 * client compatibility issues.
-	 */
-	trunc_var(&value, value.dscale);
-
-	apply_typmod(&value, typmod);
-
-	res = make_result(&value);
-	free_var(&value);
-
-	d = numeric_float8(res);
-	free(res);
-
-	return d;
-}
-
-/*
- *		numeric_send			- converts numeric to binary format
- */
-
-#define pqbf_encode_numeric(s,x) \
-	do { \
-		int i; \
-		int16_t i16; \
-		i16 = (int16_t) BYTESWAP2((int16_t) x.ndigits); \
-		appendBinaryPQExpBuffer(s, (const char*) &i16, sizeof(i16)); \
-		\
-		i16 = (int16_t) BYTESWAP2((int16_t) x.weight); \
-		appendBinaryPQExpBuffer(s, (const char*) &i16, sizeof(i16)); \
-		\
-		i16 = (int16_t) BYTESWAP2((int16_t) x.sign); \
-		appendBinaryPQExpBuffer(s, (const char*) &i16, sizeof(i16)); \
-		\
-		i16 = (int16_t) BYTESWAP2((int16_t) x.dscale); \
-		appendBinaryPQExpBuffer(s, (const char*) &i16, sizeof(i16)); \
-		\
-		for (i = 0; i < x.ndigits; i++) { \
-			i16 = (int16_t) BYTESWAP2((int16_t) x.digits[i]); \
-			appendBinaryPQExpBuffer(s, (const char*) &i16, sizeof(NumericDigit)); \
-		} \
-	} while(0)
-
-DECLSPEC void
-pqbf_set_numeric(PQExpBuffer s, double d)
-{
-	Numeric n;
-	NumericVar	x;
-
-	BAILIFNULL(s);
-	
-	/* encode double as numeric */
-	n = float8_numeric(d);
-	init_var_from_num(n, &x);
-
-	/* encode numeric to binary format */
-	pqbf_encode_numeric(s, x);
-
-	/* free temp numeric */
-	free_var(&x);
-	free(n);
-}
-
-DECLSPEC void
-pqbf_add_numeric(pqparam_buffer *pb, double d)
-{
-	size_t len;
-
-	Numeric n;
-	NumericVar	x;
-	
-	BAILIFNULL(pb);
-
-	len = pb->payload->len; /* save current length of payload */
-
-	/* encode double as numeric */
-	n = float8_numeric(d);
-	init_var_from_num(n, &x);
-
-	/* encode numeric to binary format */
-	pqbf_encode_numeric(pb->payload, x);
-
-	/* free temp numeric */
-	free_var(&x);
-	free(n);
-
-	pqpb_add(pb, NUMERICOID, pb->payload->len - len);
-}
-
 
 
 /* ----------------------------------------------------------------------
@@ -697,15 +477,18 @@ pqbf_add_numeric(pqparam_buffer *pb, double d)
 #endif
 
 
-Numeric
+Datum
 float8_numeric(double val)
 {
+#if 0
+	float8		val = PG_GETARG_FLOAT8(0);
+#endif
 	Numeric		res;
 	NumericVar	result;
 	char		buf[DBL_DIG + 100];
 
 	if (isnan(val))
-		return make_result(&const_nan);
+		PG_RETURN_NUMERIC(make_result(&const_nan));
 
 	sprintf(buf, "%.*g", DBL_DIG, val);
 
@@ -718,30 +501,216 @@ float8_numeric(double val)
 
 	free_var(&result);
 
-	return res;
+	PG_RETURN_NUMERIC(res);
 }
 
-extern double get_float8_nan(void);
-extern double float8in(char* num);
-
-double
+Datum
 numeric_float8(Numeric num)
 {
+#if 0
+	Numeric		num = PG_GETARG_NUMERIC(0);
+#endif
 	char	   *tmp;
-	double		result;
+	Datum		result;
 
 	if (NUMERIC_IS_NAN(num))
-		return get_float8_nan();
+		PG_RETURN_FLOAT8(get_float8_nan());
 
-	tmp = numeric_out(num);
+#if 1
+	tmp = DatumGetCString(numeric_out(num));
+#else
+	tmp = DatumGetCString(DirectFunctionCall1(numeric_out,
+											  NumericGetDatum(num)));
+#endif
 
+#if 1
 	result = float8in(tmp);
+#else
+	result = DirectFunctionCall1(float8in, CStringGetDatum(tmp));
+#endif
 
-	free(tmp);
+	pfree(tmp);
 
-	return result;
+	PG_RETURN_DATUM(result);
 }
 
+
+/*
+ *		numeric_recv			- converts external binary format to numeric
+ *
+ * External format is a sequence of int16's:
+ * ndigits, weight, sign, dscale, NumericDigits.
+ */
+Datum
+numeric_recv(const char *buf, int32 typmod)
+{
+#if 0
+	StringInfo	buf = (StringInfo) PG_GETARG_POINTER(0);
+#endif
+
+#ifdef NOT_USED
+	Oid			typelem = PG_GETARG_OID(1);
+#endif
+#if 0
+	int32		typmod = PG_GETARG_INT32(2);
+#endif
+	NumericVar	value;
+	Numeric		res;
+	int			len,
+				i;
+	char *p;
+
+	init_var(&value);
+
+#if 1
+	p = (char*) buf;
+
+	len = (uint16_t) BYTESWAP2(*((uint16_t *) p));
+	p += sizeof(uint16_t);
+#else
+	len = (uint16) pq_getmsgint(buf, sizeof(uint16));
+#endif
+
+	alloc_var(&value, len);
+
+#if 1
+	value.weight = (int16_t) BYTESWAP2(*((int16_t *) p));
+	p += sizeof(int16_t);
+#else
+	value.weight = (int16) pq_getmsgint(buf, sizeof(int16));
+#endif
+	/* we allow any int16 for weight --- OK? */
+
+#if 1
+	value.sign = (uint16_t) BYTESWAP2(*((uint16_t *) p));
+	p += sizeof(uint16_t);
+#else
+	value.sign = (uint16) pq_getmsgint(buf, sizeof(uint16));
+#endif
+	if (!(value.sign == NUMERIC_POS ||
+		  value.sign == NUMERIC_NEG ||
+		  value.sign == NUMERIC_NAN))
+#if 1
+		return 0;
+#else
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_BINARY_REPRESENTATION),
+				 errmsg("invalid sign in external \"numeric\" value")));
+#endif
+
+#if 1
+	value.dscale = (uint16_t) BYTESWAP2(*((uint16_t *) p));
+	p += sizeof(uint16_t);
+#else
+	value.dscale = (uint16) pq_getmsgint(buf, sizeof(uint16));
+#endif
+	if ((value.dscale & NUMERIC_DSCALE_MASK) != value.dscale)
+#if 1
+		return 0;
+#else
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_BINARY_REPRESENTATION),
+				 errmsg("invalid scale in external \"numeric\" value")));
+#endif
+
+	for (i = 0; i < len; i++)
+	{
+#if 1
+		NumericDigit d = (NumericDigit) BYTESWAP2(*((NumericDigit *) p));
+		p += sizeof(NumericDigit);
+#else
+		NumericDigit d = pq_getmsgint(buf, sizeof(NumericDigit));
+#endif
+
+		if (d < 0 || d >= NBASE)
+#if 1
+			return 0;
+#else
+			ereport(ERROR,
+					(errcode(ERRCODE_INVALID_BINARY_REPRESENTATION),
+					 errmsg("invalid digit in external \"numeric\" value")));
+#endif
+		value.digits[i] = d;
+	}
+
+	/*
+	 * If the given dscale would hide any digits, truncate those digits away.
+	 * We could alternatively throw an error, but that would take a bunch of
+	 * extra code (about as much as trunc_var involves), and it might cause
+	 * client compatibility issues.
+	 */
+	trunc_var(&value, value.dscale);
+
+	apply_typmod(&value, typmod);
+
+	res = make_result(&value);
+	free_var(&value);
+
+	PG_RETURN_NUMERIC(res);
+}
+
+/*
+ *		numeric_send			- converts numeric to binary format
+ */
+Datum
+numeric_send(PQExpBuffer buf, Numeric num)
+{
+#if 0
+	Numeric		num = PG_GETARG_NUMERIC(0);
+#endif
+	NumericVar	x;
+#if 0
+	StringInfoData buf;
+#endif
+	int			i;
+	int16_t i16;
+
+	init_var_from_num(num, &x);
+
+#if 0
+	pq_begintypsend(&buf);
+#endif
+
+#if 1
+	i16 = (int16_t)BYTESWAP2((int16_t)x.ndigits);
+	appendBinaryPQExpBuffer(buf, (const char*)&i16, sizeof(i16));
+#else
+	pq_sendint(&buf, x.ndigits, sizeof(int16));
+#endif
+#if 1
+	i16 = (int16_t)BYTESWAP2((int16_t)x.weight);
+	appendBinaryPQExpBuffer(buf, (const char*)&i16, sizeof(i16));
+#else
+	pq_sendint(&buf, x.weight, sizeof(int16));
+#endif
+#if 1
+	i16 = (int16_t)BYTESWAP2((int16_t)x.sign);
+	appendBinaryPQExpBuffer(buf, (const char*)&i16, sizeof(i16));
+#else
+	pq_sendint(&buf, x.sign, sizeof(int16));
+#endif
+#if 1
+	i16 = (int16_t)BYTESWAP2((int16_t)x.dscale);
+	appendBinaryPQExpBuffer(buf, (const char*)&i16, sizeof(i16));
+#else
+	pq_sendint(&buf, x.dscale, sizeof(int16));
+#endif
+	for (i = 0; i < x.ndigits; i++)
+#if 1
+	{
+		i16 = (int16_t)BYTESWAP2((int16_t)x.digits[i]);
+		appendBinaryPQExpBuffer(buf, (const char*)&i16, sizeof(NumericDigit));
+	}
+#else
+		pq_sendint(&buf, x.digits[i], sizeof(NumericDigit));
+#endif
+
+#if 1
+	PG_RETURN_BYTEA_P(buf);
+#else
+	PG_RETURN_BYTEA_P(pq_endtypsend(&buf));
+#endif
+}
 
 /* ----------------------------------------------------------------------
  *
@@ -819,7 +788,7 @@ zero_var(NumericVar *var)
 static const char *
 set_var_from_str(const char *str, const char *cp, NumericVar *dest)
 {
-	int		have_dp = FALSE;
+	bool		have_dp = FALSE;
 	int			i;
 	unsigned char *decdigits;
 	int			sign = NUMERIC_POS;
@@ -855,12 +824,15 @@ set_var_from_str(const char *str, const char *cp, NumericVar *dest)
 	}
 
 	if (!isdigit((unsigned char) *cp))
+#if 1
 		return 0;
-///		ereport(ERROR,
-///				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-///			  errmsg("invalid input syntax for type numeric: \"%s\"", str)));
+#else
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+			  errmsg("invalid input syntax for type numeric: \"%s\"", str)));
+#endif
 
-	decdigits = (unsigned char *) malloc(strlen(cp) + DEC_DIGITS * 2);
+	decdigits = (unsigned char *) palloc(strlen(cp) + DEC_DIGITS * 2);
 
 	/* leading padding for digit alignment later */
 	memset(decdigits, 0, DEC_DIGITS);
@@ -879,11 +851,14 @@ set_var_from_str(const char *str, const char *cp, NumericVar *dest)
 		else if (*cp == '.')
 		{
 			if (have_dp)
+#if 1
 				return 0;
-///				ereport(ERROR,
-///						(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-///					  errmsg("invalid input syntax for type numeric: \"%s\"",
-///							 str)));
+#else
+				ereport(ERROR,
+						(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+					  errmsg("invalid input syntax for type numeric: \"%s\"",
+							 str)));
+#endif
 			have_dp = TRUE;
 			cp++;
 		}
@@ -904,19 +879,32 @@ set_var_from_str(const char *str, const char *cp, NumericVar *dest)
 		cp++;
 		exponent = strtol(cp, &endptr, 10);
 		if (endptr == cp)
+#if 1
 			return 0;
-///			ereport(ERROR,
-///					(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-///					 errmsg("invalid input syntax for type numeric: \"%s\"",
-///							str)));
+#else
+			ereport(ERROR,
+					(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+					 errmsg("invalid input syntax for type numeric: \"%s\"",
+							str)));
+#endif
 		cp = endptr;
-		if (exponent > NUMERIC_MAX_PRECISION ||
-			exponent < -NUMERIC_MAX_PRECISION)
+
+		/*
+		 * At this point, dweight and dscale can't be more than about
+		 * INT_MAX/2 due to the MaxAllocSize limit on string length, so
+		 * constraining the exponent similarly should be enough to prevent
+		 * integer overflow in this function.  If the value is too large to
+		 * fit in storage format, make_result() will complain about it later;
+		 * for consistency use the same ereport errcode/text as make_result().
+		 */
+		if (exponent >= INT_MAX / 2 || exponent <= -(INT_MAX / 2))
+#if 1
 			return 0;
-///			ereport(ERROR,
-///					(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-///					 errmsg("invalid input syntax for type numeric: \"%s\"",
-///							str)));
+#else
+			ereport(ERROR,
+					(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+					 errmsg("value overflows numeric format")));
+#endif
 		dweight += (int) exponent;
 		dscale -= (int) exponent;
 		if (dscale < 0)
@@ -959,7 +947,7 @@ set_var_from_str(const char *str, const char *cp, NumericVar *dest)
 		i += DEC_DIGITS;
 	}
 
-	free(decdigits);
+	pfree(decdigits);
 
 	/* Strip any leading/trailing zeroes, and normalize weight if zero */
 	strip_var(dest);
@@ -1031,7 +1019,7 @@ get_str_from_var(NumericVar *var)
 	if (i <= 0)
 		i = 1;
 
-	str = malloc(i + dscale + DEC_DIGITS + 2);
+	str = palloc(i + dscale + DEC_DIGITS + 2);
 	cp = str;
 
 	/*
@@ -1056,7 +1044,7 @@ get_str_from_var(NumericVar *var)
 			/* In the first digit, suppress extra leading decimal zeroes */
 #if DEC_DIGITS == 4
 			{
-				int		putit = (d > 0);
+				bool		putit = (d > 0);
 
 				d1 = dig / 1000;
 				dig -= d1 * 1000;
@@ -1134,11 +1122,6 @@ get_str_from_var(NumericVar *var)
 }
 
 
-
-#define SET_VARSIZE_4B(PTR,len) \
-        (((varattrib_4b *) (PTR))->va_4byte.va_header = (((uint32_t) (len)) << 2))
-
-#define SET_VARSIZE(PTR, len)                           SET_VARSIZE_4B(PTR, len)
 /*
  * make_result() -
  *
@@ -1153,11 +1136,11 @@ make_result(NumericVar *var)
 	int			weight = var->weight;
 	int			sign = var->sign;
 	int			n;
-	size_t		len;
+	Size		len;
 
 	if (sign == NUMERIC_NAN)
 	{
-		result = (Numeric) malloc(NUMERIC_HDRSZ_SHORT);
+		result = (Numeric) palloc(NUMERIC_HDRSZ_SHORT);
 
 		SET_VARSIZE(result, NUMERIC_HDRSZ_SHORT);
 		result->choice.n_header = NUMERIC_NAN;
@@ -1191,7 +1174,7 @@ make_result(NumericVar *var)
 	if (NUMERIC_CAN_BE_SHORT(var->dscale, weight))
 	{
 		len = NUMERIC_HDRSZ_SHORT + n * sizeof(NumericDigit);
-		result = (Numeric) malloc(len);
+		result = (Numeric) palloc(len);
 		SET_VARSIZE(result, len);
 		result->choice.n_short.n_header =
 			(sign == NUMERIC_NEG ? (NUMERIC_SHORT | NUMERIC_SHORT_SIGN_MASK)
@@ -1203,24 +1186,27 @@ make_result(NumericVar *var)
 	else
 	{
 		len = NUMERIC_HDRSZ + n * sizeof(NumericDigit);
-		result = (Numeric) malloc(len);
+		result = (Numeric) palloc(len);
 		SET_VARSIZE(result, len);
 		result->choice.n_long.n_sign_dscale =
 			sign | (var->dscale & NUMERIC_DSCALE_MASK);
 		result->choice.n_long.n_weight = weight;
 	}
 
-	assert(NUMERIC_NDIGITS(result) == n);
+	Assert(NUMERIC_NDIGITS(result) == n);
 	if (n > 0)
 		memcpy(NUMERIC_DIGITS(result), digits, n * sizeof(NumericDigit));
 
 	/* Check for overflow of int16 fields */
 	if (NUMERIC_WEIGHT(result) != weight ||
 		NUMERIC_DSCALE(result) != var->dscale)
+#if 1
 		return 0;
-	///	ereport(ERROR,
-	///			(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
-	///			 errmsg("value overflows numeric format")));
+#else
+		ereport(ERROR,
+				(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+				 errmsg("value overflows numeric format")));
+#endif
 
 	dump_numeric("make_result()", result);
 	return result;
@@ -1234,7 +1220,7 @@ make_result(NumericVar *var)
  *	typmod field.
  */
 static void
-apply_typmod(NumericVar *var, int32_t typmod)
+apply_typmod(NumericVar *var, int32 typmod)
 {
 	int			precision;
 	int			scale;
@@ -1243,7 +1229,7 @@ apply_typmod(NumericVar *var, int32_t typmod)
 	int			i;
 
 	/* Do nothing if we have a default typmod (-1) */
-	if (typmod < (int32_t) (VARHDRSZ))
+	if (typmod < (int32) (VARHDRSZ))
 		return;
 
 	typmod -= VARHDRSZ;
@@ -1288,16 +1274,19 @@ apply_typmod(NumericVar *var, int32_t typmod)
 #error unsupported NBASE
 #endif
 				if (ddigits > maxdigits)
+#if 1
 					return;
-					///ereport(ERROR,
-					///		(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
-					///		 errmsg("numeric field overflow"),
-					///		 errdetail("A field with precision %d, scale %d must round to an absolute value less than %s%d.",
-					///				   precision, scale,
+#else
+					ereport(ERROR,
+							(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+							 errmsg("numeric field overflow"),
+							 errdetail("A field with precision %d, scale %d must round to an absolute value less than %s%d.",
+									   precision, scale,
 					/* Display 10^0 as 1 */
-					///				   maxdigits ? "10^" : "",
-					///				   maxdigits ? maxdigits : 1
-					///				   )));
+									   maxdigits ? "10^" : "",
+									   maxdigits ? maxdigits : 1
+									   )));
+#endif
 				break;
 			}
 			ddigits -= DEC_DIGITS;
@@ -1305,7 +1294,14 @@ apply_typmod(NumericVar *var, int32_t typmod)
 	}
 }
 
-
+/* ----------------------------------------------------------------------
+ *
+ * Following are the lowest level functions that operate unsigned
+ * on the variable level
+ *
+ * ----------------------------------------------------------------------
+ */
+ 
 /*
  * round_var
  *
@@ -1402,8 +1398,8 @@ round_var(NumericVar *var, int rscale)
 
 			if (ndigits < 0)
 			{
-				assert(ndigits == -1);	/* better not have added > 1 digit */
-				assert(var->digits > var->buf);
+				Assert(ndigits == -1);	/* better not have added > 1 digit */
+				Assert(var->digits > var->buf);
 				var->digits--;
 				var->ndigits++;
 				var->weight++;
