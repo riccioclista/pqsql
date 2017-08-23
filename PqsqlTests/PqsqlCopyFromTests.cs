@@ -174,7 +174,7 @@ namespace PqsqlTests
 
 			PqsqlCommand cmd = mConnection.CreateCommand();
 			cmd.Transaction = t;
-			cmd.CommandText = "CREATE TEMP TABLE testcopy (c0 int2, c1 int4, c2 int8, c3 bool, c4 text, c5 float4, c6 float8, c7 timestamp, c8 interval);";
+			cmd.CommandText = "CREATE TEMP TABLE testcopy (c0 int2, c1 int4, c2 int8, c3 bool, c4 text, c5 float4, c6 float8, c7 timestamp, c8 interval, c9 numeric);";
 			cmd.CommandTimeout = 100;
 			cmd.CommandType = CommandType.Text;
 
@@ -183,7 +183,7 @@ namespace PqsqlTests
 			PqsqlCopyFrom copy = new PqsqlCopyFrom(mConnection)
 			{
 				Table = "testcopy",
-				ColumnList = "c0,c1,c2,c3,c4,c5,c6,c7,c8",
+				ColumnList = "c0,c1,c2,c3,c4,c5,c6,c7,c8,c9",
 				CopyTimeout = 5
 			};
 
@@ -202,6 +202,7 @@ namespace PqsqlTests
 				copy.WriteFloat8(i + 0.123);
 				copy.WriteTimestamp(now.AddSeconds(i));
 				copy.WriteInterval(TimeSpan.FromHours(24) + TimeSpan.FromDays(7) + TimeSpan.FromMinutes(i));
+				copy.WriteNumeric((decimal) i / 10);
 			}
 
 			copy.End();
@@ -228,6 +229,7 @@ namespace PqsqlTests
 				Assert.AreEqual(j + 0.123, row.GetDouble(6));
 				Assert.AreEqual(now.AddSeconds(j), row.GetDateTime(7));
 				Assert.AreEqual(TimeSpan.FromHours(24) + TimeSpan.FromDays(7) + TimeSpan.FromMinutes(j), row.GetValue(8));
+				Assert.AreEqual((double)j / 10, row.GetValue(9));
 				j++;
 			}
 
