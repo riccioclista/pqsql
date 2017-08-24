@@ -162,7 +162,7 @@ namespace Pqsql
 			#region decode datatype from binary message
 
 			[DllImport("libpqbinfmt.dll")]
-			public static extern IntPtr pqbf_get_text(IntPtr p, int* len);
+			public static extern IntPtr pqbf_get_text(IntPtr p, ulong* len);
 
 			[DllImport("libpqbinfmt.dll")]
 			public static extern IntPtr pqbf_get_unicode_text(IntPtr p, int* len);
