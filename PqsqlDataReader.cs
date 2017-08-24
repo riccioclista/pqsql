@@ -1868,40 +1868,45 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 
 		internal static string GetStringValue(IntPtr v, int itemlen)
 		{
-			if (itemlen == 0)
-			{
-				if (v == IntPtr.Zero)
-				{
-					return null;
-				}
+			IntPtr utp;
+			string uni;
 
-				unsafe
-				{
-					// TODO pqbf_get_unicode_text sometimes fails to retrieve proper strlen(v) when itemlen==0
-					byte* s = (byte*) v.ToPointer();
-					return PqsqlUTF8Statement.CreateStringFromUTF8(s);
-				}
+			if (v == IntPtr.Zero || itemlen < 0)
+			{
+				return null;
 			}
 
-			IntPtr utp;
+#if CODECONTRACTS
+			Contract.Assert(itemlen >= 0);
+#endif
+
+			int unicode_len = itemlen;
 
 			unsafe
 			{
-				utp = PqsqlBinaryFormat.pqbf_get_unicode_text(v, &itemlen);
+				utp = PqsqlBinaryFormat.pqbf_get_unicode_text(v, &unicode_len);
 			}
 
 			if (utp == IntPtr.Zero)
 				return null;
 
-			string uni;
-			if (itemlen > 0)
+			if (itemlen == 0) // itemlen == 0 => utp is a NUL-terminated (maybe empty) string
 			{
-				uni = Marshal.PtrToStringUni(utp, itemlen);
+				uni = Marshal.PtrToStringUni(utp);
 			}
-			else
+			else if (unicode_len == 0) // itemlen > 0 && unicode_len == 0: empty string
 			{
 				uni = string.Empty;
 			}
+			else // itemlen > 0 && unicode_len > 0 => v is a non-NUL-terminated non-empty string
+			{
+				uni = Marshal.PtrToStringUni(utp, unicode_len);
+			}
+
+#if CODECONTRACTS
+			Contract.Assert(utp != IntPtr.Zero);
+#endif
+
 			PqsqlBinaryFormat.pqbf_free_unicode_text(utp);
 			return uni;
 		}
