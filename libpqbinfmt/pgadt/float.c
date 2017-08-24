@@ -34,10 +34,10 @@
 #define DLL_EXPORT
 #include "pqbinfmt_config.h"
 
-#include "c.h"
-#include "fmgr.h"
-#include "builtins.h"
-#include "postgres.h"
+#include "pgadt/c.h"
+#include "pgadt/fmgr.h"
+#include "pgadt/builtins.h"
+#include "pgadt/postgres.h"
 
 /*
  * Visual C++ sometimes misses isinf

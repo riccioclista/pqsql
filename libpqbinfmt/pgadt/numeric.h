@@ -21,8 +21,8 @@
 #ifndef _PG_NUMERIC_H_
 #define _PG_NUMERIC_H_
 
-#include "c.h"
-#include "postgres.h"
+#include "pgadt/c.h"
+#include "pgadt/postgres.h"
 
 /*
  * Limit on the precision (and hence scale) specifiable in a NUMERIC typmod.

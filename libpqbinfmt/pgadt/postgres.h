@@ -51,7 +51,7 @@
 #ifndef POSTGRES_H
 #define POSTGRES_H
 
-#include "c.h"
+#include "pgadt/c.h"
 #if 0
 #include "utils/elog.h"
 #include "utils/palloc.h"

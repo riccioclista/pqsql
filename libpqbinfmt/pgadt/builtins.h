@@ -14,10 +14,10 @@
 #ifndef BUILTINS_H
 #define BUILTINS_H
 
-#include "fmgr.h"
-#include "postgres.h"
-#include "numeric.h"
-#include "pqexpbuffer.h"
+#include "pgadt/fmgr.h"
+#include "pgadt/postgres.h"
+#include "pgadt/numeric.h"
+#include "pgadt/pqexpbuffer.h"
 
 /*
  *		Defined in adt/
