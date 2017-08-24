@@ -211,6 +211,7 @@ namespace PqsqlTests
 
 			decimal[] p8_arr = {decimal.MinValue, 1.23M, 12.345M, -123.4567M, decimal.MaxValue};
 
+			const int p9_val = 47;
 
 			mCmd.CommandText = qs;
 			mCmd.CommandTimeout = 20;
@@ -268,7 +269,7 @@ namespace PqsqlTests
 
 			PqsqlParameter p9 = mCmd.CreateParameter();
 			p9.ParameterName = "p9";
-			p9.Value = 47;
+			p9.Value = p9_val;
 			// let Pqsql guess the parameter type
 
 			mCmd.Parameters.Add(p1);
@@ -396,21 +397,48 @@ namespace PqsqlTests
 				Assert.AreEqual(comp++, gen);
 			}
 
+			Assert.AreEqual(10000001, comp);
+
+			next = r.NextResult();
+			Assert.IsTrue(next);
+
+			comp = 0;
 
 			// select :p1,:p2::text
-			// select extract(epoch from date_trunc('day',current_date - :p9 ))::integer
-			while (r.NextResult())
+			while (r.Read())
 			{
-				int n1 = 0;
+				int i = r.GetInt32(0);
+				string st = r.GetString(1);
 
-				while (r.Read())
-				{
-					int i = r.GetInt32(0);
-					n1++;
-				}
-
-				Assert.AreEqual(1, n1);
+				Assert.AreEqual(p1_val, i);
+				string p2s = Convert.ToString(p2_val);
+				Assert.AreEqual(p2s, st);
+				comp++;
 			}
+
+			Assert.AreEqual(1, comp);
+
+			next = r.NextResult();
+			Assert.IsTrue(next);
+
+			comp = 0;
+
+			// select extract(epoch from date_trunc('day',current_date - :p9 ))::integer
+			while (r.Read())
+			{
+				int i = r.GetInt32(0);
+
+				int unix = (int) DateTime.UtcNow.Subtract(new TimeSpan(p9_val, 0, 0, 0)).Date.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+
+				Assert.AreEqual(unix, i);
+				comp++;
+			}
+
+			next = r.NextResult();
+			Assert.IsFalse(next);
+
+			r.Close();
+			r.Dispose();
 		}
 
 		[TestMethod]
