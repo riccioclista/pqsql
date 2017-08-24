@@ -53,7 +53,7 @@ extern DECLSPEC void pqbf_set_text(PQExpBuffer s, const char *t);
 extern DECLSPEC void pqbf_add_text(pqparam_buffer *pb, const char *t, uint32_t oid);
 
 #ifdef _WIN32
-extern DECLSPEC wchar_t* pqbf_get_unicode_text(const char *ptr, size_t *utf16_len);
+extern DECLSPEC wchar_t* pqbf_get_unicode_text(const char *ptr, int32_t *utf16_len);
 extern DECLSPEC void pqbf_free_unicode_text(wchar_t *p);
 extern DECLSPEC void pqbf_set_unicode_text(PQExpBuffer s, const wchar_t *t);
 extern DECLSPEC void pqbf_add_unicode_text(pqparam_buffer *pb, const wchar_t *t, uint32_t oid);

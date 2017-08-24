@@ -283,7 +283,7 @@ pqbf_get_text(const char *p, size_t *len)
 {
 	BAILWITHVALUEIFNULL(p, NULL);
 
-	if (*len == 0)
+	if (len && *len == 0)
 		*len = strlen(p); /* total utf8 length given by strlen */
 
 	return p;
@@ -329,72 +329,71 @@ pqbf_add_text(pqparam_buffer *pb, const char *t, uint32_t oid)
 #ifdef _WIN32
 
 DECLSPEC wchar_t*
-pqbf_get_unicode_text(const char *p, size_t *utf16_len)
+pqbf_get_unicode_text(const char *p, int32_t *utf16_len)
 {
 	wchar_t *obuf;
-	int retry;
-	size_t len;
+	int32_t num_wchars;
+	int32_t utf8_len;
+	int32_t is_terminated;
 
-	BAILWITHVALUEIFNULL(p, NULL);
+	if (p == NULL || utf16_len == NULL)
+		return NULL;
 
-	if (*utf16_len == 0)
-		len = strlen(p); /* total utf8 length given by strlen */
-	else
-		len = *utf16_len; /* total utf8 length given as parameter */
+	is_terminated = *utf16_len == 0;
+	
+	if (is_terminated) /* p might be empty or not */
+	{
+		/* MultiByteToWideChar terminates with L'\0' */
+		utf8_len = -1;
+	}
+	else /* *utf16_len > 0: we assume that p is a non-NUL-terminated non-empty string of length *utf16_len */
+	{
+		/* don't terminate with L'\0', utf8_len > 0 */
+		utf8_len = *utf16_len;
+	}
 
-	/* allocate enough room to hold standard utf16 text (2 bytes per char) */
-	*utf16_len = 2 * len + 1;
-	obuf = (wchar_t *) malloc(*utf16_len);
+	/* total UTF-8 length (including NUL byte if utf8_len == -1) as given by MultiByteToWideChar */
+	num_wchars = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, p, utf8_len, NULL, 0);
+	if (num_wchars <= 0) /* p is invalid, don't do MultiByteToWideChar */
+	{
+		*utf16_len = 0;
+		return NULL;
+	}
+
+	/* allocate enough room to hold UTF-16 text */
+	obuf = (wchar_t *) malloc(num_wchars * sizeof(wchar_t));
 	if (obuf == NULL)
 	{
 		*utf16_len = 0;
 		return NULL;
 	}
-	
-	/* decode UTF-8 as UTF-16 */
 
-	for (retry = 0; retry < 2; retry++)
+	/* always return the number of characters in the UTF-16 string */
+	if (is_terminated) /* MultiByteToWideChar will NUL terminate the string */
 	{
-		*utf16_len = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, p, len, obuf, *utf16_len);
-
-		if (*utf16_len == 0)
+		*utf16_len = num_wchars - 1;
+								 
+		if (num_wchars == 1) /* p is the empty string, don't do MultiByteToWideChar */
 		{
-			if (GetLastError() == ERROR_INSUFFICIENT_BUFFER)
-			{
-				wchar_t *new_obuf;
-
-				/* in case of non-BMP unicode we need 4 bytes per char in utf-16 */
-				*utf16_len = 4 * len + 1;
-				new_obuf = (wchar_t *) realloc(obuf, *utf16_len);
-
-				if (new_obuf == NULL)
-				{
-					/* oh-oh, shit hits the fan */
-					free(obuf);
-					*utf16_len = 0;
-					return NULL;
-				}
-				else
-				{
-					obuf = new_obuf;
-				}
-			}
-			else
-			{
-				/* bail out */
-				retry = 2;
-			}
+			*obuf = L'\0'; /* we NUL terminate the empty string */
+			return obuf;
 		}
 	}
+	else /* MultiByteToWideChar won't NUL terminate the string */
+	{
+		*utf16_len = num_wchars;
+	}
 
-	if (*utf16_len == 0)
+	/* decode UTF-8 as UTF-16 */
+	num_wchars = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, p, utf8_len, obuf, num_wchars);
+	if (num_wchars == 0) /* conversion failed, ouch! */
 	{
 		free(obuf);
 		*utf16_len = 0;
 		return NULL;
 	}
 
-	return (wchar_t*) obuf;
+	return obuf;
 }
 
 
@@ -411,15 +410,14 @@ pqbf_free_unicode_text(wchar_t *p)
 inline void
 pqbf_encode_unicode_text(PQExpBuffer s, const wchar_t *t)
 {
-	int utf16_len;
 	int utf8_len;
 	char *obuf;
 
-	utf16_len = wcslen(t); /* get number of characters in utf-16 string */
+	/* get number of bytes + NUL byte for the UTF-8 conversion */
+	utf8_len = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, t, -1, NULL, 0, 0, 0);
 
-	/* allocate enough room to hold standard utf8 text */
-	/* utf-8 requires 8, 16, 24, or 32 bits for a single character */
-	utf8_len = utf16_len * 4 + 1;
+	if (utf8_len < 2) /* empty string (1), or invalid input (0): nothing to append */
+		return;
 
 	obuf = (char *) malloc(utf8_len);
 	if (obuf == NULL)
@@ -427,13 +425,12 @@ pqbf_encode_unicode_text(PQExpBuffer s, const wchar_t *t)
 
 	/* encode UTF-16 as UTF-8 */
 	utf8_len = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, t, -1, obuf, utf8_len, NULL, NULL);
-	if (utf8_len == 0)
+	if (utf8_len > 0)
 	{
-		free(obuf);
-		return;
+		/* WideCharToMultiByte will NUL terminate obuf for us */
+		appendPQExpBufferStr(s, obuf);
 	}
 
-	appendPQExpBufferStr(s, obuf);
 	free(obuf);
 }
 
