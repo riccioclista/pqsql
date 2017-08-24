@@ -20,7 +20,7 @@
 /*
  * PQExpBuffer
  */
-#include "pqexpbuffer.h"
+#include "pgadt/pqexpbuffer.h"
 
 #include "pqbinfmt_config.h"
 

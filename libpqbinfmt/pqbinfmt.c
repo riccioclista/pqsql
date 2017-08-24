@@ -27,14 +27,14 @@
 #include <float.h>
 
 /* oid values */
-#include "pg_type.h"
+#include "pgadt/pg_type.h"
 
 
 #define DLL_EXPORT
 #include "pqbinfmt.h"
 #include "pqparam_buffer.h"
-#include "numeric.h"
-#include "builtins.h"
+#include "pgadt/numeric.h"
+#include "pgadt/builtins.h"
 
 
 DECLSPEC size_t
