@@ -115,7 +115,7 @@
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="array.c" />
+    <ClCompile Include="pqbinfmt_array.c" />
     <ClCompile Include="pgadt\float.c" />
     <ClCompile Include="pgadt\numeric.c" />
     <ClCompile Include="pqbinfmt.c" />
