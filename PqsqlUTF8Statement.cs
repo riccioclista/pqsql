@@ -1,8 +1,11 @@
 using System;
+using System.Runtime.InteropServices;
 #if CODECONTRACTS
 using System.Diagnostics.Contracts;
 #endif
 using System.Text;
+
+using PqsqlBinaryFormat = Pqsql.UnsafeNativeMethods.PqsqlBinaryFormat;
 
 namespace Pqsql
 {
@@ -40,30 +43,15 @@ namespace Pqsql
 		}
 
 		// converts null-terminated byte* to string 
-		internal static unsafe string CreateStringFromUTF8(byte *p)
+		internal static unsafe string CreateStringFromUTF8(IntPtr p)
 		{
-			if (p == null)
+			if (p == IntPtr.Zero)
 				return null;
 
-			int pos = 0;
-			int buflen = 64; // must be power of two
-			byte[] buf = new byte[buflen];
+			int dummy = 0;
+			IntPtr utp = PqsqlBinaryFormat.pqbf_get_unicode_text(p, &dummy);
 
-			while (*p != 0x0)
-			{
-				if (pos >= buflen)
-				{
-					buflen <<= 1; // exponential growth strategy
-					Array.Resize(ref buf, buflen);
-#if CODECONTRACTS
-					Contract.Assume(pos < buf.Length);
-#endif
-				}
-
-				buf[pos++] = *p++;
-			}
-
-			return Encoding.UTF8.GetString(buf, 0, pos);
+			return Marshal.PtrToStringUni(utp);
 		}
 
 	}

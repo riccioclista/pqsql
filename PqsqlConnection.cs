@@ -699,11 +699,11 @@ namespace Pqsql
 			{
 				unsafe
 				{
-					byte *b = (byte*) PqsqlWrapper.PQerrorMessage(mConnection);
+					sbyte *b = PqsqlWrapper.PQerrorMessage(mConnection);
 
 					if (b != null)
 					{
-						msg = PqsqlUTF8Statement.CreateStringFromUTF8(b);
+						msg = PqsqlUTF8Statement.CreateStringFromUTF8(new IntPtr(b));
 					}
 				}
 			}

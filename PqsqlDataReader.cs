@@ -2235,8 +2235,8 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 				string colName;
 				unsafe
 				{
-					byte* name = (byte*) PqsqlWrapper.PQfname(mResult, o); // column name
-					colName = PqsqlUTF8Statement.CreateStringFromUTF8(name);
+					sbyte* name = PqsqlWrapper.PQfname(mResult, o); // column name
+					colName = PqsqlUTF8Statement.CreateStringFromUTF8(new IntPtr(name));
 				}
 
 				int size = PqsqlWrapper.PQfsize(mResult, o); // column datatype size
