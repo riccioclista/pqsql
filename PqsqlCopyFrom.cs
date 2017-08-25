@@ -611,9 +611,9 @@ namespace Pqsql
 		{
 			long begin = LengthCheckReset();
 
-			long ticks = value.Ticks - PqsqlBinaryFormat.UnixEpochTicks;
-			long sec = ticks / TimeSpan.TicksPerSecond;
-			int usec = (int) (ticks % TimeSpan.TicksPerSecond / 10);
+			long sec;
+			int usec;
+			PqsqlBinaryFormat.GetTimestamp(value, out sec, out usec);
 
 			PqsqlBinaryFormat.pqbf_set_timestamp(mExpBuf, sec, usec);
 			unsafe
@@ -637,17 +637,10 @@ namespace Pqsql
 		{
 			long begin = LengthCheckReset();
 
-			int total_days = value.Days;
-
-			// TimeSpan is a time period expressed in 100-nanosecond units,
-			// whereas interval is in 1-microsecond resolution
-			long offset = (value.Ticks - total_days * TimeSpan.TicksPerDay) / 10;
-
-			// from timestamp.h:
-			// #define DAYS_PER_YEAR   365.25  /* assumes leap year every four years */
-			// #define MONTHS_PER_YEAR 12
-			int month = (int) (12 * total_days / 365.25);
-			int day = total_days - (int) (month * 365.25 / 12);
+			long offset;
+			int day;
+			int month;
+			PqsqlBinaryFormat.GetInterval(value, out offset, out day, out month);
 
 			PqsqlBinaryFormat.pqbf_set_interval(mExpBuf, offset, day, month);
 			unsafe

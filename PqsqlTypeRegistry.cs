@@ -714,7 +714,7 @@ namespace Pqsql
 							long sec;
 							int usec;
 							unsafe { PqsqlBinaryFormat.pqbf_get_timestamp(x, &sec, &usec); }
-							long ticks = PqsqlBinaryFormat.UnixEpochTicks + sec * TimeSpan.TicksPerSecond + usec * 10;
+							long ticks = PqsqlBinaryFormat.GetTicksFromTimestamp(sec, usec);
 							DateTime dt = new DateTime(ticks);
 							return dt;
 						}),
@@ -737,7 +737,7 @@ namespace Pqsql
 							long sec;
 							int usec;
 							unsafe { PqsqlBinaryFormat.pqbf_get_timestamp(x, &sec, &usec); }
-							long ticks = PqsqlBinaryFormat.UnixEpochTicks + sec * TimeSpan.TicksPerSecond + usec * 10;
+							long ticks = PqsqlBinaryFormat.GetTicksFromTimestamp(sec, usec);
 							DateTimeOffset dt = new DateTimeOffset(ticks, TimeSpan.Zero);
 							return dt;
 						}),
@@ -761,19 +761,7 @@ namespace Pqsql
 							int day;
 							int month;
 							unsafe { PqsqlBinaryFormat.pqbf_get_interval(x, &offset, &day, &month); }
-							// TimeSpan is a time period expressed in 100-nanosecond units,
-							// whereas interval is in 1-microsecond resolution
-							TimeSpan ts = new TimeSpan(offset * 10 + day * TimeSpan.TicksPerDay);
-
-							// from timestamp.h:
-							// #define DAYS_PER_YEAR   365.25  /* assumes leap year every four years */
-							// #define MONTHS_PER_YEAR 12
-							if (month != 0)
-							{
-								long month_to_days = (long) (month / 12.0 * 365.25);
-								ts += TimeSpan.FromTicks(month_to_days * TimeSpan.TicksPerDay);
-							}
-							return ts;
+							return PqsqlBinaryFormat.GetTimeSpan(offset, day, month);
 						}),
 					},
 					TypeParameter = new PqsqlTypeParameter {

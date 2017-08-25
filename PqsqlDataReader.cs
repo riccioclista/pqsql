@@ -949,9 +949,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 				PqsqlBinaryFormat.pqbf_get_timestamp(v, &sec, &usec);
 			}
 
-			long ticks = PqsqlBinaryFormat.UnixEpochTicks + sec * TimeSpan.TicksPerSecond + usec * 10;
-
-			return ticks;
+			return PqsqlBinaryFormat.GetTicksFromTimestamp(sec, usec);
 		}
 
 		internal static long GetDate(IntPtr res, int row, int ordinal)
@@ -962,13 +960,10 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 #endif
 
 			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
+
 			int d;
-
 			d = PqsqlBinaryFormat.pqbf_get_date(v);
-
-			long ticks = PqsqlBinaryFormat.UnixEpochTicks + d * TimeSpan.TicksPerSecond;
-
-			return ticks;
+			return PqsqlBinaryFormat.GetTicksFromDate(d);
 		}
 
 		internal static long GetTime(IntPtr res, int row, int ordinal)
@@ -979,18 +974,10 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 #endif
 
 			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
+
 			long t;
-
 			t = PqsqlBinaryFormat.pqbf_get_time(v);
-
-#if CODECONTRACTS
-			Contract.Assume(t >= 0);
-			Contract.Assume((PqsqlBinaryFormat.UnixEpochTicks + t * TimeSpan.TicksPerSecond) <= DateTime.MaxValue.Ticks);
-#endif
-
-			long ticks = PqsqlBinaryFormat.UnixEpochTicks + t * TimeSpan.TicksPerSecond;
-
-			return ticks;
+			return PqsqlBinaryFormat.GetTicksFromTime(t);
 		}
 
 		public TimeSpan GetTimeSpan(int ordinal)
@@ -1023,46 +1010,12 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 			int day;
 			int month;
 
-			// from timestamp.h:
-			//typedef struct
-			//{
-			//  int64      time;                   /* all time units other than days, months and years */
-			//  int32           day;                    /* days, after time for alignment */
-			//  int32           month;                  /* months and years, after time for alignment */
-			//} Interval;
 			unsafe
 			{
 				PqsqlBinaryFormat.pqbf_get_interval(v, &offset, &day, &month);
 			}
 
-			// TimeSpan is a time period expressed in 100-nanosecond units,
-			// whereas interval is in 1-microsecond resolution
-			TimeSpan ts = new TimeSpan(offset * 10 + day * TimeSpan.TicksPerDay);
-
-			// from timestamp.h:
-			// #define DAYS_PER_YEAR   365.25  /* assumes leap year every four years */
-			// #define MONTHS_PER_YEAR 12
-			if (month != 0)
-			{
-				long month_to_days = (long) (month / 12.0 * 365.25);
-				ts += TimeSpan.FromTicks(month_to_days * TimeSpan.TicksPerDay);
-			}
-
-#if false
-			double days = day;
-
-			if (month > 0 || month < 0)
-			{
-				days += (month / 12) * 365.25;
-			}
-
-			if (days > 0 || days < 0)
-			{
-				ts += TimeSpan.FromDays(days);
-			}
-#endif
-
-			return ts;
+			return PqsqlBinaryFormat.GetTimeSpan(offset, day, month);
 		}
 
 		//

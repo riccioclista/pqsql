@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.Contracts;
 using System.Runtime.InteropServices;
 
 namespace Pqsql
@@ -10,10 +11,86 @@ namespace Pqsql
 		//
 		internal static unsafe class PqsqlBinaryFormat
 		{
-			#region unix timestamp 0 in ticks
+			#region timestamp and interval constants
 
-			// DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc).Ticks;
-			public const long UnixEpochTicks = 621355968000000000;
+			// unix timestamp 0 in ticks: DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc).Ticks;
+			private const long UnixEpochTicks = 621355968000000000;
+
+			// TimeSpan is a time period expressed in 100-nanosecond units,
+			// whereas interval is in 1-microsecond resolution
+			private const int UsecFactor = 10;
+
+			// timestamp.h constants
+
+			// DAYS_PER_YEAR
+			private const double DaysPerYear = 365.25;  /* assumes leap year every four years */
+
+			// MONTHS_PER_YEAR
+			private const int MonthsPerYear = 12;
+
+			#endregion
+
+			#region timestamp and DateTime, Date, Time conversions
+
+			public static void GetTimestamp(DateTime dt, out long sec, out int usec)
+			{
+				// we always interpret dt as Utc timestamp and ignore DateTime.Kind value
+				long ticks = dt.Ticks - UnixEpochTicks;
+				sec = ticks / TimeSpan.TicksPerSecond;
+				usec = (int)(ticks % TimeSpan.TicksPerSecond / UsecFactor);
+			}
+
+			public static long GetTicksFromTimestamp(long sec, int usec)
+			{
+				return UnixEpochTicks + sec * TimeSpan.TicksPerSecond + usec * UsecFactor;
+			}
+
+			public static long GetTicksFromDate(int date)
+			{
+				return UnixEpochTicks + date * TimeSpan.TicksPerSecond;
+			}
+
+			public static long GetTicksFromTime(long time)
+			{
+#if CODECONTRACTS
+				Contract.Assume(time >= 0);
+				Contract.Assume((UnixEpochTicks + time * TimeSpan.TicksPerSecond) <= DateTime.MaxValue.Ticks);
+#endif
+				return UnixEpochTicks + time * TimeSpan.TicksPerSecond;
+			}
+
+			#endregion
+
+			#region interval and TimeSpan conversions
+
+			public static void GetInterval(TimeSpan ts, out long offset, out int day, out int month)
+			{
+				int total_days = ts.Days;
+
+				offset = (ts.Ticks - total_days * TimeSpan.TicksPerDay) / UsecFactor;
+				month = (int)(MonthsPerYear * total_days / DaysPerYear);
+				day = total_days - (int)(month * DaysPerYear / MonthsPerYear);
+			}
+
+			public static TimeSpan GetTimeSpan(long offset, int day, int month)
+			{
+				// from timestamp.h:
+				//typedef struct
+				//{
+				//  int64      time;                   /* all time units other than days, months and years */
+				//  int32           day;               /* days, after time for alignment */
+				//  int32           month;             /* months and years, after time for alignment */
+				//} Interval;
+				TimeSpan ts = new TimeSpan(offset * UsecFactor + day * TimeSpan.TicksPerDay);
+
+				if (month != 0)
+				{
+					long month_to_days = (long)(month / (double)MonthsPerYear * DaysPerYear);
+					ts += TimeSpan.FromTicks(month_to_days * TimeSpan.TicksPerDay);
+				}
+
+				return ts;
+			}
 
 			#endregion
 

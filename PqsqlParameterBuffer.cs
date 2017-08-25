@@ -360,10 +360,10 @@ namespace Pqsql
 		{
 			DateTime dt = (DateTime) o;
 
-			// we always interpret dt as Utc timestamp and ignore DateTime.Kind value
-			long ticks = dt.Ticks - PqsqlBinaryFormat.UnixEpochTicks;
-			long sec = ticks / TimeSpan.TicksPerSecond;
-			int usec = (int) (ticks % TimeSpan.TicksPerSecond / 10);
+			long sec;
+			int usec;
+			PqsqlBinaryFormat.GetTimestamp(dt, out sec, out usec);
+
 			PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 8);
 			PqsqlBinaryFormat.pqbf_set_timestamp(a, sec, usec);
 		}
@@ -373,17 +373,10 @@ namespace Pqsql
 		{
 			TimeSpan ts = (TimeSpan)o;
 
-			int total_days = ts.Days;
-
-			// TimeSpan is a time period expressed in 100-nanosecond units,
-			// whereas interval is in 1-microsecond resolution
-			long offset = (ts.Ticks - total_days * TimeSpan.TicksPerDay) / 10;
-
-			// from timestamp.h:
-			// #define DAYS_PER_YEAR   365.25  /* assumes leap year every four years */
-			// #define MONTHS_PER_YEAR 12
-			int month = (int)(12 * total_days / 365.25);
-			int day = total_days - (int)(month * 365.25 / 12);
+			long offset;
+			int day;
+			int month;
+			PqsqlBinaryFormat.GetInterval(ts, out offset, out day, out month);
 
 			PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 16);
 			PqsqlBinaryFormat.pqbf_set_interval(a, offset, day, month);
@@ -484,10 +477,10 @@ namespace Pqsql
 		{
 			DateTime dt = (DateTime) val;
 
-			// we always interpret dt as Utc timestamp and ignore DateTime.Kind value
-			long ticks = dt.Ticks - PqsqlBinaryFormat.UnixEpochTicks;
-			long sec = ticks / TimeSpan.TicksPerSecond;
-			int usec = (int) (ticks % TimeSpan.TicksPerSecond / 10);
+			long sec;
+			int usec;
+			PqsqlBinaryFormat.GetTimestamp(dt, out sec, out usec);
+
 			PqsqlBinaryFormat.pqbf_add_timestamp(pb, sec, usec, (uint) oid);
 		}
 
@@ -496,17 +489,10 @@ namespace Pqsql
 		{
 			TimeSpan ts = (TimeSpan)val;
 
-			int total_days = ts.Days;
-
-			// TimeSpan is a time period expressed in 100-nanosecond units,
-			// whereas interval is in 1-microsecond resolution
-			long offset = (ts.Ticks - total_days * TimeSpan.TicksPerDay) / 10;
-
-			// from timestamp.h:
-			// #define DAYS_PER_YEAR   365.25  /* assumes leap year every four years */
-			// #define MONTHS_PER_YEAR 12
-			int month = (int)(12 * total_days / 365.25);
-			int day = total_days - (int)(month * 365.25 / 12);
+			long offset;
+			int day;
+			int month;
+			PqsqlBinaryFormat.GetInterval(ts, out offset, out day, out month);
 
 			PqsqlBinaryFormat.pqbf_add_interval(pb, offset, day, month);
 		}
