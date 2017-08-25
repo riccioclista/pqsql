@@ -34,20 +34,49 @@ namespace Pqsql
 
 			public static void GetTimestamp(DateTime dt, out long sec, out int usec)
 			{
-				// we always interpret dt as Utc timestamp and ignore DateTime.Kind value
-				long ticks = dt.Ticks - UnixEpochTicks;
-				sec = ticks / TimeSpan.TicksPerSecond;
-				usec = (int)(ticks % TimeSpan.TicksPerSecond / UsecFactor);
+				if (dt == DateTime.MaxValue) // timestamp 'infinity'
+				{
+					sec = Int64.MaxValue;
+					usec = 0;
+				}
+				else if (dt == DateTime.MinValue) // timestamp '-infinity'
+				{
+					sec = Int64.MinValue;
+					usec = 0;
+				}
+				else
+				{
+					// we always interpret dt as Utc timestamp and ignore DateTime.Kind value
+					long ticks = dt.Ticks - UnixEpochTicks;
+					sec = ticks / TimeSpan.TicksPerSecond;
+					usec = (int) (ticks % TimeSpan.TicksPerSecond / UsecFactor);
+				}
 			}
 
 			public static long GetTicksFromTimestamp(long sec, int usec)
 			{
-				return UnixEpochTicks + sec * TimeSpan.TicksPerSecond + usec * UsecFactor;
+				switch (sec)
+				{
+				case Int64.MinValue: // timestamp '-infinity'
+					return DateTime.MinValue.Ticks;
+				case Int64.MaxValue: // timestamp 'infinity'
+					return DateTime.MaxValue.Ticks;
+				default:
+					return UnixEpochTicks + sec * TimeSpan.TicksPerSecond + usec * UsecFactor;
+				}
 			}
 
 			public static long GetTicksFromDate(int date)
 			{
-				return UnixEpochTicks + date * TimeSpan.TicksPerSecond;
+				switch (date)
+				{
+				case Int32.MinValue: // date '-infinity'
+					return DateTime.MinValue.Ticks;
+				case Int32.MaxValue: // date 'infinity'
+					return DateTime.MaxValue.Ticks;
+				default:
+					return UnixEpochTicks + date * TimeSpan.TicksPerSecond;
+				}
 			}
 
 			public static long GetTicksFromTime(long time)
