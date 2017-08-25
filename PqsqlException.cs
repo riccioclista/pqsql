@@ -46,6 +46,8 @@ namespace Pqsql
 		private static unsafe string CreateHint(IntPtr result)
 		{
 			sbyte* hint = PqsqlWrapper.PQresultErrorField(result, PqsqlDiag.PG_DIAG_MESSAGE_HINT);
+			if (hint == null)
+				return string.Empty;
 			return new string(hint);
 		}
 
@@ -108,10 +110,7 @@ namespace Pqsql
 
 		public override void GetObjectData(SerializationInfo info, StreamingContext context)
 		{
-			if (info != null)
-			{
-				info.AddValue("Hint", mHint);
-			}
+			info.AddValue("Hint", mHint);
 			base.GetObjectData(info, context);
 		}
 
