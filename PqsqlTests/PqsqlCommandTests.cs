@@ -162,7 +162,7 @@ namespace PqsqlTests
 			PqsqlCommand cmd = mConnection.CreateCommand();
 
 			cmd.Transaction = t;
-			cmd.CommandText = "create or replace function test_out(p1 out text, i1 inout int, p2 out int, r inout refcursor) as $$begin $1 := 'p1 text'; $2:=$2*-4711; $3:=12345; open r for select * from ( values (1,2,3),(4,5,6),(7,8,9) ) X; end;$$ LANGUAGE plpgsql;";
+			cmd.CommandText = "create or replace function pg_temp.test_out(p1 out text, i1 inout int, p2 out int, r inout refcursor) as $$begin $1 := 'p1 text'; $2:=$2*-4711; $3:=12345; open r for select * from ( values (1,2,3),(4,5,6),(7,8,9) ) X; end;$$ LANGUAGE plpgsql;";
 			cmd.CommandTimeout = 10;
 			cmd.CommandType = CommandType.Text;
 
@@ -196,7 +196,7 @@ namespace PqsqlTests
 				Value = p4_val
 			};
 
-			cmd.CommandText = "test_out";
+			cmd.CommandText = "pg_temp.test_out";
 			cmd.CommandType = CommandType.StoredProcedure;
 			cmd.Parameters.Add(p1);
 			cmd.Parameters.Add(p2);
@@ -262,6 +262,69 @@ namespace PqsqlTests
 			t.Rollback();
 
 			Assert.AreEqual(3, n);
+		}
+
+
+		[TestMethod]
+		public void PqsqlCommandTest9()
+		{
+			PqsqlTransaction t = mConnection.BeginTransaction();
+
+			PqsqlCommand cmd = mConnection.CreateCommand();
+
+			cmd.Transaction = t;
+			cmd.CommandText = @"create or replace function ""pg_temp"".""test me""(i int) returns int as $code$ begin return $1 * i; end; $code$ language plpgsql;
+								select ""pg_temp"".""test me""(:p1);
+								select ""pg_temp"".""test me""($1)";
+			cmd.CommandTimeout = 2;
+			cmd.CommandType = CommandType.Text;
+			cmd.Parameters.AddWithValue("p1", 4711);
+
+			using (PqsqlDataReader r = cmd.ExecuteReader())
+			{
+				bool good = r.Read();
+				Assert.IsFalse(good);
+
+				good = r.NextResult();
+				Assert.IsTrue(good);
+
+				good = r.Read();
+				Assert.IsTrue(good);
+
+				int n = r.GetInt32(0);
+				Assert.AreEqual(4711 * 4711, n);
+
+				good = r.Read();
+				Assert.IsFalse(good);
+
+				good = r.NextResult();
+				Assert.IsTrue(good);
+
+				good = r.Read();
+				Assert.IsTrue(good);
+
+				n = r.GetInt32(0);
+				Assert.AreEqual(4711 * 4711, n);
+
+				good = r.Read();
+				Assert.IsFalse(good);
+			}
+
+			cmd.CommandText = "\"pg_temp\".\"test me\"";
+			cmd.CommandType = CommandType.StoredProcedure;
+			cmd.Parameters.Clear();
+			cmd.Parameters.AddWithValue("i", 4711);
+			cmd.Parameters.Add(new PqsqlParameter
+			{
+				ParameterName = "\"pg_temp\".\"test me\"",
+				DbType = DbType.Int32,
+				Direction = ParameterDirection.Output
+			});
+
+			object x = cmd.ExecuteScalar();
+			Assert.AreEqual(4711 * 4711, x);
+
+			t.Rollback();
 		}
 	}
 }
