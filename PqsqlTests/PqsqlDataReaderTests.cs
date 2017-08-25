@@ -186,14 +186,14 @@ namespace PqsqlTests
 		[TestMethod]
 		public void PqsqlDataReaderTest6()
 		{
-			const string qs = "select ARRAY[0,1,2,3,42,null,4711]::_text, :p7, unnest(:p6), unnest(:p8) ;" +
-												" select interval '20 days', interval '123 secs', interval '20 years 10 months', now(), :p4;" +
-												" select 123.456::numeric, :p3::text ;" +
-												" select 'NaN'::numeric, '-1234567898765432123456789.87654321'::numeric ;" +
-												" select generate_series(1,10000000),generate_series(1,10000000);" +
-												" select generate_series(1,10000000),generate_series(1,10000000);" +
-												" select :p1,:p2::text ;" +
-												" select extract(epoch from date_trunc('day',current_date - :p9 ))::integer ";
+			const string qs = @"select ARRAY[0,1,2,3,42,null,4711]::_text, :p7, unnest(:p6), unnest(:p8) ;
+								select interval '20 days', interval '123 secs', interval '20 years 10 months', now(), :p4, timestamp 'infinity', timestamp '-infinity', date 'infinity', date '-infinity';
+								select 123.456::numeric, :p3::text ;
+								select 'NaN'::numeric, '-1234567898765432123456789.87654321'::numeric ;
+								select generate_series(1,10000000),generate_series(1,10000000);
+								select generate_series(1,10000000),generate_series(1,10000000);
+								select :p1,:p2::text ;
+								select extract(epoch from date_trunc('day',current_date - :p9 ))::integer ";
 
 			const int p1_val = -1;
 			const int p2_val = 2;
@@ -324,7 +324,7 @@ namespace PqsqlTests
 			bool next = r.NextResult();
 			Assert.IsTrue(next);
 
-			// select interval '20 days', interval '123 secs', interval '20 years 10 months', now(), :p4
+			// select interval '20 days', interval '123 secs', interval '20 years 10 months', now(), :p4, timestamp 'infinity', timestamp '-infinity', date 'infinity', date '-infinity'
 			while (r.Read())
 			{
 				TimeSpan s = r.GetTimeSpan(0);
@@ -343,6 +343,18 @@ namespace PqsqlTests
 
 				double db = r.GetDouble(4);
 				Assert.AreEqual(p4_val, db);
+
+				d = r.GetDateTime(5);
+				Assert.AreEqual(DateTime.MaxValue, d);
+
+				d = r.GetDateTime(6);
+				Assert.AreEqual(DateTime.MinValue, d);
+
+				d = r.GetDateTime(7);
+				Assert.AreEqual(DateTime.MaxValue, d);
+
+				d = r.GetDateTime(8);
+				Assert.AreEqual(DateTime.MinValue, d);
 			}
 
 			next = r.NextResult();

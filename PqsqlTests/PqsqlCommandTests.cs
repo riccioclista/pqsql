@@ -37,7 +37,7 @@ namespace PqsqlTests
 		public void PqsqlCommandTest1()
 		{
 			PqsqlCommand cmd = mConnection.CreateCommand();
-			cmd.CommandText = "select pg_sleep(3);";
+			cmd.CommandText = "select pg_sleep(1);";
 			PqsqlDataReader r = cmd.ExecuteReader();
 
 			bool b = r.Read();

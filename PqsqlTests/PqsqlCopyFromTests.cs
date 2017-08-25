@@ -129,9 +129,9 @@ namespace PqsqlTests
 				j = copy.WriteText(text + i);
 				Assert.AreEqual(Encoding.UTF8.GetByteCount(text + i), j); // length without nul byte
 			}
-			copy.WriteNull();
-			copy.WriteNull();
-			copy.WriteNull();
+			copy.WriteNull(); // id
+			copy.WriteNull(); // val
+			copy.WriteNull(); // txt
 			copy.End();
 			copy.Close();
 
