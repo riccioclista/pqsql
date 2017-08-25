@@ -692,6 +692,9 @@ pqbf_get_timestamp(const char *p, time_t *sec, int *usec)
 {
 	uint64_t i;
 
+	BAILIFNULL(sec);
+	BAILIFNULL(usec);
+
 	if (p == NULL)
 	{
 		*sec = 0;
@@ -701,17 +704,37 @@ pqbf_get_timestamp(const char *p, time_t *sec, int *usec)
 
 	/* decode 64bit timestamp into sec and usec part */
 	i = BYTESWAP8( *( (uint64_t *)p ) );
-		
-	*sec = POSTGRES_EPOCH_DATE + (int64_t) (i / POSTGRES_MEGA);
-	*usec = i % POSTGRES_MEGA;
+	
+	switch (i)
+	{
+	case INT64_MAX: // timestamp 'infinity'
+	case INT64_MIN: // timestamp '-infinity'
+		*sec = i;
+		*usec = 0;
+		break;
+	default:
+		*sec = POSTGRES_EPOCH_DATE + (int64_t)(i / POSTGRES_MEGA);
+		*usec = i % POSTGRES_MEGA;
+		break;
+	}
 }
 
 inline void
 pqbf_encode_timestamp(PQExpBuffer s, time_t sec, int usec)
 {
-	sec -= POSTGRES_EPOCH_DATE;
-	sec *= POSTGRES_MEGA;
-	sec = BYTESWAP8((uint64_t)(sec + usec));
+	switch (sec)
+	{
+	case INT64_MAX: // timestamp 'infinity'
+	case INT64_MIN: // timestamp '-infinity'
+		sec = BYTESWAP8((uint64_t)sec);
+		break;
+	default:
+		sec -= POSTGRES_EPOCH_DATE;
+		sec *= POSTGRES_MEGA;
+		sec = BYTESWAP8((uint64_t)(sec + usec));
+		break;
+	}
+
 	appendBinaryPQExpBuffer(s, (const char*)&sec, sizeof(sec));
 }
 
