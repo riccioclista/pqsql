@@ -61,6 +61,10 @@ namespace Pqsql
 
 	/// <summary>
 	/// preprocessor macros from postgres_ext.h used in PQresultErrorField
+	/// 
+	/// generated from src/include/postgres_ext.h using
+	/// 
+	/// awk '$2 ~ /PG_DIAG_/{printf "\t\tpublic const char %s = %s;\n",$2,$3;}' src/include/postgres_ext.h
 	/// </summary>
 	internal class PqsqlDiag
 	{
@@ -70,6 +74,7 @@ namespace Pqsql
 		}
 
 		public const char PG_DIAG_SEVERITY = 'S';
+		public const char PG_DIAG_SEVERITY_NONLOCALIZED = 'V';
 		public const char PG_DIAG_SQLSTATE = 'C';
 		public const char PG_DIAG_MESSAGE_PRIMARY = 'M';
 		public const char PG_DIAG_MESSAGE_DETAIL = 'D';
@@ -86,7 +91,7 @@ namespace Pqsql
 		public const char PG_DIAG_SOURCE_FILE = 'F';
 		public const char PG_DIAG_SOURCE_LINE = 'L';
 		public const char PG_DIAG_SOURCE_FUNCTION = 'R';
-	};
+	}
 
 	/// <summary>
 	/// PG_DIAG_SQLSTATE strings encoded as integers (PqsqlException.ErrorCode)
