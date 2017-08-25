@@ -656,5 +656,10 @@ namespace Pqsql
 				return PutColumn(val, 16);
 			}
 		}
+
+		public int WriteArray(Array value)
+		{
+			throw new NotImplementedException("WriteArray not implemented");
+		}
 	}
 }
