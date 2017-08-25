@@ -106,6 +106,7 @@
     <Compile Include="PqsqlCommandTests.cs" />
     <Compile Include="PqsqlConnectionStringBuilderTests.cs" />
     <Compile Include="PqsqlCopyFromTests.cs" />
+    <Compile Include="PqsqlExceptionTests.cs" />
     <Compile Include="PqsqlDataAdapterTests.cs" />
     <Compile Include="PqsqlDataReaderTests.cs" />
     <Compile Include="PqsqlLargeObjectTests.cs" />
