@@ -90,6 +90,32 @@ namespace Pqsql
 
 	/// <summary>
 	/// PG_DIAG_SQLSTATE strings encoded as integers (PqsqlException.ErrorCode)
+	///
+	/// generated from src/backend/utils/errcodes.txt using
+	/// 
+	/// egrep -v '^#' src/backend/utils/errcodes.txt | awk 'BEGIN { convert="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ" }
+	///      function code2int(c)
+	///      {
+	///        split(c,ch,"");
+	///        n=0;
+	///        for(i=0; i != 5; i++) {
+	///           j = index(convert, ch[i+1]) - 1;
+	///           n = or(n, lshift(j, i*6));
+	///        }
+	///        return n;
+	///      }
+	///      /^Section: / {
+	///        if (region) printf "\t\t#endregion\n\n";
+	///        print "\t\t#region", substr($0,10);
+	///        region = 1;
+	///      }
+	///      $1 ~ /^[A-Z0-9][A-Z0-9][A-Z0-9][A-Z0-9][A-Z0-9]$/ {
+	///        v = substr($3,9);
+	///        printf "\t\t%s = %d, // %s (%s)\n",v,code2int($1),$1,$4;
+	///      }
+	///      END {
+	///        print "\t\t#endregion";
+	///      }'
 	/// </summary>
 	/// <remarks>
 	/// https://www.postgresql.org/docs/current/static/errcodes-appendix.html
@@ -97,31 +123,31 @@ namespace Pqsql
 	/// <seealso cref="PqsqlException.CreateErrorCode"/>
 	public enum PqsqlState
 	{
-		#region Class 00 — Successful Completion
+		#region Class 00 - Successful Completion
 		SUCCESSFUL_COMPLETION = 0, // 00000 (successful_completion)
 		#endregion
 
-		#region Class 01 — Warning
+		#region Class 01 - Warning
 		WARNING = 64, // 01000 (warning)
-		DYNAMIC_RESULT_SETS_RETURNED = 201326656, // 0100C (dynamic_result_sets_returned)
-		IMPLICIT_ZERO_BIT_PADDING = 134217792, // 01008 (implicit_zero_bit_padding)
-		NULL_VALUE_ELIMINATED_IN_SET_FUNCTION = 50331712, // 01003 (null_value_eliminated_in_set_function)
-		PRIVILEGE_NOT_GRANTED = 117440576, // 01007 (privilege_not_granted)
-		PRIVILEGE_NOT_REVOKED = 100663360, // 01006 (privilege_not_revoked)
-		STRING_DATA_RIGHT_TRUNCATION_01 = 67108928, // 01004 (string_data_right_truncation)
-		DEPRECATED_FEATURE = 16879680, // 01P01 (deprecated_feature)
+		WARNING_DYNAMIC_RESULT_SETS_RETURNED = 201326656, // 0100C (dynamic_result_sets_returned)
+		WARNING_IMPLICIT_ZERO_BIT_PADDING = 134217792, // 01008 (implicit_zero_bit_padding)
+		WARNING_NULL_VALUE_ELIMINATED_IN_SET_FUNCTION = 50331712, // 01003 (null_value_eliminated_in_set_function)
+		WARNING_PRIVILEGE_NOT_GRANTED = 117440576, // 01007 (privilege_not_granted)
+		WARNING_PRIVILEGE_NOT_REVOKED = 100663360, // 01006 (privilege_not_revoked)
+		WARNING_STRING_DATA_RIGHT_TRUNCATION = 67108928, // 01004 (string_data_right_truncation)
+		WARNING_DEPRECATED_FEATURE = 16879680, // 01P01 (deprecated_feature)
 		#endregion
 
-		#region Class 02 — No Data (this is also a warning class per the SQL standard)
+		#region Class 02 - No Data (this is also a warning class per the SQL standard)
 		NO_DATA = 128, // 02000 (no_data)
 		NO_ADDITIONAL_DYNAMIC_RESULT_SETS_RETURNED = 16777344, // 02001 (no_additional_dynamic_result_sets_returned)
 		#endregion
 
-		#region Class 03 — SQL Statement Not Yet Complete
+		#region Class 03 - SQL Statement Not Yet Complete
 		SQL_STATEMENT_NOT_YET_COMPLETE = 192, // 03000 (sql_statement_not_yet_complete)
 		#endregion
 
-		#region Class 08 — Connection Exception
+		#region Class 08 - Connection Exception
 		CONNECTION_EXCEPTION = 512, // 08000 (connection_exception)
 		CONNECTION_DOES_NOT_EXIST = 50332160, // 08003 (connection_does_not_exist)
 		CONNECTION_FAILURE = 100663808, // 08006 (connection_failure)
@@ -131,58 +157,60 @@ namespace Pqsql
 		PROTOCOL_VIOLATION = 16880128, // 08P01 (protocol_violation)
 		#endregion
 
-		#region Class 09 — Triggered Action Exception
+		#region Class 09 - Triggered Action Exception
 		TRIGGERED_ACTION_EXCEPTION = 576, // 09000 (triggered_action_exception)
 		#endregion
 
-		#region Class 0A — Feature Not Supported
+		#region Class 0A - Feature Not Supported
 		FEATURE_NOT_SUPPORTED = 640, // 0A000 (feature_not_supported)
 		#endregion
 
-		#region Class 0B — Invalid Transaction Initiation
+		#region Class 0B - Invalid Transaction Initiation
 		INVALID_TRANSACTION_INITIATION = 704, // 0B000 (invalid_transaction_initiation)
 		#endregion
 
-		#region Class 0F — Locator Exception
+		#region Class 0F - Locator Exception
 		LOCATOR_EXCEPTION = 960, // 0F000 (locator_exception)
-		INVALID_LOCATOR_SPECIFICATION = 16778176, // 0F001 (invalid_locator_specification)
+		L_E_INVALID_SPECIFICATION = 16778176, // 0F001 (invalid_locator_specification)
 		#endregion
 
-		#region Class 0L — Invalid Grantor
+		#region Class 0L - Invalid Grantor
 		INVALID_GRANTOR = 1344, // 0L000 (invalid_grantor)
 		INVALID_GRANT_OPERATION = 16880960, // 0LP01 (invalid_grant_operation)
 		#endregion
 
-		#region Class 0P — Invalid Role Specification
+		#region Class 0P - Invalid Role Specification
 		INVALID_ROLE_SPECIFICATION = 1600, // 0P000 (invalid_role_specification)
 		#endregion
 
-		#region Class 0Z — Diagnostics Exception
+		#region Class 0Z - Diagnostics Exception
 		DIAGNOSTICS_EXCEPTION = 2240, // 0Z000 (diagnostics_exception)
 		STACKED_DIAGNOSTICS_ACCESSED_WITHOUT_ACTIVE_HANDLER = 33556672, // 0Z002 (stacked_diagnostics_accessed_without_active_handler)
 		#endregion
 
-		#region Class 20 — Case Not Found
+		#region Class 20 - Case Not Found
 		CASE_NOT_FOUND = 2, // 20000 (case_not_found)
 		#endregion
 
-		#region Class 21 — Cardinality Violation
+		#region Class 21 - Cardinality Violation
 		CARDINALITY_VIOLATION = 66, // 21000 (cardinality_violation)
 		#endregion
 
-		#region Class 22 — Data Exception
+		#region Class 22 - Data Exception
 		DATA_EXCEPTION = 130, // 22000 (data_exception)
+		ARRAY_ELEMENT_ERROR = 235405442, // 2202E ()
 		ARRAY_SUBSCRIPT_ERROR = 235405442, // 2202E (array_subscript_error)
 		CHARACTER_NOT_IN_REPERTOIRE = 17301634, // 22021 (character_not_in_repertoire)
 		DATETIME_FIELD_OVERFLOW = 134217858, // 22008 (datetime_field_overflow)
+		DATETIME_VALUE_OUT_OF_RANGE = 134217858, // 22008 ()
 		DIVISION_BY_ZERO = 33816706, // 22012 (division_by_zero)
 		ERROR_IN_ASSIGNMENT = 83886210, // 22005 (error_in_assignment)
 		ESCAPE_CHARACTER_CONFLICT = 184549506, // 2200B (escape_character_conflict)
 		INDICATOR_OVERFLOW = 34078850, // 22022 (indicator_overflow)
 		INTERVAL_FIELD_OVERFLOW = 84148354, // 22015 (interval_field_overflow)
-		INVALID_ARGUMENT_FOR_LOGARITHM = 235143298, // 2201E (invalid_argument_for_logarithm)
-		INVALID_ARGUMENT_FOR_NTILE_FUNCTION = 67371138, // 22014 (invalid_argument_for_ntile_function)
-		INVALID_ARGUMENT_FOR_NTH_VALUE_FUNCTION = 100925570, // 22016 (invalid_argument_for_nth_value_function)
+		INVALID_ARGUMENT_FOR_LOG = 235143298, // 2201E (invalid_argument_for_logarithm)
+		INVALID_ARGUMENT_FOR_NTILE = 67371138, // 22014 (invalid_argument_for_ntile_function)
+		INVALID_ARGUMENT_FOR_NTH_VALUE = 100925570, // 22016 (invalid_argument_for_nth_value_function)
 		INVALID_ARGUMENT_FOR_POWER_FUNCTION = 251920514, // 2201F (invalid_argument_for_power_function)
 		INVALID_ARGUMENT_FOR_WIDTH_BUCKET_FUNCTION = 268697730, // 2201G (invalid_argument_for_width_bucket_function)
 		INVALID_CHARACTER_VALUE_FOR_CAST = 134480002, // 22018 (invalid_character_value_for_cast)
@@ -201,11 +229,11 @@ namespace Pqsql
 		INVALID_TIME_ZONE_DISPLACEMENT_VALUE = 150995074, // 22009 (invalid_time_zone_displacement_value)
 		INVALID_USE_OF_ESCAPE_CHARACTER = 201326722, // 2200C (invalid_use_of_escape_character)
 		MOST_SPECIFIC_TYPE_MISMATCH = 268435586, // 2200G (most_specific_type_mismatch)
-		NULL_VALUE_NOT_ALLOWED_22 = 67108994, // 22004 (null_value_not_allowed)
+		NULL_VALUE_NOT_ALLOWED = 67108994, // 22004 (null_value_not_allowed)
 		NULL_VALUE_NO_INDICATOR_PARAMETER = 33554562, // 22002 (null_value_no_indicator_parameter)
 		NUMERIC_VALUE_OUT_OF_RANGE = 50331778, // 22003 (numeric_value_out_of_range)
 		STRING_DATA_LENGTH_MISMATCH = 101187714, // 22026 (string_data_length_mismatch)
-		STRING_DATA_RIGHT_TRUNCATION_22 = 16777346, // 22001 (string_data_right_truncation)
+		STRING_DATA_RIGHT_TRUNCATION = 16777346, // 22001 (string_data_right_truncation)
 		SUBSTRING_ERROR = 17039490, // 22011 (substring_error)
 		TRIM_ERROR = 117964930, // 22027 (trim_error)
 		UNTERMINATED_C_STRING = 67633282, // 22024 (unterminated_c_string)
@@ -222,7 +250,7 @@ namespace Pqsql
 		INVALID_XML_PROCESSING_INSTRUCTION = 486539394, // 2200T (invalid_xml_processing_instruction)
 		#endregion
 
-		#region Class 23 — Integrity Constraint Violation
+		#region Class 23 - Integrity Constraint Violation
 		INTEGRITY_CONSTRAINT_VIOLATION = 194, // 23000 (integrity_constraint_violation)
 		RESTRICT_VIOLATION = 16777410, // 23001 (restrict_violation)
 		NOT_NULL_VIOLATION = 33575106, // 23502 (not_null_violation)
@@ -232,11 +260,11 @@ namespace Pqsql
 		EXCLUSION_VIOLATION = 16879810, // 23P01 (exclusion_violation)
 		#endregion
 
-		#region Class 24 — Invalid Cursor State
+		#region Class 24 - Invalid Cursor State
 		INVALID_CURSOR_STATE = 258, // 24000 (invalid_cursor_state)
 		#endregion
 
-		#region Class 25 — Invalid Transaction State
+		#region Class 25 - Invalid Transaction State
 		INVALID_TRANSACTION_STATE = 322, // 25000 (invalid_transaction_state)
 		ACTIVE_SQL_TRANSACTION = 16777538, // 25001 (active_sql_transaction)
 		BRANCH_TRANSACTION_ALREADY_ACTIVE = 33554754, // 25002 (branch_transaction_already_active)
@@ -251,79 +279,79 @@ namespace Pqsql
 		IDLE_IN_TRANSACTION_SESSION_TIMEOUT = 50434370, // 25P03 (idle_in_transaction_session_timeout)
 		#endregion
 
-		#region Class 26 — Invalid SQL Statement Name
+		#region Class 26 - Invalid SQL Statement Name
 		INVALID_SQL_STATEMENT_NAME = 386, // 26000 (invalid_sql_statement_name)
 		#endregion
 
-		#region Class 27 — Triggered Data Change Violation
+		#region Class 27 - Triggered Data Change Violation
 		TRIGGERED_DATA_CHANGE_VIOLATION = 450, // 27000 (triggered_data_change_violation)
 		#endregion
 
-		#region Class 28 — Invalid Authorization Specification
+		#region Class 28 - Invalid Authorization Specification
 		INVALID_AUTHORIZATION_SPECIFICATION = 514, // 28000 (invalid_authorization_specification)
 		INVALID_PASSWORD = 16880130, // 28P01 (invalid_password)
 		#endregion
 
-		#region Class 2B — Dependent Privilege Descriptors Still Exist
+		#region Class 2B - Dependent Privilege Descriptors Still Exist
 		DEPENDENT_PRIVILEGE_DESCRIPTORS_STILL_EXIST = 706, // 2B000 (dependent_privilege_descriptors_still_exist)
 		DEPENDENT_OBJECTS_STILL_EXIST = 16880322, // 2BP01 (dependent_objects_still_exist)
 		#endregion
 
-		#region Class 2D — Invalid Transaction Termination
+		#region Class 2D - Invalid Transaction Termination
 		INVALID_TRANSACTION_TERMINATION = 834, // 2D000 (invalid_transaction_termination)
 		#endregion
 
-		#region Class 2F — SQL Routine Exception
+		#region Class 2F - SQL Routine Exception
 		SQL_ROUTINE_EXCEPTION = 962, // 2F000 (sql_routine_exception)
-		FUNCTION_EXECUTED_NO_RETURN_STATEMENT = 83887042, // 2F005 (function_executed_no_return_statement)
-		MODIFYING_SQL_DATA_NOT_PERMITTED_2F = 33555394, // 2F002 (modifying_sql_data_not_permitted)
-		PROHIBITED_SQL_STATEMENT_ATTEMPTED_2F = 50332610, // 2F003 (prohibited_sql_statement_attempted)
-		READING_SQL_DATA_NOT_PERMITTED_2F = 67109826, // 2F004 (reading_sql_data_not_permitted)
+		S_R_E_FUNCTION_EXECUTED_NO_RETURN_STATEMENT = 83887042, // 2F005 (function_executed_no_return_statement)
+		S_R_E_MODIFYING_SQL_DATA_NOT_PERMITTED = 33555394, // 2F002 (modifying_sql_data_not_permitted)
+		S_R_E_PROHIBITED_SQL_STATEMENT_ATTEMPTED = 50332610, // 2F003 (prohibited_sql_statement_attempted)
+		S_R_E_READING_SQL_DATA_NOT_PERMITTED = 67109826, // 2F004 (reading_sql_data_not_permitted)
 		#endregion
 
-		#region Class 34 — Invalid Cursor Name
+		#region Class 34 - Invalid Cursor Name
 		INVALID_CURSOR_NAME = 259, // 34000 (invalid_cursor_name)
 		#endregion
 
-		#region Class 38 — External Routine Exception
+		#region Class 38 - External Routine Exception
 		EXTERNAL_ROUTINE_EXCEPTION = 515, // 38000 (external_routine_exception)
-		CONTAINING_SQL_NOT_PERMITTED = 16777731, // 38001 (containing_sql_not_permitted)
-		MODIFYING_SQL_DATA_NOT_PERMITTED_38 = 33554947, // 38002 (modifying_sql_data_not_permitted)
-		PROHIBITED_SQL_STATEMENT_ATTEMPTED_38 = 50332163, // 38003 (prohibited_sql_statement_attempted)
-		READING_SQL_DATA_NOT_PERMITTED_38 = 67109379, // 38004 (reading_sql_data_not_permitted)
+		E_R_E_CONTAINING_SQL_NOT_PERMITTED = 16777731, // 38001 (containing_sql_not_permitted)
+		E_R_E_MODIFYING_SQL_DATA_NOT_PERMITTED = 33554947, // 38002 (modifying_sql_data_not_permitted)
+		E_R_E_PROHIBITED_SQL_STATEMENT_ATTEMPTED = 50332163, // 38003 (prohibited_sql_statement_attempted)
+		E_R_E_READING_SQL_DATA_NOT_PERMITTED = 67109379, // 38004 (reading_sql_data_not_permitted)
 		#endregion
 
-		#region Class 39 — External Routine Invocation Exception
+		#region Class 39 - External Routine Invocation Exception
 		EXTERNAL_ROUTINE_INVOCATION_EXCEPTION = 579, // 39000 (external_routine_invocation_exception)
-		INVALID_SQLSTATE_RETURNED = 16777795, // 39001 (invalid_sqlstate_returned)
-		NULL_VALUE_NOT_ALLOWED_39 = 67109443, // 39004 (null_value_not_allowed)
-		TRIGGER_PROTOCOL_VIOLATED = 16880195, // 39P01 (trigger_protocol_violated)
-		SRF_PROTOCOL_VIOLATED = 33657411, // 39P02 (srf_protocol_violated)
-		EVENT_TRIGGER_PROTOCOL_VIOLATED = 50434627, // 39P03 (event_trigger_protocol_violated)
+		E_R_I_E_INVALID_SQLSTATE_RETURNED = 16777795, // 39001 (invalid_sqlstate_returned)
+		E_R_I_E_NULL_VALUE_NOT_ALLOWED = 67109443, // 39004 (null_value_not_allowed)
+		E_R_I_E_TRIGGER_PROTOCOL_VIOLATED = 16880195, // 39P01 (trigger_protocol_violated)
+		E_R_I_E_SRF_PROTOCOL_VIOLATED = 33657411, // 39P02 (srf_protocol_violated)
+		E_R_I_E_EVENT_TRIGGER_PROTOCOL_VIOLATED = 50434627, // 39P03 (event_trigger_protocol_violated)
 		#endregion
 
-		#region Class 3B — Savepoint Exception
+		#region Class 3B - Savepoint Exception
 		SAVEPOINT_EXCEPTION = 707, // 3B000 (savepoint_exception)
-		INVALID_SAVEPOINT_SPECIFICATION = 16777923, // 3B001 (invalid_savepoint_specification)
+		S_E_INVALID_SPECIFICATION = 16777923, // 3B001 (invalid_savepoint_specification)
 		#endregion
 
-		#region Class 3D — Invalid Catalog Name
+		#region Class 3D - Invalid Catalog Name
 		INVALID_CATALOG_NAME = 835, // 3D000 (invalid_catalog_name)
 		#endregion
 
-		#region Class 3F — Invalid Schema Name
+		#region Class 3F - Invalid Schema Name
 		INVALID_SCHEMA_NAME = 963, // 3F000 (invalid_schema_name)
 		#endregion
 
-		#region Class 40 — Transaction Rollback
+		#region Class 40 - Transaction Rollback
 		TRANSACTION_ROLLBACK = 4, // 40000 (transaction_rollback)
-		TRANSACTION_INTEGRITY_CONSTRAINT_VIOLATION = 33554436, // 40002 (transaction_integrity_constraint_violation)
-		SERIALIZATION_FAILURE = 16777220, // 40001 (serialization_failure)
-		STATEMENT_COMPLETION_UNKNOWN = 50331652, // 40003 (statement_completion_unknown)
-		DEADLOCK_DETECTED = 16879620, // 40P01 (deadlock_detected)
+		T_R_INTEGRITY_CONSTRAINT_VIOLATION = 33554436, // 40002 (transaction_integrity_constraint_violation)
+		T_R_SERIALIZATION_FAILURE = 16777220, // 40001 (serialization_failure)
+		T_R_STATEMENT_COMPLETION_UNKNOWN = 50331652, // 40003 (statement_completion_unknown)
+		T_R_DEADLOCK_DETECTED = 16879620, // 40P01 (deadlock_detected)
 		#endregion
 
-		#region Class 42 — Syntax Error or Access Rule Violation
+		#region Class 42 - Syntax Error or Access Rule Violation
 		SYNTAX_ERROR_OR_ACCESS_RULE_VIOLATION = 132, // 42000 (syntax_error_or_access_rule_violation)
 		SYNTAX_ERROR = 16801924, // 42601 (syntax_error)
 		INSUFFICIENT_PRIVILEGE = 16797828, // 42501 (insufficient_privilege)
@@ -341,7 +369,11 @@ namespace Pqsql
 		INDETERMINATE_COLLATION = 34181252, // 42P22 (indeterminate_collation)
 		WRONG_OBJECT_TYPE = 151027844, // 42809 (wrong_object_type)
 		UNDEFINED_COLUMN = 50360452, // 42703 (undefined_column)
+		UNDEFINED_CURSOR = 259, // 34000 ()
+		UNDEFINED_DATABASE = 835, // 3D000 ()
 		UNDEFINED_FUNCTION = 52461700, // 42883 (undefined_function)
+		UNDEFINED_PSTATEMENT = 386, // 26000 ()
+		UNDEFINED_SCHEMA = 963, // 3F000 ()
 		UNDEFINED_TABLE = 16879748, // 42P01 (undefined_table)
 		UNDEFINED_PARAMETER = 33656964, // 42P02 (undefined_parameter)
 		UNDEFINED_OBJECT = 67137668, // 42704 (undefined_object)
@@ -349,7 +381,7 @@ namespace Pqsql
 		DUPLICATE_CURSOR = 50434180, // 42P03 (duplicate_cursor)
 		DUPLICATE_DATABASE = 67211396, // 42P04 (duplicate_database)
 		DUPLICATE_FUNCTION = 50884740, // 42723 (duplicate_function)
-		DUPLICATE_PREPARED_STATEMENT = 83988612, // 42P05 (duplicate_prepared_statement)
+		DUPLICATE_PSTATEMENT = 83988612, // 42P05 (duplicate_prepared_statement)
 		DUPLICATE_SCHEMA = 100765828, // 42P06 (duplicate_schema)
 		DUPLICATE_TABLE = 117543044, // 42P07 (duplicate_table)
 		DUPLICATE_ALIAS = 33845380, // 42712 (duplicate_alias)
@@ -363,17 +395,17 @@ namespace Pqsql
 		INVALID_CURSOR_DEFINITION = 17141892, // 42P11 (invalid_cursor_definition)
 		INVALID_DATABASE_DEFINITION = 33919108, // 42P12 (invalid_database_definition)
 		INVALID_FUNCTION_DEFINITION = 50696324, // 42P13 (invalid_function_definition)
-		INVALID_PREPARED_STATEMENT_DEFINITION = 67473540, // 42P14 (invalid_prepared_statement_definition)
+		INVALID_PSTATEMENT_DEFINITION = 67473540, // 42P14 (invalid_prepared_statement_definition)
 		INVALID_SCHEMA_DEFINITION = 84250756, // 42P15 (invalid_schema_definition)
 		INVALID_TABLE_DEFINITION = 101027972, // 42P16 (invalid_table_definition)
 		INVALID_OBJECT_DEFINITION = 117805188, // 42P17 (invalid_object_definition)
 		#endregion
 
-		#region Class 44 — WITH CHECK OPTION Violation
+		#region Class 44 - WITH CHECK OPTION Violation
 		WITH_CHECK_OPTION_VIOLATION = 260, // 44000 (with_check_option_violation)
 		#endregion
 
-		#region Class 53 — Insufficient Resources
+		#region Class 53 - Insufficient Resources
 		INSUFFICIENT_RESOURCES = 197, // 53000 (insufficient_resources)
 		DISK_FULL = 4293, // 53100 (disk_full)
 		OUT_OF_MEMORY = 8389, // 53200 (out_of_memory)
@@ -381,21 +413,21 @@ namespace Pqsql
 		CONFIGURATION_LIMIT_EXCEEDED = 16581, // 53400 (configuration_limit_exceeded)
 		#endregion
 
-		#region Class 54 — Program Limit Exceeded
+		#region Class 54 - Program Limit Exceeded
 		PROGRAM_LIMIT_EXCEEDED = 261, // 54000 (program_limit_exceeded)
 		STATEMENT_TOO_COMPLEX = 16777477, // 54001 (statement_too_complex)
 		TOO_MANY_COLUMNS = 17039621, // 54011 (too_many_columns)
 		TOO_MANY_ARGUMENTS = 50856197, // 54023 (too_many_arguments)
 		#endregion
 
-		#region Class 55 — Object Not In Prerequisite State
+		#region Class 55 - Object Not In Prerequisite State
 		OBJECT_NOT_IN_PREREQUISITE_STATE = 325, // 55000 (object_not_in_prerequisite_state)
 		OBJECT_IN_USE = 100663621, // 55006 (object_in_use)
 		CANT_CHANGE_RUNTIME_PARAM = 33657157, // 55P02 (cant_change_runtime_param)
 		LOCK_NOT_AVAILABLE = 50434373, // 55P03 (lock_not_available)
 		#endregion
 
-		#region Class 57 — Operator Intervention
+		#region Class 57 - Operator Intervention
 		OPERATOR_INTERVENTION = 453, // 57000 (operator_intervention)
 		QUERY_CANCELED = 67371461, // 57014 (query_canceled)
 		ADMIN_SHUTDOWN = 16880069, // 57P01 (admin_shutdown)
@@ -404,23 +436,23 @@ namespace Pqsql
 		DATABASE_DROPPED = 67211717, // 57P04 (database_dropped)
 		#endregion
 
-		#region Class 58 — System Error (errors external to PostgreSQL itself)
+		#region Class 58 - System Error (errors external to PostgreSQL itself)
 		SYSTEM_ERROR = 517, // 58000 (system_error)
 		IO_ERROR = 786949, // 58030 (io_error)
 		UNDEFINED_FILE = 16880133, // 58P01 (undefined_file)
 		DUPLICATE_FILE = 33657349, // 58P02 (duplicate_file)
 		#endregion
 
-		#region Class 72 — Snapshot Failure
+		#region Class 72 - Snapshot Failure
 		SNAPSHOT_TOO_OLD = 135, // 72000 (snapshot_too_old)
 		#endregion
 
-		#region Class F0 — Configuration File Error
+		#region Class F0 - Configuration File Error
 		CONFIG_FILE_ERROR = 15, // F0000 (config_file_error)
 		LOCK_FILE_EXISTS = 16777231, // F0001 (lock_file_exists)
 		#endregion
 
-		#region Class HV — Foreign Data Wrapper Error (SQL/MED)
+		#region Class HV - Foreign Data Wrapper Error (SQL/MED)
 		FDW_ERROR = 2001, // HV000 (fdw_error)
 		FDW_COLUMN_NAME_NOT_FOUND = 83888081, // HV005 (fdw_column_name_not_found)
 		FDW_DYNAMIC_PARAMETER_VALUE_NEEDED = 33556433, // HV002 (fdw_dynamic_parameter_value_needed)
@@ -450,7 +482,7 @@ namespace Pqsql
 		FDW_UNABLE_TO_ESTABLISH_CONNECTION = 385877969, // HV00N (fdw_unable_to_establish_connection)
 		#endregion
 
-		#region Class P0 — PL/pgSQL Error
+		#region Class P0 - PL/pgSQL Error
 		PLPGSQL_ERROR = 25, // P0000 (plpgsql_error)
 		RAISE_EXCEPTION = 16777241, // P0001 (raise_exception)
 		NO_DATA_FOUND = 33554457, // P0002 (no_data_found)
@@ -458,7 +490,7 @@ namespace Pqsql
 		ASSERT_FAILURE = 67108889, // P0004 (assert_failure)
 		#endregion
 
-		#region Class XX — Internal Error
+		#region Class XX - Internal Error
 		INTERNAL_ERROR = 2145, // XX000 (internal_error)
 		DATA_CORRUPTED = 16779361, // XX001 (data_corrupted)
 		INDEX_CORRUPTED = 33556577, // XX002 (index_corrupted)
