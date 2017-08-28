@@ -21,13 +21,13 @@
 	#endif /* DECLSPEC */
 #endif /* _WIN32 */
 
-
-/* BYTESWAP for network byte order */
-
 #ifdef _WIN32
+	/* BYTESWAP for network byte order */
 	#define BYTESWAP2(x) _byteswap_ushort(x)
 	#define BYTESWAP4(x) _byteswap_ulong(x)
 	#define BYTESWAP8(x) _byteswap_uint64(x)
+
+	#define strcasecmp(s1,s2) _stricmp(s1, s2)
 #endif /* _WIN32 */
 
 #ifndef __has_builtin /* Optional of course */

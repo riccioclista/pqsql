@@ -122,6 +122,7 @@
     <ClCompile Include="pqbinfmt.c" />
     <ClCompile Include="pqbincopy.c" />
     <ClCompile Include="pqparam_buffer.c" />
+    <ClCompile Include="pqparse.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common\fe_memutils.h" />
@@ -138,6 +139,7 @@
     <ClInclude Include="pqbincopy.h" />
     <ClInclude Include="pqbinfmt_config.h" />
     <ClInclude Include="pqparam_buffer.h" />
+    <ClInclude Include="pqparse.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="libpqbinfmt.rc" />
