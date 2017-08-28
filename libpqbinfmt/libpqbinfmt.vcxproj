@@ -83,14 +83,12 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <ExceptionHandling>false</ExceptionHandling>
-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <DisableLanguageExtensions>false</DisableLanguageExtensions>
       <CallingConvention>FastCall</CallingConvention>
       <CompileAs>CompileAsC</CompileAs>
-      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>FRONTEND;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
@@ -112,9 +110,12 @@
       <CallingConvention>FastCall</CallingConvention>
       <EnablePREfast>true</EnablePREfast>
       <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_WINDLL;FRONTEND;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="common\fe_memutils.c" />
+    <ClCompile Include="fe_utils\psqlscan.c" />
     <ClCompile Include="pqbinfmt_array.c" />
     <ClCompile Include="pgadt\float.c" />
     <ClCompile Include="pgadt\numeric.c" />
@@ -123,6 +124,9 @@
     <ClCompile Include="pqparam_buffer.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="common\fe_memutils.h" />
+    <ClInclude Include="fe_utils\psqlscan.h" />
+    <ClInclude Include="fe_utils\psqlscan_int.h" />
     <ClInclude Include="pgadt\builtins.h" />
     <ClInclude Include="pgadt\c.h" />
     <ClInclude Include="pgadt\fmgr.h" />
