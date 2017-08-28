@@ -1,13 +1,18 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Text;
 using System.Data.Common;
 using System.ComponentModel;
 using System.Data;
+using System.Globalization;
+using System.Linq;
+using System.Runtime.InteropServices;
 #if CODECONTRACTS
 using System.Diagnostics.Contracts;
 #endif
 
 using PqsqlWrapper = Pqsql.UnsafeNativeMethods.PqsqlWrapper;
+using PqsqlBinaryFormat = Pqsql.UnsafeNativeMethods.PqsqlBinaryFormat;
 
 namespace Pqsql
 {
@@ -504,7 +509,7 @@ namespace Pqsql
 			switch(CommandType)
 			{
 				case CommandType.Text:
-					statements = ParseStatements();
+					statements = ParseStatements().ToArray();
 					break;
 
 				case CommandType.StoredProcedure:
@@ -694,246 +699,138 @@ namespace Pqsql
 
 		#region parse sql statements and replace parameter names
 
-		// statement parser states
-		const int QUOTE = (1 << 0);
-		const int DOLLARQUOTE = (1 << 1);
-		const int DOLLARQUOTE0 = (1 << 2);
-		const int DOLLARQUOTE1 = (1 << 3);
-		const int PARAM0 = (1 << 4);
-		const int PARAM1 = (1 << 5);
-		const int ESCAPE = (1 << 6);
-
-
-		// resize statements to i+1, and set i to sb
-		private static bool ResizeAndSetStatements(ref StringBuilder statement, ref string[] statements, int i)
-		{
-#if CODECONTRACTS
-			Contract.Requires<ArgumentNullException>(statements != null);
-			Contract.Requires<ArgumentNullException>(statement != null);
-			Contract.Requires<ArgumentNullException>(i >= 0);
-			Contract.Ensures(statement != null);
-			Contract.Ensures(statements != null);
-#else
-			if (statements == null)
-				throw new ArgumentNullException(nameof(statements));
-			if (statement == null)
-				throw new ArgumentNullException(nameof(statement));
-
-			if (i < 0)
-				throw new ArgumentOutOfRangeException(nameof(i));
-#endif
-
-			string stm = statement.ToString().TrimStart();
-			bool isnonempty = !string.IsNullOrWhiteSpace(stm);
-
-			// ignore empty statements
-			if (isnonempty)
-			{
-				Array.Resize(ref statements, i + 1);
-				statements[i] = stm;
-			}
-			statement.Clear();
-
-			return isnonempty;
-		}
-
-		// replace parameter name with $ index in statement
-		private void ReplaceParameter(ref StringBuilder statement, ref StringBuilder paramName, ref StringBuilder paramIndex)
-		{
-#if CODECONTRACTS
-			Contract.Requires<ArgumentNullException>(statement != null);
-			Contract.Requires<ArgumentNullException>(paramName != null);
-			Contract.Requires<ArgumentNullException>(paramIndex != null);
-			Contract.Ensures(statement != null);
-			Contract.Ensures(paramName != null);
-			Contract.Ensures(paramIndex != null);
-#else
-			if (statement == null)
-				throw new ArgumentNullException(nameof(statement));
-			if (paramName == null)
-				throw new ArgumentNullException(nameof(paramName));
-			if (paramIndex == null)
-				throw new ArgumentNullException(nameof(paramIndex));
-#endif
-
-			string p = paramName.ToString();
-			int j = mParams.IndexOf(p);
-
-			if (j < 0)
-				throw new PqsqlException("Could not find parameter «" + p + "» in PqsqlCommand.Parameters", (int) PqsqlState.UNDEFINED_PARAMETER);
-
-			paramIndex.Append(j + 1);
-			statement.Append(paramIndex);
-
-			paramIndex.Length = 1;
-			paramName.Length = 1;
-		}
-
 		/// <summary>
 		/// split PqsqlCommand.CommandText into an array of sub-statements
 		/// </summary>
 		/// <returns></returns>
-		private string[] ParseStatements()
+		private IEnumerable<string> ParseStatements()
 		{
 #if CODECONTRACTS
-			Contract.Ensures(Contract.Result<string[]>() != null);
+			Contract.Ensures(Contract.Result<IEnumerable<string>>() != null);
 #endif
 
-			string[] statements = new string[0];
+			IntPtr pstate = IntPtr.Zero;
+			IntPtr varArray = IntPtr.Zero;	
 
-			int parsingState = 0; // 1...quote, 2...dollarQuote, ...
-
-			StringBuilder stmt = new StringBuilder(); // buffer for current statement
-			int stmtNum = 0; // index in statements
-			
-			StringBuilder paramName = new StringBuilder();  // :param
-			paramName.Append(':');
-			StringBuilder paramIndex = new StringBuilder(); // $i
-			paramIndex.Append('$');
-
-#if CODECONTRACTS
-			Contract.Assume(CommandText != null);
-#endif
-
-			//
-			// parse multiple statements separated by ';'
-			// - ignore ', ", and $$ quotation
-			// - escape character \ during quotation
-			// - replace :[a-zA-Z0-9_]+ parameter names with $ index
-			//
-			foreach (char c in CommandText.Trim())
+			try
 			{
-				if ((parsingState & (QUOTE | ESCAPE)) == (QUOTE | ESCAPE)) // eat next character, continue without ESCAPE
+				unsafe
 				{
-					parsingState &= ~ESCAPE;
-				}
-				else if ((parsingState & QUOTE) == QUOTE) // eat input until next quote symbol
-				{
-					switch (c)
+					int offset = 0;
+					varArray = Marshal.AllocHGlobal((mParams.Count + 1) * sizeof(sbyte*));
+					
+					foreach (PqsqlParameter param in mParams)
 					{
-						case '\\':
-							parsingState |= ESCAPE;
-							break;
+						// always write NULL before we continue, so finally clause can clean up properly
+						// if we get hit by an exception
+						Marshal.WriteIntPtr(varArray, offset, IntPtr.Zero);
 
-						case '\'':
-						case '"':
-							stmt.Append(c);
-							parsingState &= ~QUOTE;
-							continue;
+						string psqlParamName = param.PsqlParameterName;
+
+						// psql-specific: characters allowed in variable names: [A-Za-z\200-\377_0-9]
+						// we only allow lowercase [a-z0-9_], as PsqlParameter always stores parameter names in lowercase
+						char invalid = psqlParamName.FirstOrDefault(c => !(c >= 'a' && c <= 'z') && !char.IsDigit(c) && c != '_');
+						if (invalid != default(char))
+						{
+							string msg = string.Format(CultureInfo.InvariantCulture, "Parameter name «{0}» contains invalid character «{1}»", psqlParamName, invalid);
+							throw new PqsqlException(msg, (int) PqsqlState.SYNTAX_ERROR);
+						}
+
+						// variable names are pure ascii
+						byte[] paramNameArray = Encoding.ASCII.GetBytes(psqlParamName);
+						int len = paramNameArray.Length;
+
+						// we need a null-terminated variable string
+						IntPtr varString = Marshal.AllocHGlobal(len + 1);
+						Marshal.Copy(paramNameArray, 0, varString, len);
+						Marshal.WriteByte(varString, len, 0);
+
+						Marshal.WriteIntPtr(varArray, offset, varString);
+						offset += sizeof(sbyte*);
+					}
+
+					Marshal.WriteIntPtr(varArray, offset, IntPtr.Zero);
+				}
+				
+				// varArray pointers must be valid during parsing
+				pstate = PqsqlBinaryFormat.pqparse_init(varArray);
+
+				// always terminate CommandText with a ; (prevents unnecessary re-parsing)
+				string commands = CommandText.TrimEnd();
+				if (!commands.EndsWith(";", StringComparison.Ordinal))
+				{
+					commands += ';';
+				}
+
+				byte[] statementsString = PqsqlUTF8Statement.CreateUTF8Statement(commands);
+
+				// add a semicolon-separated list of UTF-8 statements
+				int parsingState = PqsqlBinaryFormat.pqparse_add_statements(pstate, statementsString);
+
+				if (parsingState != 0)
+				{
+					string msg = string.Format(CultureInfo.InvariantCulture, "Syntax error in «{0}»", CommandText);
+					throw new PqsqlException(msg, (int) PqsqlState.SYNTAX_ERROR);
+				}
+
+				uint num = PqsqlBinaryFormat.pqparse_num_statements(pstate);
+
+				string[] statements = new string[num];
+
+				// the null-terminated array of UTF-8 statement strings
+				IntPtr sptr = PqsqlBinaryFormat.pqparse_get_statements(pstate);
+
+				if (num > 0 && sptr != IntPtr.Zero)
+				{
+					unsafe
+					{
+						for (int i = 0; i < num; i++)
+						{
+							sbyte** stm = (sbyte**) sptr.ToPointer();
+
+							if (stm == null || *stm == null)
+								break;
+
+							// convert UTF-8 to UTF-16
+							statements[i] = PqsqlUTF8Statement.CreateStringFromUTF8(new IntPtr(*stm));
+							sptr = IntPtr.Add(sptr, sizeof(sbyte*));
+						}					
 					}
 				}
-				else if ((parsingState & PARAM0) == PARAM0) // did we really ran into :[a-zA-Z0-9_]+ ?
-				{
-					if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_') // :[a-zA-Z0-9_]+
-					{
-						paramName.Append(c); // start eating first character of form [a-zA-Z0-9_]
-						parsingState |= PARAM1;
-						parsingState &= ~PARAM0;
-					}
-					else // we probably ran into :: or :=
-					{
+
 #if CODECONTRACTS
-						Contract.Assert(stmt != null);
+				Contract.Assert(statements != null);
+				Contract.Assert(statements.Length == num);
 #endif
-						stmt.Append(':'); // take first : and put it back
-						stmt.Append(c); // take current character and put it back
-						paramName.Length = 1;
-						parsingState &= ~(PARAM0 | PARAM1);
-					}
-					continue;
-				}
-				else if ((parsingState & PARAM1) == PARAM1) // save parameter name to paramName; replace with $ index
-				{
-					if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_') // :[a-zA-Z0-9_]+
-					{
-						paramName.Append(c); // eat parameter name of form [a-zA-Z0-9_]
-						continue;
-					}
 
-					// replace parameter name with $ index
-#if CODECONTRACTS
-					Contract.Assert(stmt != null);
-					Contract.Assert(paramIndex != null);
-					Contract.Assert(paramName != null);
-#endif
-					ReplaceParameter(ref stmt, ref paramName, ref paramIndex);
-
-					// now continue with parsing statement(s)
-					parsingState &= ~(PARAM0 | PARAM1);
-				}
-				else if ((parsingState & (DOLLARQUOTE0 | DOLLARQUOTE1)) == (DOLLARQUOTE0 | DOLLARQUOTE1)) // found $$ previously, ignore everything except $
+				return from statement in statements
+					   where !string.IsNullOrWhiteSpace(statement) && statement != ";"
+					   select statement;
+			}
+			finally
+			{
+				if (pstate != IntPtr.Zero)
 				{
-					if (c == '$') parsingState &= ~DOLLARQUOTE1;
-				}
-				else if ((parsingState & DOLLARQUOTE0) == DOLLARQUOTE0) // found $ before
-				{
-					if (char.IsDigit(c)) // we might parse $[0-9]
-					{
-						if ((parsingState & DOLLARQUOTE) == DOLLARQUOTE)
-							parsingState |= DOLLARQUOTE1; // back to $$ mode
-						else
-							parsingState &= ~DOLLARQUOTE0; // found $[0-9] outside of $$, back to standard mode
-					}
-					else if (c == '$') // no digit after $, check for closing/beginning $
-					{
-						if ((parsingState & DOLLARQUOTE) == DOLLARQUOTE)
-							parsingState &= ~(DOLLARQUOTE | DOLLARQUOTE0); // closing $$
-						else
-							parsingState |= (DOLLARQUOTE | DOLLARQUOTE0); // beginning $$
-					}
+					PqsqlBinaryFormat.pqparse_destroy(pstate);
 				}
 
-				// before we save, check whether we need to update the parsingState
-				if (parsingState == 0) 
+				if (varArray != IntPtr.Zero)
 				{
-					switch (c) // eat input until ; with quotation and parameter dispatching
+					unsafe
 					{
-						case '$':
-							parsingState |= (DOLLARQUOTE | DOLLARQUOTE0);
-							break;
+						for (int i = mParams.Count - 1; i >= 0; i--)
+						{
+							IntPtr varPtr = Marshal.ReadIntPtr(varArray, i * sizeof(sbyte*));
 
-						case '\'':
-						case '"':
-							parsingState |= QUOTE;
-							break;
-
-						case ':':
-							parsingState |= PARAM0;
-						  continue;
-
-						case ';':
-#if CODECONTRACTS
-							Contract.Assert(stmt != null);
-#endif
-							if (ResizeAndSetStatements(ref stmt, ref statements, stmtNum))
+							if (varPtr != IntPtr.Zero)
 							{
-								stmtNum++;
+								Marshal.FreeHGlobal(varPtr);
 							}
-							continue;
+						}
 					}
+					Marshal.FreeHGlobal(varArray);
 				}
-
-				// save character into next statement
-				stmt.Append(c);
 			}
-
-#if CODECONTRACTS
-			Contract.Assert(stmt != null);
-			Contract.Assert(statements != null);
-#endif
-			if (stmt.Length > 0) // add last statement not terminated by ';'
-			{
-				if (paramName.Length > 1) // did not finish replacing parameter name
-					ReplaceParameter(ref stmt, ref paramName, ref paramIndex);
-
-				ResizeAndSetStatements(ref stmt, ref statements, stmtNum);
-			}
-
-#if CODECONTRACTS
-			Contract.Assert(Contract.ForAll(statements, s => !string.IsNullOrWhiteSpace(s)));
-#endif
-
-			return statements;
 		}
 
 		#endregion
