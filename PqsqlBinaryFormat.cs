@@ -123,6 +123,25 @@ namespace Pqsql
 
 			#endregion
 
+			#region interface to pqparse statement parser
+
+			[DllImport("libpqbinfmt.dll")]
+			public static extern IntPtr pqparse_init(IntPtr variables);
+
+			[DllImport("libpqbinfmt.dll")]
+			public static extern void pqparse_destroy(IntPtr pstate);
+
+			[DllImport("libpqbinfmt.dll")]
+			public static extern uint pqparse_num_statements(IntPtr pstate);
+
+			[DllImport("libpqbinfmt.dll")]
+			public static extern IntPtr pqparse_get_statements(IntPtr pstate);
+
+			[DllImport("libpqbinfmt.dll")]
+			public static extern int pqparse_add_statements(IntPtr pstate, byte[] buffer);
+
+			#endregion
+
 			#region PQExpBuffer
 
 			[DllImport("libpqbinfmt.dll")]
