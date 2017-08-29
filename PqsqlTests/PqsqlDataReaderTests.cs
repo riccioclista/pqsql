@@ -457,19 +457,50 @@ namespace PqsqlTests
 		public void PqsqlDataReaderTest7()
 		{
 			// test UTF-8 column names roundtrip
-			mCmd.CommandText = "select 12345 as \"€₺£$¥\", 67890 as \"⣿⣶⣤⣀⠀\"";
+			mCmd.CommandText = "select 12345 as \"€₺£$¥\", 67890 as \"⣿⣶⣤⣀⠀\";";
 
-			PqsqlDataReader reader = mCmd.ExecuteReader();
+			using (PqsqlDataReader reader = mCmd.ExecuteReader())
+			{
+				reader.Read();
 
-			reader.Read();
+				string c0 = reader.GetName(0);
+				string c1 = reader.GetName(1);
 
-			string c0 = reader.GetName(0);
-			string c1 = reader.GetName(1);
+				Assert.AreEqual("€₺£$¥", c0);
+				Assert.AreEqual("⣿⣶⣤⣀⠀", c1);
+			}
 
-			Assert.AreEqual("€₺£$¥", c0);
-			Assert.AreEqual("⣿⣶⣤⣀⠀", c1);
+			// test lower/upper parameter names roundtrip
+			mCmd.CommandText = "select :P0 as \"零\", :P1 as \"一\", :p2 as \"二\", :p3 as \"三\" ;";
+			mCmd.Parameters.AddWithValue("p0", 0);
+			mCmd.Parameters.AddWithValue("p1", 1);
+			mCmd.Parameters.AddWithValue("P2", 2);
+			mCmd.Parameters.AddWithValue("P3", 3);
 
-			reader.Close();
+			using (PqsqlDataReader reader = mCmd.ExecuteReader())
+			{
+				reader.Read();
+
+				string c0 = reader.GetName(0);
+				string c1 = reader.GetName(1);
+				string c2 = reader.GetName(2);
+				string c3 = reader.GetName(3);
+
+				int i0 = reader.GetInt32(0);
+				int i1 = reader.GetInt32(1);
+				int i2 = reader.GetInt32(2);
+				int i3 = reader.GetInt32(3);
+
+				Assert.AreEqual(0, i0);
+				Assert.AreEqual(1, i1);
+				Assert.AreEqual(2, i2);
+				Assert.AreEqual(3, i3);
+
+				Assert.AreEqual("零", c0);
+				Assert.AreEqual("一", c1);
+				Assert.AreEqual("二", c2);
+				Assert.AreEqual("三", c3);
+			}
 		}
 
 		[TestMethod]
