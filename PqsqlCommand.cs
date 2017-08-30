@@ -587,14 +587,10 @@ namespace Pqsql
 			Contract.Ensures(Contract.Result<string[]>() != null);
 #endif
 
-			string[] statements = new string[1];
-
 			StringBuilder tq = new StringBuilder(mTableString);
 			tq.Append(CommandText);
 
-			statements[0] = tq.ToString();
-
-			return statements;
+			return new string[] { tq.ToString() };
 		}
 
 		private string[] BuildStoredProcStatement()
@@ -603,35 +599,51 @@ namespace Pqsql
 			Contract.Ensures(Contract.Result<string[]>() != null);
 #endif
 
-			string[] statements = new string[1];
-
-			StringBuilder spq = new StringBuilder();
-			spq.Append(mStoredProcString);
+			StringBuilder spq = new StringBuilder(mStoredProcString);
 			spq.Append(CommandText);
 			spq.Append('(');
 
 			// add parameter index $i for each IN and INOUT parameter
 			int i = 1;
 			bool comma = false;
+
+			// in and inout parameter are positional in PqsqlParameterBuffer
+			// out, inout, and return values are set using their column names in PqsqlDataReader
+
 			foreach (PqsqlParameter p in Parameters)
 			{
-				if (p.Direction == ParameterDirection.Output) // skip output parameters
+				ParameterDirection direction = p.Direction;
+
+				if (direction == ParameterDirection.Output || direction == ParameterDirection.ReturnValue)
 					continue;
-				
+
 				if (comma)
 				{
 					spq.Append(',');
 				}
 				spq.Append('$');
 				spq.Append(i++);
-				comma = true;			
+				comma = true;
 			}
 
-			spq.Append(')');
+			// we create the query string
+			//    select * from Func($1,...) as "Func";
+			// when CommandText == "Func"
+			//
+			// + if func(.) defines out/inout variables (prorettype is record),
+			//   then the result columns will just be named after the output variables.
+			// + otherwise, if func(.) has prorettype != record
+			//   (e.g., create function (i int) returns int as 'begin return i; end' ...),  then we
+			//   get a predictable output column name called "Func" in the result record. The
+			//   problem is that whenever we prefix the function name with a schema name or use
+			//   mixed-case CommandText strings (e.g., "public"."func" or FuNc), the result column
+			//   would just be called "func" without "as \"Func\"".
 
-			statements[0] = spq.ToString();
+			spq.Append(") as \"");
+			spq.Append(CommandText.Trim().Replace("\"", "\"\"")); // escape double quotes
+			spq.Append("\";");
 
-			return statements;
+			return new string[] { spq.ToString() };
 		}
 
 		// open connection if it is closed or broken

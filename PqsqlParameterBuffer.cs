@@ -128,7 +128,9 @@ namespace Pqsql
 			if (parameter == null)
 				throw new ArgumentNullException(nameof(parameter));
 
-			if (parameter.Direction == ParameterDirection.Output) // skip output parameters
+			ParameterDirection direction = parameter.Direction;
+			// skip output parameters and return values
+			if (direction == ParameterDirection.Output || direction == ParameterDirection.ReturnValue)
 				return;
 
 			PqsqlDbType oid = parameter.PqsqlDbType;
