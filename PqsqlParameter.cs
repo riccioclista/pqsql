@@ -169,6 +169,27 @@ namespace Pqsql
 				mName = CanonicalParameterName(value);
 			}
 		}
+
+		//
+		// Summary:
+		//     Gets or sets the name of the System.Data.Common.DbParameter.
+		//
+		// Returns:
+		//     The name of the System.Data.Common.DbParameter. The default is an empty string
+		//     ("").
+		[DefaultValue("")]
+		internal string PsqlParameterName
+		{
+			get
+			{
+#if CODECONTRACTS
+				Contract.Ensures(Contract.Result<System.String>() != null);
+#endif
+
+				return string.IsNullOrEmpty(mName) ? string.Empty : mName.Substring(1);
+			}
+		}
+
 		//
 		// Summary:
 		//     Gets or sets the maximum size, in bytes, of the data within the column.
