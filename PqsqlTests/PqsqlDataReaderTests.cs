@@ -613,5 +613,32 @@ namespace PqsqlTests
 				reader.Close();
 			}
 		}
+
+		[TestMethod]
+		public void PqsqlDataReaderTest10()
+		{
+			mCmd.CommandText = @"select timestamp 'now', date 'now', time 'now';";
+
+			TimeSpan time = DateTime.UtcNow.TimeOfDay;
+			using (PqsqlDataReader reader = mCmd.ExecuteReader())
+			{
+				Assert.IsTrue(reader.HasRows);
+
+				reader.Read();
+
+				DateTime c0 = reader.GetDateTime(0);
+				DateTime c1 = reader.GetDateTime(1);
+				DateTime c2 = reader.GetDateTime(2);
+
+				Assert.AreEqual(DateTime.Today, c0 - c0.TimeOfDay);
+				Assert.AreEqual(DateTime.Today, c1);
+
+				// only compare hours and minutes
+				Assert.AreEqual(time.Hours, c2.TimeOfDay.Hours);
+				Assert.AreEqual(time.Minutes, c2.TimeOfDay.Minutes);
+
+				reader.Close();
+			}
+		}
 	}
 }
