@@ -3,6 +3,7 @@ using System.Data.Common;
 using System.Data;
 using System.ComponentModel;
 using System.Globalization;
+using System.Text;
 #if CODECONTRACTS
 using System.Diagnostics.Contracts;
 #endif
@@ -11,14 +12,24 @@ using PqsqlWrapper = Pqsql.UnsafeNativeMethods.PqsqlWrapper;
 
 namespace Pqsql
 {
+	// see https://www.postgresql.org/docs/current/static/runtime-config-client.html
+	internal static class PqsqlClientConfiguration
+	{
+		internal const string StatementTimeout = "statement_timeout";
+	}
+
+	// see https://www.postgresql.org/docs/current/static/libpq-status.html#LIBPQ-PQPARAMETERSTATUS
+	internal static class PqsqlServerParameterSetting
+	{
+		internal static readonly byte[] TimeZone = PqsqlUTF8Statement.CreateUTF8Statement("TimeZone");
+	}
+
 	// When you inherit from DbConnection, you must override the following members:
 	// Close, BeginDbTransaction, ChangeDatabase, CreateDbCommand, Open, and StateChange. 
 	// You must also provide the following properties:
 	// ConnectionString, Database, DataSource, ServerVersion, and State.
 	public sealed class PqsqlConnection : DbConnection
 	{
-		private static readonly byte[] mTimeZoneParameter = PqsqlUTF8Statement.CreateUTF8Statement("TimeZone");
-
 		#region libpq connection
 
 		/// <summary>
@@ -302,25 +313,7 @@ namespace Pqsql
 				Contract.Ensures(Contract.Result<System.String>() != null);
 #endif
 
-				if (mConnection == IntPtr.Zero)
-					return string.Empty;
-
-				string tz;
-
-				unsafe
-				{
-					fixed (byte* timezone = mTimeZoneParameter)
-					{
-						sbyte* tzb = PqsqlWrapper.PQparameterStatus(mConnection, timezone);
-
-						if (tzb == null)
-							tz = string.Empty;
-						else
-							tz = new string(tzb); // TODO UTF-8 encoding ignored here!
-					}
-				}
-
-				return tz;
+				return GetParameterStatus(PqsqlServerParameterSetting.TimeZone);
 			}
 		}
 
@@ -602,6 +595,10 @@ namespace Pqsql
 
 				OnStateChange(new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open));
 
+				// always set application_name, after a DISCARD ALL (usually issued by PqsqlConnectionPool / pgbouncer)
+				// the session information is gone forever, and the shared connection will drop application_name
+				SetApplicationName();
+
 				// successfully reestablished connection
 				return;
 			}
@@ -629,6 +626,10 @@ namespace Pqsql
 			mNewConnectionString = false;
 
 			OnStateChange(new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open));
+
+			// always set application_name, after a DISCARD ALL (usually issued by PqsqlConnectionPool / pgbouncer)
+			// the session information is gone forever, and the shared connection will drop application_name
+			SetApplicationName();
 		}
 
 		// call PQexec and immediately discard PGresult struct
@@ -713,6 +714,67 @@ namespace Pqsql
 
 		#endregion
 
+
+		#region session parameter
+
+		// executes SET parameter=value
+		internal void SetSessionParameter(string parameter, object value)
+		{
+			if (mConnection == IntPtr.Zero)
+				throw new InvalidOperationException("cannot set session parameter on closed connection");
+
+			if (string.IsNullOrEmpty(parameter))
+				throw new ArgumentOutOfRangeException(nameof(parameter), "parameter out of range");
+
+			if (value == null)
+				throw new ArgumentNullException(nameof(value));
+
+			StringBuilder sb = new StringBuilder();
+			sb.Append("set ");
+			sb.Append(parameter);
+			sb.Append('=');
+			sb.Append(value);
+
+			byte[] stmt = PqsqlUTF8Statement.CreateUTF8Statement(sb);
+			ExecStatusType s = Exec(stmt);
+
+			if (s != ExecStatusType.PGRES_COMMAND_OK)
+			{
+				string err = GetErrorMessage();
+				string msg = string.Format(CultureInfo.InvariantCulture, "Could not set «{0}» to «{1}»: {2}", parameter, value, err);
+				throw new PqsqlException(msg);
+			}
+		}
+
+		// set application_name="ApplicationName"
+		private void SetApplicationName()
+		{
+			string app = ApplicationName;
+
+			if (!string.IsNullOrEmpty(app))
+			{
+				SetSessionParameter(PqsqlConnectionStringBuilder.application_name, "\"" + app + "\"");
+			}
+		}
+
+		// see https://www.postgresql.org/docs/current/static/libpq-status.html#LIBPQ-PQPARAMETERSTATUS
+		private string GetParameterStatus(byte[] param)
+		{
+			if (mConnection == IntPtr.Zero || param == null)
+				return string.Empty;
+
+			unsafe
+			{
+				sbyte* parameterStatus = PqsqlWrapper.PQparameterStatus(mConnection, param);
+
+				if (parameterStatus == null)
+					return string.Empty;
+
+				return new string(parameterStatus); // TODO UTF-8 encoding ignored here!
+			}
+		}
+
+		#endregion
 
 		#region Dispose
 

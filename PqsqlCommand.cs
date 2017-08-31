@@ -18,8 +18,6 @@ namespace Pqsql
 {
 	public sealed class PqsqlCommand : DbCommand
 	{
-		private const string mStatementTimeoutString = "statement_timeout";
-
 		private const string mStoredProcString = "select * from ";
 
 		private const string mTableString = "table ";
@@ -537,21 +535,12 @@ namespace Pqsql
 			Contract.Assert(mConn != null);
 #endif
 
-			// always set application_name, after a DISCARD ALL (usually issued by pgbouncer)
-			// the session information is gone forever, and the shared connection will drop
-			// application_name
-			string appname = mConn.ApplicationName;
-			if (!string.IsNullOrEmpty(appname))
-			{
-				SetSessionParameter(PqsqlConnectionStringBuilder.application_name, appname, true);
-			}
-
 			// always try to set statement_timeout, the session started 
 			// with the PqsqlDataReader below will then have this timeout
-			// until we return
+			// until we issue the next CommandTimeout
 			if (mCmdTimeout > 0)
 			{
-				SetSessionParameter(mStatementTimeoutString, CommandTimeout, false);
+				mConn.SetSessionParameter(PqsqlClientConfiguration.StatementTimeout, CommandTimeout);
 			}
 
 			// save behavior
@@ -658,32 +647,6 @@ namespace Pqsql
 			if (s == ConnectionState.Closed || (s & ConnectionState.Broken) > 0)
 			{
 				mConn.Open();
-			}
-		}
-
-		// executes SET parameter=value
-		private void SetSessionParameter(string parameter, object value, bool quote)
-		{
-#if CODECONTRACTS
-			Contract.Assume(mConn != null);
-#endif
-
-			StringBuilder sb = new StringBuilder();
-			sb.Append("set ");
-			sb.Append(parameter);
-			sb.Append('=');
-
-			if (quote) sb.Append('"');
-			sb.Append(value);
-			if (quote) sb.Append('"');
-
-			byte[] stmt = PqsqlUTF8Statement.CreateUTF8Statement(sb);
-			ExecStatusType s = mConn.Exec(stmt);
-
-			if (s != ExecStatusType.PGRES_COMMAND_OK)
-			{
-				string err = mConn.GetErrorMessage();
-				throw new PqsqlException("Could not set " + parameter + " to «" + value + "»: " + err);
 			}
 		}
 
