@@ -291,6 +291,43 @@ namespace PqsqlTests
 			Assert.IsNotNull(s);
 			Assert.AreNotSame(string.Empty, s);
 		}
-		
+
+		[TestMethod]
+		public void PqsqlConnectionTest10()
+		{
+			PqsqlConnectionPool.Clear();
+
+			PqsqlConnection connection = new PqsqlConnection(connectionString);
+
+			connection.Open();
+			Assert.AreEqual(ConnectionState.Open, connection.State, "wrong connection state");
+
+			IntPtr pgConn = connection.PGConnection;
+			int client_encoding = PqsqlWrapper.PQclientEncoding(pgConn);
+			Assert.AreEqual((int) PgEnc.PG_UTF8, client_encoding, "wrong client_encoding");
+
+			// setup client_encoding to sqlascii, and leave it like that
+
+			byte[] encoding = PqsqlUTF8Statement.CreateUTF8Statement("sqlascii");
+			client_encoding = PqsqlWrapper.PQsetClientEncoding(pgConn, encoding);
+			Assert.AreEqual(0, client_encoding, "could not set client_encoding");
+
+			client_encoding = PqsqlWrapper.PQclientEncoding(pgConn);
+			Assert.AreEqual(0, client_encoding, "wrong client_encoding");
+
+			connection.Close();
+
+			// now try to get the same connection again
+
+			connection = new PqsqlConnection(connectionString);
+
+			connection.Open();
+			Assert.AreEqual(ConnectionState.Open, connection.State, "wrong connection state");
+
+			pgConn = connection.PGConnection;
+			client_encoding = PqsqlWrapper.PQclientEncoding(pgConn);
+			Assert.AreEqual((int)PgEnc.PG_UTF8, client_encoding, "wrong client_encoding");
+		}
+
 	}
 }
