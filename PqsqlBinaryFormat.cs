@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Diagnostics.Contracts;
+using System.Globalization;
 using System.Runtime.InteropServices;
 
 namespace Pqsql
@@ -30,7 +30,7 @@ namespace Pqsql
 
 			#endregion
 
-			#region timestamp and DateTime, Date, Time conversions
+			#region timestamp / date and DateTime conversions
 
 			public static void GetTimestamp(DateTime dt, out long sec, out int usec)
 			{
@@ -66,31 +66,61 @@ namespace Pqsql
 				}
 			}
 
-			public static long GetTicksFromDate(int date)
+			public static DateTime GetDateTimeFromDate(int year, int month, int day)
 			{
-				switch (date)
+				if (year == Int32.MaxValue && month == Int32.MaxValue && day == Int32.MaxValue)
 				{
-				case Int32.MinValue: // date '-infinity'
-					return DateTime.MinValue.Ticks;
-				case Int32.MaxValue: // date 'infinity'
-					return DateTime.MaxValue.Ticks;
-				default:
-					return UnixEpochTicks + date * TimeSpan.TicksPerSecond;
+					return DateTime.MaxValue;
 				}
+
+				if (year == Int32.MinValue && month == Int32.MinValue && day == Int32.MinValue)
+				{
+					return DateTime.MinValue;
+				}
+
+				if (year < 1 || year > 9999)
+				{
+					throw new ArgumentOutOfRangeException(string.Format(CultureInfo.InvariantCulture, "Year {0} out of range", year));
+				}
+
+				if (month < 1 || month > 12)
+				{
+					throw new ArgumentOutOfRangeException(string.Format(CultureInfo.InvariantCulture, "Month {0} out of range", month));
+				}
+
+				if (day < 1 || day > 31)
+				{
+					throw new ArgumentOutOfRangeException(string.Format(CultureInfo.InvariantCulture, "Day {0} out of range", day));
+				}
+
+				return new DateTime(year, month, day);
 			}
 
-			public static long GetTicksFromTime(long time)
+			public static void GetDate(DateTime dt, out int year, out int month, out int day)
 			{
-#if CODECONTRACTS
-				Contract.Assume(time >= 0);
-				Contract.Assume((UnixEpochTicks + time * TimeSpan.TicksPerSecond) <= DateTime.MaxValue.Ticks);
-#endif
-				return UnixEpochTicks + time * TimeSpan.TicksPerSecond;
+				if (dt == DateTime.MaxValue) // date 'infinity'
+				{
+					year = Int32.MaxValue;
+					month = Int32.MaxValue;
+					day = Int32.MaxValue;
+				}
+				else if (dt == DateTime.MinValue) // date '-infinity'
+				{
+					year = Int32.MinValue;
+					month = Int32.MinValue;
+					day = Int32.MinValue;
+				}
+				else
+				{
+					year = dt.Year;
+					month = dt.Month;
+					day = dt.Day;
+				}
 			}
 
 			#endregion
 
-			#region interval and TimeSpan conversions
+			#region interval / time / timetz and TimeSpan conversions
 
 			public static void GetInterval(TimeSpan ts, out long offset, out int day, out int month)
 			{
@@ -119,6 +149,45 @@ namespace Pqsql
 				}
 
 				return ts;
+			}
+
+			public static long GetTicksFromTime(int hour, int min, int sec, int fsec)
+			{
+				return hour * TimeSpan.TicksPerHour +
+					min * TimeSpan.TicksPerMinute +
+					sec * TimeSpan.TicksPerSecond +
+					fsec * UsecFactor;
+			}
+
+			public static void GetTime(TimeSpan ts, out int hour, out int min, out int sec, out int fsec)
+			{
+				hour = ts.Hours;
+				min = ts.Minutes;
+				sec = ts.Seconds;
+				fsec = (int)(ts.Ticks - (hour * TimeSpan.TicksPerHour) - (min * TimeSpan.TicksPerMinute) - (sec * TimeSpan.TicksPerSecond));
+				fsec = fsec / UsecFactor;
+			}
+
+			public static long GetTicksFromTimeTZ(int hour, int min, int sec, int fsec, int tz)
+			{
+				// calculate offset relative to localtime
+				int offsetSeconds = (int) TimeZoneInfo.Local.BaseUtcOffset.TotalSeconds - tz;
+
+				return hour * TimeSpan.TicksPerHour +
+					min * TimeSpan.TicksPerMinute +
+					sec * TimeSpan.TicksPerSecond +
+					fsec * UsecFactor +
+					offsetSeconds * TimeSpan.TicksPerSecond;
+			}
+
+			public static void GetTimeTZ(TimeSpan ts, out int hour, out int min, out int sec, out int fsec, out int tz)
+			{
+				hour = ts.Hours;
+				min = ts.Minutes;
+				sec = ts.Seconds;
+				fsec = (int)(ts.Ticks - (hour * TimeSpan.TicksPerHour) - (min * TimeSpan.TicksPerMinute) - (sec * TimeSpan.TicksPerSecond));
+				fsec = fsec / UsecFactor;
+				tz = (int) TimeZoneInfo.Local.BaseUtcOffset.TotalSeconds; // interpret ts as localtime
 			}
 
 			#endregion
@@ -231,6 +300,15 @@ namespace Pqsql
 			public static extern void pqbf_add_timestamp(IntPtr pbb, long sec, int usec, uint oid);
 
 			[DllImport("libpqbinfmt.dll")]
+			public static extern void pqbf_add_date(IntPtr p, int year, int month, int day);
+
+			[DllImport("libpqbinfmt.dll")]
+			public static extern void pqbf_add_time(IntPtr p, int hour, int min, int sec, int fsec);
+
+			[DllImport("libpqbinfmt.dll")]
+			public static extern void pqbf_add_timetz(IntPtr p, int hour, int min, int sec, int fsec, int tz);
+
+			[DllImport("libpqbinfmt.dll")]
 			public static extern void pqbf_add_array(IntPtr pbb, IntPtr a, uint oid);
 
 			#endregion
@@ -272,6 +350,15 @@ namespace Pqsql
 
 			[DllImport("libpqbinfmt.dll")]
 			public static extern void pqbf_set_timestamp(IntPtr s, long sec, int usec);
+
+			[DllImport("libpqbinfmt.dll")]
+			public static extern void pqbf_set_date(IntPtr p, int year, int month, int day);
+
+			[DllImport("libpqbinfmt.dll")]
+			public static extern void pqbf_set_time(IntPtr p, int hour, int min, int sec, int fsec);
+
+			[DllImport("libpqbinfmt.dll")]
+			public static extern void pqbf_set_timetz(IntPtr p, int hour, int min, int sec, int fsec, int tz);
 
 			[DllImport("libpqbinfmt.dll")]
 			public static extern void pqbf_set_array(IntPtr s, int ndim, int flags, uint oid, int[] dim, int[] lbound);
@@ -332,10 +419,13 @@ namespace Pqsql
 			public static extern void pqbf_get_timestamp(IntPtr p, long* sec, int* usec);
 
 			[DllImport("libpqbinfmt.dll")]
-			public static extern int pqbf_get_date(IntPtr p);
+			public static extern void pqbf_get_date(IntPtr p, int *year, int *month, int *day);
 
 			[DllImport("libpqbinfmt.dll")]
-			public static extern long pqbf_get_time(IntPtr p);
+			public static extern void pqbf_get_time(IntPtr p, int *hour, int *min, int *sec, int *fsec);
+
+			[DllImport("libpqbinfmt.dll")]
+			public static extern void pqbf_get_timetz(IntPtr p, int* hour, int* min, int* sec, int* fsec, int* tz);
 
 			[DllImport("libpqbinfmt.dll")]
 			public static extern IntPtr pqbf_get_array(IntPtr p, int* ndim, int* flags, uint* oid, ref IntPtr dim, ref IntPtr lbound);
