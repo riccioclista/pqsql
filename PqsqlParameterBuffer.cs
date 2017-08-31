@@ -384,6 +384,51 @@ namespace Pqsql
 			PqsqlBinaryFormat.pqbf_set_interval(a, offset, day, month);
 		}
 
+		// adds o as TimeSpan array element into PQExpBuffer a
+		internal static void SetTimeArray(IntPtr a, object o)
+		{
+			TimeSpan ts = (TimeSpan)o;
+
+			int hour;
+			int min;
+			int sec;
+			int fsec;
+			PqsqlBinaryFormat.GetTime(ts, out hour, out min, out sec, out fsec);
+
+			PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 8);
+			PqsqlBinaryFormat.pqbf_set_time(a, hour, min, sec, fsec);
+		}
+
+		// adds o as TimeSpan array element into PQExpBuffer a
+		internal static void SetTimeTZArray(IntPtr a, object o)
+		{
+			TimeSpan ts = (TimeSpan)o;
+
+			int hour;
+			int min;
+			int sec;
+			int fsec;
+			int tz;
+			PqsqlBinaryFormat.GetTimeTZ(ts, out hour, out min, out sec, out fsec, out tz);
+
+			PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 12);
+			PqsqlBinaryFormat.pqbf_set_timetz(a, hour, min, sec, fsec, tz);
+		}
+
+		// adds o as DateTime array element into PQExpBuffer a
+		internal static void SetDateArray(IntPtr a, object o)
+		{
+			DateTime dt = (DateTime)o;
+
+			int year;
+			int month;
+			int day;
+			PqsqlBinaryFormat.GetDate(dt, out year, out month, out day);
+
+			PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 4);
+			PqsqlBinaryFormat.pqbf_set_date(a, year, month, day);
+		}
+
 		private static void SetArrayValue(IntPtr pb, object val, PqsqlDbType oid, PqsqlTypeRegistry.PqsqlTypeParameter n)
 		{
 #if CODECONTRACTS
@@ -497,6 +542,48 @@ namespace Pqsql
 			PqsqlBinaryFormat.GetInterval(ts, out offset, out day, out month);
 
 			PqsqlBinaryFormat.pqbf_add_interval(pb, offset, day, month);
+		}
+
+		// sets val as TimeSpan with Oid oid PqsqlDbType.Time into pqparam_buffer pb
+		internal static void SetTime(IntPtr pb, object val, PqsqlDbType oid)
+		{
+			TimeSpan ts = (TimeSpan)val;
+
+			int hour;
+			int min;
+			int sec;
+			int fsec;
+			PqsqlBinaryFormat.GetTime(ts, out hour, out min, out sec, out fsec);
+
+			PqsqlBinaryFormat.pqbf_add_time(pb, hour, min, sec, fsec);
+		}
+
+		// sets val as TimeSpan with Oid oid PqsqlDbType.TimeTZ into pqparam_buffer pb
+		internal static void SetTimeTZ(IntPtr pb, object val, PqsqlDbType oid)
+		{
+			TimeSpan ts = (TimeSpan)val;
+
+			int hour;
+			int min;
+			int sec;
+			int fsec;
+			int tz;
+			PqsqlBinaryFormat.GetTimeTZ(ts, out hour, out min, out sec, out fsec, out tz);
+
+			PqsqlBinaryFormat.pqbf_add_timetz(pb, hour, min, sec, fsec, tz);
+		}
+
+		// sets val as DateTime with Oid oid (PqsqlDbType.Time, PqsqlDbType.TimeTZ) into pqparam_buffer pb
+		internal static void SetDate(IntPtr pb, object val, PqsqlDbType oid)
+		{
+			DateTime dt = (DateTime)val;
+
+			int year;
+			int month;
+			int day;
+			PqsqlBinaryFormat.GetDate(dt, out year, out month, out day);
+
+			PqsqlBinaryFormat.pqbf_add_date(pb, year, month, day);
 		}
 
 		#endregion
