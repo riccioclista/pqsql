@@ -163,8 +163,36 @@ namespace Pqsql
 
 			if (conn != IntPtr.Zero)
 			{
-				connStatus = PqsqlWrapper.PQstatus(conn);
-				tranStatus = PqsqlWrapper.PQtransactionStatus(conn);
+				// always force client_encoding to utf8
+				int client_encoding = PqsqlWrapper.PQclientEncoding(conn);
+
+				if (client_encoding == (int)PgEnc.PG_UTF8) // done
+				{
+					connStatus = PqsqlWrapper.PQstatus(conn);
+					tranStatus = PqsqlWrapper.PQtransactionStatus(conn);
+				}
+				else if (client_encoding == -1) // bail out
+				{
+					PqsqlWrapper.PQfinish(conn);
+					conn = IntPtr.Zero;
+					connStatus = ConnStatusType.CONNECTION_BAD;
+					tranStatus = PGTransactionStatusType.PQTRANS_UNKNOWN;
+				}
+				else // set client_encoding to utf8
+				{
+					if (PqsqlWrapper.PQsetClientEncoding(conn, PgEncName.PG_UTF8) == 0) // success
+					{
+						connStatus = PqsqlWrapper.PQstatus(conn);
+						tranStatus = PqsqlWrapper.PQtransactionStatus(conn);
+					}
+					else // bail out
+					{
+						PqsqlWrapper.PQfinish(conn);
+						conn = IntPtr.Zero;
+						connStatus = ConnStatusType.CONNECTION_BAD;
+						tranStatus = PGTransactionStatusType.PQTRANS_UNKNOWN;
+					}
+				}
 			}
 			else
 			{
@@ -248,35 +276,54 @@ namespace Pqsql
 			if (tranStatus != PGTransactionStatusType.PQTRANS_IDLE)
 				goto broken;
 
-			// send empty query to test whether we are really connected (tcp keepalive might have closed socket)
-			unsafe
-			{
-				byte[] empty = { 0 }; // empty query string
+			//
+			// now check the connection: first try to fix the client encoding if it is not utf8 for some reason.
+			// if client_encoding is utf8, we send the empty query to check whether the socket is still usable
+			// for the backend communiction. here, we could make use of tcp_keepalive settings.
+			//
+			int client_encoding = PqsqlWrapper.PQclientEncoding(pgConn);
 
-				fixed (byte* eq = empty)
-				{
-					if (PqsqlWrapper.PQsendQuery(pgConn, eq) == 0) // could not send query
-						goto broken;
-				}
-			}
-
-			// Reading result: consume and clear remaining results until we reach the NULL result.
-			// PQgetResult will block here
-			IntPtr res;
-			ExecStatusType st = ExecStatusType.PGRES_EMPTY_QUERY;
-			while ((res = PqsqlWrapper.PQgetResult(pgConn)) != IntPtr.Zero)
-			{
-				ExecStatusType st0 = PqsqlWrapper.PQresultStatus(res);
-
-				if (st0 != ExecStatusType.PGRES_EMPTY_QUERY)
-					st = st0;
-
-				// always free res
-				PqsqlWrapper.PQclear(res);
-			}
-
-			if (st != ExecStatusType.PGRES_EMPTY_QUERY) // received wrong exec status
+			if (client_encoding == -1)
 				goto broken;
+
+			if (client_encoding == (int) PgEnc.PG_UTF8) // client_encoding == utf8
+			{
+				// send empty query to test whether we are really connected (tcp_keepalive might have closed socket)
+				unsafe
+				{
+					byte[] empty = {0}; // empty query string
+
+					fixed (byte* eq = empty)
+					{
+						if (PqsqlWrapper.PQsendQuery(pgConn, eq) == 0) // could not send query
+							goto broken;
+					}
+				}
+
+				// Reading result: consume and clear remaining results until we reach the NULL result.
+				// PQgetResult will block here
+				IntPtr res;
+				ExecStatusType st = ExecStatusType.PGRES_EMPTY_QUERY;
+				while ((res = PqsqlWrapper.PQgetResult(pgConn)) != IntPtr.Zero)
+				{
+					ExecStatusType st0 = PqsqlWrapper.PQresultStatus(res);
+
+					if (st0 != ExecStatusType.PGRES_EMPTY_QUERY)
+						st = st0;
+
+					// always free res
+					PqsqlWrapper.PQclear(res);
+				}
+
+				if (st != ExecStatusType.PGRES_EMPTY_QUERY) // received wrong exec status
+					goto broken;
+			}
+			else // set client_encoding to utf8
+			{
+				// set client_encoding to test whether we are really connected (tcp_keepalive might have closed socket)
+				if (PqsqlWrapper.PQsetClientEncoding(pgConn, PgEncName.PG_UTF8) != 0)
+					goto broken;
+			}
 
 			return true; // successfully reused connection
 
