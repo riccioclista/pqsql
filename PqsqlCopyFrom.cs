@@ -623,14 +623,58 @@ namespace Pqsql
 			}
 		}
 
-		public int WriteTime(DateTime value)
+		public int WriteTime(TimeSpan value)
 		{
-			throw new NotImplementedException("WriteTime not implemented");
+			long begin = LengthCheckReset();
+
+			int hour;
+			int min;
+			int sec;
+			int fsec;
+			PqsqlBinaryFormat.GetTime(value, out hour, out min, out sec, out fsec);
+
+			PqsqlBinaryFormat.pqbf_set_time(mExpBuf, hour, min, sec, fsec);
+			unsafe
+			{
+				sbyte* val = PqsqlBinaryFormat.pqbf_get_bufval(mExpBuf) + begin;
+				return PutColumn(val, 8);
+			}
+		}
+
+		public int WriteTimeTZ(TimeSpan value)
+		{
+			long begin = LengthCheckReset();
+
+			int hour;
+			int min;
+			int sec;
+			int fsec;
+			int tz;
+			PqsqlBinaryFormat.GetTimeTZ(value, out hour, out min, out sec, out fsec, out tz);
+
+			PqsqlBinaryFormat.pqbf_set_timetz(mExpBuf, hour, min, sec, fsec, tz);
+			unsafe
+			{
+				sbyte* val = PqsqlBinaryFormat.pqbf_get_bufval(mExpBuf) + begin;
+				return PutColumn(val, 12);
+			}
 		}
 
 		public int WriteDate(DateTime value)
 		{
-			throw new NotImplementedException("WriteDate not implemented");
+			long begin = LengthCheckReset();
+
+			int year;
+			int month;
+			int day;
+			PqsqlBinaryFormat.GetDate(value, out year, out month, out day);
+
+			PqsqlBinaryFormat.pqbf_set_date(mExpBuf, year, month, day);
+			unsafe
+			{
+				sbyte* val = PqsqlBinaryFormat.pqbf_get_bufval(mExpBuf) + begin;
+				return PutColumn(val, 4);
+			}
 		}
 
 		public int WriteInterval(TimeSpan value)
