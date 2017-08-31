@@ -248,10 +248,12 @@ namespace Pqsql
 		Float8Array = 1022,
 		OidArray = 1028,
 		TimestampArray = 1115,
+		DateArray = 1182,
+		TimeArray = 1183,
 		TimestampTZArray = 1185,
 		IntervalArray = 1187,
 		NumericArray = 1231,
-
+		TimeTZArray = 1270,
 
 		/// <summary>
 		/// TODO array of oids, used in system tables

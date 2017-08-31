@@ -311,13 +311,13 @@ namespace Pqsql
 					TypeValue =new PqsqlTypeValue {
 						DataTypeName="date",
 						ProviderType=typeof(DateTime),
-						GetValue=(res, row, ord, typmod) => new DateTime(PqsqlDataReader.GetDate(res,row,ord)),
+						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetDate(res,row,ord),
 					},
 					TypeParameter = new PqsqlTypeParameter {
 						TypeCode=TypeCode.DateTime,
-						ArrayDbType=PqsqlDbType.Array, // TODO
-						SetValue=null, // TODO (IntPtr pb,object val) => { PqsqlBinaryFormat.pqbf_add_date(pb, (DateTime) val); }
-						SetArrayItem = null // TODO
+						ArrayDbType=PqsqlDbType.DateArray,
+						SetValue = PqsqlParameterBuffer.SetDate,
+						SetArrayItem = PqsqlParameterBuffer.SetDateArray
 					},
 					DbType=DbType.Date,
 				}
@@ -327,13 +327,13 @@ namespace Pqsql
 					TypeValue =new PqsqlTypeValue {
 						DataTypeName="time",
 						ProviderType=typeof(DateTime),
-						GetValue=(res, row, ord, typmod) => new DateTime(PqsqlDataReader.GetTime(res,row,ord)),
+						GetValue=(res, row, ord, typmod) => new TimeSpan(PqsqlDataReader.GetTime(res,row,ord)),
 					},
 					TypeParameter = new PqsqlTypeParameter {
-						TypeCode=TypeCode.DateTime,
-						ArrayDbType=PqsqlDbType.Array, // TODO
-						SetValue=null, // TODO (IntPtr pb,object val) => { PqsqlBinaryFormat.pqbf_add_time(pb, (DateTime) val); }
-						SetArrayItem = null // TODO
+						TypeCode=TypeCode.Object,
+						ArrayDbType=PqsqlDbType.TimeArray,
+						SetValue = PqsqlParameterBuffer.SetTime,
+						SetArrayItem = PqsqlParameterBuffer.SetTimeArray
 					},
 					DbType=DbType.Time,
 				}
@@ -390,14 +390,17 @@ namespace Pqsql
 				new PqsqlTypeEntry {
 					TypeValue =new PqsqlTypeValue {
 						DataTypeName="timetz",
-						ProviderType=typeof(DateTime),
-						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetTime(res,row,ord),
+						ProviderType=typeof(TimeSpan),
+						GetValue=(res, row, ord, typmod) => {
+							long ticks = PqsqlDataReader.GetTimeTZ(res, row, ord);
+							return new TimeSpan(ticks);
+						},
 					},
 					TypeParameter = new PqsqlTypeParameter {
-						TypeCode=TypeCode.DateTime,
-						ArrayDbType=PqsqlDbType.Array, // TODO
-						SetValue=null, // TODO (IntPtr pb,object val) => { PqsqlBinaryFormat.pqbf_add_timetz(pb, (DateTime) val); }
-						SetArrayItem = null // TODO
+						TypeCode=TypeCode.Object,
+						ArrayDbType=PqsqlDbType.TimeTZArray,
+						SetValue=PqsqlParameterBuffer.SetTimeTZ,
+						SetArrayItem = PqsqlParameterBuffer.SetTimeTZArray,
 					},
 					DbType=DbType.DateTime,
 				}
@@ -745,6 +748,79 @@ namespace Pqsql
 					TypeParameter = new PqsqlTypeParameter {
 						TypeCode=TypeCode.Object,
 						ArrayDbType=PqsqlDbType.TimestampTZArray,
+						SetValue=null,
+						SetArrayItem = null
+					},
+					DbType=DbType.Object,
+				}
+			},
+			{ PqsqlDbType.TimeArray,
+				new PqsqlTypeEntry {
+					TypeValue =new PqsqlTypeValue {
+						DataTypeName="_time",
+						ProviderType=typeof(Array),
+						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Time, typeof(TimeSpan?), typeof(TimeSpan), (x, len) => {
+							int hour;
+							int min;
+							int sec;
+							int fsec;
+							unsafe { PqsqlBinaryFormat.pqbf_get_time(x, &hour, &min, &sec, &fsec); }
+							long ticks = PqsqlBinaryFormat.GetTicksFromTime(hour, min, sec, fsec);
+							TimeSpan ts = new TimeSpan(ticks);
+							return ts;
+						}),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.Object,
+						ArrayDbType=PqsqlDbType.TimeArray,
+						SetValue=null,
+						SetArrayItem = null
+					},
+					DbType=DbType.Object,
+				}
+			},
+			{ PqsqlDbType.TimeTZArray,
+				new PqsqlTypeEntry {
+					TypeValue =new PqsqlTypeValue {
+						DataTypeName="_timetz",
+						ProviderType=typeof(Array),
+						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.TimeTZ, typeof(TimeSpan?), typeof(TimeSpan), (x, len) => {
+							int hour;
+							int min;
+							int sec;
+							int fsec;
+							int tz;
+							unsafe { PqsqlBinaryFormat.pqbf_get_timetz(x, &hour, &min, &sec, &fsec, &tz); }
+							long ticks = PqsqlBinaryFormat.GetTicksFromTimeTZ(hour, min, sec, fsec, tz);
+							TimeSpan ts = new TimeSpan(ticks);
+							return ts;
+						}),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.Object,
+						ArrayDbType=PqsqlDbType.TimeArray,
+						SetValue=null,
+						SetArrayItem = null
+					},
+					DbType=DbType.Object,
+				}
+			},
+			{ PqsqlDbType.DateArray,
+				new PqsqlTypeEntry {
+					TypeValue =new PqsqlTypeValue {
+						DataTypeName="_date",
+						ProviderType=typeof(Array),
+						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Date, typeof(DateTime?), typeof(DateTime), (x, len) => {
+							int year;
+							int month;
+							int day;
+							unsafe { PqsqlBinaryFormat.pqbf_get_date(x, &year, &month, &day); }
+							return PqsqlBinaryFormat.GetDateTimeFromDate(year, month, day);
+						}),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.Object,
+						ArrayDbType=PqsqlDbType.DateArray,
 						SetValue=null,
 						SetArrayItem = null
 					},
