@@ -35,7 +35,11 @@
 #include "pqparam_buffer.h"
 #include "pgadt/numeric.h"
 #include "pgadt/builtins.h"
+#include "pgadt/c.h"
 
+#define HAVE_INT64_TIMESTAMP
+#include "pgadt/timestamp.h"
+#include "pgadt/datetime.h"
 
 DECLSPEC size_t
 pqbf_get_buflen(PQExpBuffer s)
@@ -604,38 +608,226 @@ pqbf_add_float8(pqparam_buffer *pb, double f)
 
 /*
  * oid 1082: date
- *
- * TODO check
  */
-DECLSPEC int32_t
-pqbf_get_date(const char *p)
+DECLSPEC void
+pqbf_get_date(const char *p, int32_t *year, int32_t *month, int32_t *day)
 {
-	BAILWITHVALUEIFNULL(p, 0);
-	return BYTESWAP4(*((uint32_t *) p));
+	int32_t jdate;
+
+	BAILIFNULL(year);
+	BAILIFNULL(month);
+	BAILIFNULL(day);
+
+	if (p == NULL)
+	{
+		*year = 0;
+		*month = 0;
+		*day = 0;
+		return;
+	}
+
+	/* convert julian date to YMD */
+	jdate = BYTESWAP4(*((uint32_t *) p));
+
+	if (jdate == INT32_MIN || jdate == INT32_MAX)
+	{
+		*year = jdate;
+		*month = jdate;
+		*day = jdate;
+	}
+	else if (IS_VALID_DATE(jdate))
+	{
+		j2date(jdate + POSTGRES_EPOCH_JDATE, year, month, day);
+	}
+	else
+	{
+		*year = 0;
+		*month = 0;
+		*day = 0;
+	}
+}
+
+inline void
+pqbf_encode_date(PQExpBuffer s, int32_t year, int32_t month, int32_t day)
+{
+	int32_t jdate;
+
+	if (year == INT32_MAX && month == INT32_MAX && day == INT32_MAX) // date 'infinity'
+	{
+		jdate = INT32_MAX;
+	}
+	else if (year == INT32_MIN && month == INT32_MIN && day == INT32_MIN) // date '-infinity'
+	{
+		jdate = INT32_MIN;
+	}
+	else if (IS_VALID_JULIAN(year, month, day))
+	{
+		/* convert YMD to julian date */
+		jdate = date2j(year, month, day) - POSTGRES_EPOCH_JDATE;
+	}
+	else
+	{
+		/* invalid julian date */
+		jdate = 0;
+	}
+
+	pqbf_encode_int4(s, jdate);
 }
 
 DECLSPEC void
-pqbf_set_date(PQExpBuffer s, int32_t t)
+pqbf_set_date(PQExpBuffer s, int32_t year, int32_t month, int32_t day)
 {
 	BAILIFNULL(s);
-	pqbf_encode_int4(s, t);
+	pqbf_encode_date(s, year, month, day);
 }
 
 DECLSPEC void
-pqbf_add_date(pqparam_buffer *pb, int32_t t)
+pqbf_add_date(pqparam_buffer *pb, int32_t year, int32_t month, int32_t day)
 {
 	BAILIFNULL(pb);
 
-	pqbf_encode_int4(pb->payload, t);
+	pqbf_encode_date(pb->payload, year, month, day);
 
-	pqpb_add(pb, DATEOID, sizeof(t));
+	pqpb_add(pb, DATEOID, sizeof(int32_t));
 }
 
 
 
 /*
  * oid 1083: time
+ */
+
+
+DECLSPEC void
+pqbf_get_time(const char *p, int32_t *hour, int32_t *min, int32_t *sec, int32_t *fsec)
+{
+	uint64_t time;
+
+	BAILIFNULL(hour);
+	BAILIFNULL(min);
+	BAILIFNULL(sec);
+	BAILIFNULL(fsec);
+
+	if (p == NULL)
+	{
+		*hour = 0;
+		*min = 0;
+		*sec = 0;
+		*fsec = 0;
+		return;
+	}	
+
+	/* decode 64bit time into unix time */
+	time = BYTESWAP8( *( (uint64_t *)p ) );
+
+	*hour = time / USECS_PER_HOUR;
+	time -= *hour * USECS_PER_HOUR;
+	*min = time / USECS_PER_MINUTE;
+	time -= *min * USECS_PER_MINUTE;
+	*sec = time / USECS_PER_SEC;
+	time -= *sec * USECS_PER_SEC;
+	*fsec = time;
+}
+
+inline void
+pqbf_encode_time(PQExpBuffer s, int32_t hour, int32_t min, int32_t sec, int32_t fsec)
+{
+	int64_t time = ((((hour * MINS_PER_HOUR + min) * SECS_PER_MINUTE) + sec) * USECS_PER_SEC) + fsec;
+	time = BYTESWAP8(time);
+	appendBinaryPQExpBuffer(s, (const char*)&time, sizeof(time));
+}
+
+DECLSPEC void
+pqbf_set_time(PQExpBuffer s, int32_t hour, int32_t min, int32_t sec, int32_t fsec)
+{
+	BAILIFNULL(s);
+	pqbf_encode_time(s, hour, min, sec, fsec);
+}
+
+DECLSPEC void
+pqbf_add_time(pqparam_buffer *pb, int32_t hour, int32_t min, int32_t sec, int32_t fsec)
+{
+	BAILIFNULL(pb);
+
+	pqbf_encode_time(pb->payload, hour, min, sec, fsec);
+
+	pqpb_add(pb, TIMEOID, sizeof(int64_t));
+}
+
+
+/*
  * oid 1266: timetz
+ */
+
+DECLSPEC void
+pqbf_get_timetz(const char *p, int32_t *hour, int32_t *min, int32_t *sec, int32_t *fsec, int32_t *tz)
+{
+	uint64_t time;
+
+	BAILIFNULL(hour);
+	BAILIFNULL(min);
+	BAILIFNULL(sec);
+	BAILIFNULL(fsec);
+	BAILIFNULL(tz);
+
+	if (p == NULL)
+	{
+		*hour = 0;
+		*min = 0;
+		*sec = 0;
+		*fsec = 0;
+		*tz = 0;
+		return;
+	}
+
+	/* decode 64bit time into H:M:S.FS */
+	time = BYTESWAP8(*((uint64_t *)p));
+	p += sizeof(uint64_t);
+
+	*hour = time / USECS_PER_HOUR;
+	time -= *hour * USECS_PER_HOUR;
+	*min = time / USECS_PER_MINUTE;
+	time -= *min * USECS_PER_MINUTE;
+	*sec = time / USECS_PER_SEC;
+	time -= *sec * USECS_PER_SEC;
+	*fsec = time;
+
+	/* decode 32bit tz offset */
+	*tz = (int32_t) BYTESWAP4(*((uint32_t *)p));
+}
+
+inline void
+pqbf_encode_timetz(PQExpBuffer s, int32_t hour, int32_t min, int32_t sec, int32_t fsec, int32_t tz)
+{
+	int64_t time = ((((hour * MINS_PER_HOUR + min) * SECS_PER_MINUTE) + sec) * USECS_PER_SEC) + fsec;
+	time = BYTESWAP8(time);
+	tz = BYTESWAP4(tz);
+	appendBinaryPQExpBuffer(s, (const char*)&time, sizeof(time));
+	appendBinaryPQExpBuffer(s, (const char*)&tz, sizeof(tz));
+}
+
+DECLSPEC void
+pqbf_set_timetz(PQExpBuffer s, int32_t hour, int32_t min, int32_t sec, int32_t fsec, int32_t tz)
+{
+	BAILIFNULL(s);
+	pqbf_encode_timetz(s, hour, min, sec, fsec, tz);
+}
+
+DECLSPEC void
+pqbf_add_timetz(pqparam_buffer *pb, int32_t hour, int32_t min, int32_t sec, int32_t fsec, int32_t tz)
+{
+	BAILIFNULL(pb);
+
+	pqbf_encode_timetz(pb->payload, hour, min, sec, fsec, tz);
+
+	pqpb_add(pb, TIMETZOID, sizeof(int64_t) + sizeof(int32_t));
+}
+
+
+
+/*
+ * oid 1114: timestamp
+ * oid 1184: timestamptz
  */
 
 /* January 1, 2000, 00:00:00 UTC (in Unix epoch seconds) */
@@ -643,50 +835,7 @@ pqbf_add_date(pqparam_buffer *pb, int32_t t)
 #define POSTGRES_MEGA 1000000
 #define POSTGRES_TICKS_PER_MILLISECOND 10000
 
-DECLSPEC time_t
-pqbf_get_time(const char *p)
-{
-	uint64_t i;
 
-	BAILWITHVALUEIFNULL(p, 0);
-
-	/* decode 64bit time into unix time */
-	i = BYTESWAP8( *( (uint64_t *)p ) );
-		
-	return POSTGRES_EPOCH_DATE + (int64_t) (i * POSTGRES_TICKS_PER_MILLISECOND);
-}
-
-inline void
-pqbf_encode_time(PQExpBuffer s, time_t t)
-{
-	t -= POSTGRES_EPOCH_DATE;
-	t *= POSTGRES_MEGA;
-	t = BYTESWAP8(t);
-	appendBinaryPQExpBuffer(s, (const char*)&t, sizeof(t));
-}
-
-DECLSPEC void
-pqbf_set_time(PQExpBuffer s, time_t t)
-{
-	BAILIFNULL(s);
-	pqbf_encode_time(s, t);
-}
-
-DECLSPEC void
-pqbf_add_time(pqparam_buffer *pb, time_t t)
-{
-	BAILIFNULL(pb);
-
-	pqbf_encode_time(pb->payload, t);
-
-	pqpb_add(pb, TIMEOID, sizeof(t));
-}
-
-
-/*
- * oid 1114: timestamp
- * oid 1184: timestamptz
- */
 DECLSPEC void
 pqbf_get_timestamp(const char *p, time_t *sec, int *usec)
 {

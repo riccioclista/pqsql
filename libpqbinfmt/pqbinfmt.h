@@ -83,13 +83,17 @@ extern DECLSPEC void pqbf_get_interval(const char *ptr, int64_t *offset, int32_t
 extern DECLSPEC void pqbf_set_interval(PQExpBuffer s, int64_t offset, int32_t day, int32_t month);
 extern DECLSPEC void pqbf_add_interval(pqparam_buffer *pb, int64_t offset, int32_t day, int32_t month);
 
-extern DECLSPEC time_t pqbf_get_time(const char *p);
-extern DECLSPEC void pqbf_set_time(PQExpBuffer s, time_t t);
-extern DECLSPEC void pqbf_add_time(pqparam_buffer *pb, time_t t);
+extern DECLSPEC void pqbf_get_time(const char *p, int32_t *hour, int32_t *min, int32_t *sec, int32_t *fsec);
+extern DECLSPEC void pqbf_set_time(PQExpBuffer s, int32_t hour, int32_t min, int32_t sec, int32_t fsec);
+extern DECLSPEC void pqbf_add_time(pqparam_buffer *pb, int32_t hour, int32_t min, int32_t sec, int32_t fsec);
 
-extern DECLSPEC int32_t pqbf_get_date(const char *p);
-extern DECLSPEC void pqbf_set_date(PQExpBuffer s, int32_t t);
-extern DECLSPEC void pqbf_add_date(pqparam_buffer *pb, int32_t t);
+extern DECLSPEC void pqbf_get_timetz(const char *p, int32_t *hour, int32_t *min, int32_t *sec, int32_t *fsec, int32_t *tz);
+extern DECLSPEC void pqbf_set_timetz(PQExpBuffer s, int32_t hour, int32_t min, int32_t sec, int32_t fsec, int32_t tz);
+extern DECLSPEC void pqbf_add_timetz(pqparam_buffer *pb, int32_t hour, int32_t min, int32_t sec, int32_t fsec, int32_t tz);
+
+extern DECLSPEC void pqbf_get_date(const char *p, int32_t *year, int32_t *month, int32_t *day);
+extern DECLSPEC void pqbf_set_date(PQExpBuffer s, int32_t year, int32_t month, int32_t day);
+extern DECLSPEC void pqbf_add_date(pqparam_buffer *pb, int32_t year, int32_t month, int32_t day);
 
 #define MAXDIM 6
 extern DECLSPEC const char * pqbf_get_array(const char* p, int32_t* ndim, int32_t* flags, uint32_t* oid,	int* dim[MAXDIM],	int* lbound[MAXDIM]);
