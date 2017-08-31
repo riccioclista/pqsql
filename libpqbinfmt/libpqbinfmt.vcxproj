@@ -116,6 +116,7 @@
   <ItemGroup>
     <ClCompile Include="common\fe_memutils.c" />
     <ClCompile Include="fe_utils\psqlscan.c" />
+    <ClCompile Include="pgadt\datetime.c" />
     <ClCompile Include="pqbinfmt_array.c" />
     <ClCompile Include="pgadt\float.c" />
     <ClCompile Include="pgadt\numeric.c" />
@@ -130,11 +131,13 @@
     <ClInclude Include="fe_utils\psqlscan_int.h" />
     <ClInclude Include="pgadt\builtins.h" />
     <ClInclude Include="pgadt\c.h" />
+    <ClInclude Include="pgadt\datetime.h" />
     <ClInclude Include="pgadt\fmgr.h" />
     <ClInclude Include="pgadt\numeric.h" />
     <ClInclude Include="pgadt\pg_type.h" />
     <ClInclude Include="pgadt\postgres.h" />
     <ClInclude Include="pgadt\pqexpbuffer.h" />
+    <ClInclude Include="pgadt\timestamp.h" />
     <ClInclude Include="pqbinfmt.h" />
     <ClInclude Include="pqbincopy.h" />
     <ClInclude Include="pqbinfmt_config.h" />
