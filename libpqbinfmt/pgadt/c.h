@@ -146,6 +146,31 @@ typedef uint32_t uint32;
 typedef int64_t int64;
 typedef uint64_t uint64;
 
+/* Decide if we need to decorate 64-bit constants */
+#ifdef HAVE_LL_CONSTANTS
+#define INT64CONST(x)  ((int64) x##LL)
+#define UINT64CONST(x) ((uint64) x##ULL)
+#else
+#define INT64CONST(x)  ((int64) x)
+#define UINT64CONST(x) ((uint64) x)
+#endif
+
+/* snprintf format strings to use for 64-bit integers */
+#define INT64_FORMAT "%" INT64_MODIFIER "d"
+#define UINT64_FORMAT "%" INT64_MODIFIER "u"
+
+/*
+ * 128-bit signed and unsigned integers
+ *		There currently is only a limited support for the type. E.g. 128bit
+ *		literals and snprintf are not supported; but math is.
+ */
+#if defined(PG_INT128_TYPE)
+#define HAVE_INT128
+typedef PG_INT128_TYPE int128;
+typedef unsigned PG_INT128_TYPE uint128;
+#endif
+
+
 /*
  * Size
  *		Size of any memory resident object, as returned by sizeof.
