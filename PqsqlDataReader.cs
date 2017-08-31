@@ -872,7 +872,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 					return new DateTime(GetTime(mResult, mRowNum, ordinal));
 
 				case PqsqlDbType.Date:
-					return new DateTime(GetDate(mResult, mRowNum, ordinal));
+					return GetDate(mResult, mRowNum, ordinal);
 
 				default:
 					throw new InvalidCastException("Trying to access datatype " + oid + " as datatype DateTime");
@@ -908,6 +908,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 					break;
 
 				case PqsqlDbType.TimestampTZ:
+					// we have no way to tell whether TimestampTZ in is a certain timezone
 					timestamp = new DateTimeOffset(GetDateTime(mResult, mRowNum, ordinal), TimeSpan.Zero); // UTC offset
 					timestamp = TimeZoneInfo.ConvertTime(timestamp, TimeZoneInfo.Local); // convert to localtime offset
 					break;
@@ -917,7 +918,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 					break;
 
 				case PqsqlDbType.TimeTZ:
-					timestamp = new DateTimeOffset(GetTime(mResult, mRowNum, ordinal), TimeSpan.Zero); // UTC offset
+					timestamp = new DateTimeOffset(GetTimeTZ(mResult, mRowNum, ordinal), TimeSpan.Zero); // UTC offset
 					timestamp = TimeZoneInfo.ConvertTime(timestamp, TimeZoneInfo.Local); // convert to localtime offset
 					break;
 
@@ -952,18 +953,18 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 			return PqsqlBinaryFormat.GetTicksFromTimestamp(sec, usec);
 		}
 
-		internal static long GetDate(IntPtr res, int row, int ordinal)
+		internal static DateTime GetDate(IntPtr res, int row, int ordinal)
 		{
-#if CODECONTRACTS
-			Contract.Ensures(Contract.Result<System.Int64>() >= DateTime.MinValue.Ticks);
-			Contract.Ensures(Contract.Result<System.Int64>() <= DateTime.MaxValue.Ticks);
-#endif
-
 			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
 
-			int d;
-			d = PqsqlBinaryFormat.pqbf_get_date(v);
-			return PqsqlBinaryFormat.GetTicksFromDate(d);
+			int y, m, d;
+
+			unsafe
+			{
+				PqsqlBinaryFormat.pqbf_get_date(v, &y, &m, &d);
+			}
+
+			return PqsqlBinaryFormat.GetDateTimeFromDate(y, m, d);
 		}
 
 		internal static long GetTime(IntPtr res, int row, int ordinal)
@@ -975,9 +976,40 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 
 			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
 
-			long t;
-			t = PqsqlBinaryFormat.pqbf_get_time(v);
-			return PqsqlBinaryFormat.GetTicksFromTime(t);
+			int h;
+			int m;
+			int s;
+			int f;
+
+			unsafe
+			{
+				PqsqlBinaryFormat.pqbf_get_time(v, &h, &m, &s, &f);
+			}
+
+			return PqsqlBinaryFormat.GetTicksFromTime(h, m, s, f);
+		}
+
+		internal static long GetTimeTZ(IntPtr res, int row, int ordinal)
+		{
+#if CODECONTRACTS
+			Contract.Ensures(Contract.Result<System.Int64>() >= DateTime.MinValue.Ticks);
+			Contract.Ensures(Contract.Result<System.Int64>() <= DateTime.MaxValue.Ticks);
+#endif
+
+			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
+
+			int h;
+			int m;
+			int s;
+			int f;
+			int tz;
+
+			unsafe
+			{
+				PqsqlBinaryFormat.pqbf_get_timetz(v, &h, &m, &s, &f, &tz);
+			}
+
+			return PqsqlBinaryFormat.GetTicksFromTimeTZ(h, m, s, f, tz);
 		}
 
 		public TimeSpan GetTimeSpan(int ordinal)
@@ -996,10 +1028,30 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 			Contract.Assume(ordinal < mRowInfo.Length);
 #endif
 
-			if (PqsqlDbType.Interval != mRowInfo[ordinal].Oid)
-				throw new PqsqlException("Row datatype accessed with wrong datatype", (int) PqsqlState.DATATYPE_MISMATCH);
+			PqsqlDbType oid = mRowInfo[ordinal].Oid;
+			switch (oid)
+			{
+				case PqsqlDbType.Interval:
+					return GetInterval(mResult, mRowNum, ordinal);
 
-			return GetInterval(mResult, mRowNum, ordinal);
+				case PqsqlDbType.Timestamp:
+					return new TimeSpan(GetDateTime(mResult, mRowNum, ordinal));
+				case PqsqlDbType.TimestampTZ:
+					DateTimeOffset timestamp = new DateTimeOffset(GetDateTime(mResult, mRowNum, ordinal), TimeSpan.Zero); // UTC offset
+					timestamp = TimeZoneInfo.ConvertTime(timestamp, TimeZoneInfo.Local); // convert to localtime offset
+					return timestamp.TimeOfDay;
+
+				case PqsqlDbType.Time:
+					return new TimeSpan(GetTime(mResult, mRowNum, ordinal));
+				case PqsqlDbType.TimeTZ:
+					return new TimeSpan(GetTimeTZ(mResult, mRowNum, ordinal));
+
+				case PqsqlDbType.Date:
+					return new TimeSpan(GetDate(mResult, mRowNum, ordinal).Ticks);
+
+				default:
+					throw new InvalidCastException("Trying to access datatype " + oid + " as datatype TimeSpan");
+			}
 		}
 
 		internal static TimeSpan GetInterval(IntPtr res, int row, int ordinal)
