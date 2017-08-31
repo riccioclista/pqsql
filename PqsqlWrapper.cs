@@ -59,6 +59,18 @@ namespace Pqsql
 		PQTRANS_UNKNOWN             /* cannot determine status */
 	};
 
+	// see enum pg_enc in pg_wchar.h
+	internal enum PgEnc
+	{
+		PG_UTF8 = 6
+	}
+
+	// see struct pg_encname and pg_encname_tbl in pg_wchar.h
+	internal static class PgEncName
+	{
+		public static readonly byte[] PG_UTF8 = PqsqlUTF8Statement.CreateUTF8Statement("utf8");
+	}
+
 	/// <summary>
 	/// preprocessor macros from postgres_ext.h used in PQresultErrorField
 	/// 
@@ -616,6 +628,10 @@ namespace Pqsql
 			[DllImport("libpq.dll")]
 			public static extern int PQclientEncoding(IntPtr conn);
 			// int PQclientEncoding(const PGconn *conn);
+
+			[DllImport("libpq.dll")]
+			public static extern int PQsetClientEncoding(IntPtr conn, byte[] encoding);
+			// int PQsetClientEncoding(PGconn* conn, const char* encoding);
 
 			#endregion
 
