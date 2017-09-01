@@ -242,6 +242,7 @@ namespace Pqsql
 		Int2Array =	1005,
 		Int4Array =	1007,
 		TextArray = 1009,
+		BPCharArray = 1014,
 		VarcharArray = 1015,
 		Int8Array = 1016,
 		Float4Array = 1021,

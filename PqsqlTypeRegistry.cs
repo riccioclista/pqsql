@@ -200,7 +200,7 @@ namespace Pqsql
 					},
 					TypeParameter = new PqsqlTypeParameter {
 						TypeCode=TypeCode.String,
-						ArrayDbType=PqsqlDbType.Array, // TODO
+						ArrayDbType=PqsqlDbType.BPCharArray,
 						SetValue= PqsqlParameterBuffer.SetText,
 						SetArrayItem= PqsqlParameterBuffer.SetTextArray
 					},
@@ -260,13 +260,16 @@ namespace Pqsql
 					TypeValue=new PqsqlTypeValue {
 						DataTypeName="char",
 						ProviderType=typeof(sbyte),
-						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetByte(res,row,ord),
+						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetSByte(res,row,ord),
 					},
 					TypeParameter = new PqsqlTypeParameter {
 						TypeCode=TypeCode.SByte,
-						ArrayDbType=PqsqlDbType.Array, // TODO
-						SetValue=null, // TODO
-						SetArrayItem = null // TODO
+						ArrayDbType=PqsqlDbType.CharArray,
+						SetValue=(pb, val, oid) => PqsqlBinaryFormat.pqbf_add_char(pb, (sbyte) val),
+						SetArrayItem = (a, c) => {
+							PqsqlBinaryFormat.pqbf_set_array_itemlength(a, 1);
+							PqsqlBinaryFormat.pqbf_set_char(a, (sbyte) c);
+						},
 					},
 					DbType=DbType.SByte,
 				}
@@ -558,6 +561,22 @@ namespace Pqsql
 					TypeParameter = new PqsqlTypeParameter {
 						TypeCode=TypeCode.Object,
 						ArrayDbType=PqsqlDbType.BooleanArray,
+						SetValue=null,
+						SetArrayItem = null
+					},
+					DbType=DbType.Object,
+				}
+			},
+			{ PqsqlDbType.CharArray,
+				new PqsqlTypeEntry {
+					TypeValue =new PqsqlTypeValue {
+						DataTypeName="_char",
+						ProviderType=typeof(Array),
+						GetValue=(res, row, ord, typmod) => PqsqlDataReader.GetArrayFill(res, row, ord, PqsqlDbType.Char, typeof(sbyte?), typeof(sbyte), (x, len) => PqsqlBinaryFormat.pqbf_get_char(x)),
+					},
+					TypeParameter = new PqsqlTypeParameter {
+						TypeCode=TypeCode.Object,
+						ArrayDbType=PqsqlDbType.CharArray,
 						SetValue=null,
 						SetArrayItem = null
 					},

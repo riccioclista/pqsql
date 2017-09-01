@@ -752,8 +752,44 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 		//     The specified cast is not valid.
 		public override char GetChar(int ordinal)
 		{
-			throw new NotImplementedException(nameof(GetChar));
+#if CODECONTRACTS
+			Contract.Assert(ordinal >= 0);
+#endif
+
+			if (ordinal >= mColumns)
+				throw new ArgumentOutOfRangeException(nameof(ordinal), "Column out of range");
+			if (mResult == IntPtr.Zero)
+				throw new InvalidOperationException("No tuple available");
+
+#if CODECONTRACTS
+			Contract.Assume(mRowInfo != null);
+			Contract.Assume(ordinal < mRowInfo.Length);
+#endif
+
+			PqsqlDbType oid = mRowInfo[ordinal].Oid;
+			switch (oid)
+			{
+				case PqsqlDbType.Text:
+				case PqsqlDbType.Varchar:
+				case PqsqlDbType.Unknown:
+				case PqsqlDbType.Name:
+				case PqsqlDbType.Refcursor:
+				case PqsqlDbType.BPChar:
+					string s = GetString(mResult, mRowNum, ordinal);
+					return string.IsNullOrEmpty(s) ? default(char) : s[0];
+				case PqsqlDbType.Char:
+					return (char) GetSByte(mResult, mRowNum, ordinal);
+				default:
+					throw new InvalidCastException("Trying to access datatype " + oid + " as datatype Text");
+			}
 		}
+
+		internal static sbyte GetSByte(IntPtr res, int row, int ordinal)
+		{
+			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
+			return PqsqlBinaryFormat.pqbf_get_char(v);
+		}
+
 		//
 		// Summary:
 		//     Reads a stream of characters from the specified column, starting at location
@@ -1864,8 +1900,9 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o";
 				case PqsqlDbType.Name:
 				case PqsqlDbType.Refcursor:
 				case PqsqlDbType.BPChar:
-				case PqsqlDbType.Char:
 					return GetString(mResult, mRowNum, ordinal);
+				case PqsqlDbType.Char:
+					return new string((char) GetSByte(mResult, mRowNum, ordinal), 1);
 			}
 
 			throw new InvalidCastException("Trying to access datatype " + oid + " as datatype Text");	
