@@ -9,7 +9,6 @@
  * @note postgresql source src/backend/utils/adt/timestamp.c
  * 
  * @todo bit					src/backend/utils/adt/varbit.c
- * @todo "char"				src/backend/utils/adt/char.c
  * @todo cidr					src/backend/utils/adt/network.c
  * @todo inet					src/backend/utils/adt/network.c
  * @todo macaddr			src/backend/utils/adt/mac.c
@@ -143,6 +142,42 @@ pqbf_add_bytea(pqparam_buffer *pb, const char* buf, size_t buflen)
 	pqbf_encode_bytea(pb->payload, buf, buflen);
 
 	pqpb_add(pb, BYTEAOID, buflen);
+}
+
+
+/*
+ * oid 18: "char"
+ */
+
+DECLSPEC int8_t
+pqbf_get_char(const char *p)
+{
+	BAILWITHVALUEIFNULL(p, 0);
+	return ((int8_t)*p);
+}
+
+inline void
+pqbf_encode_char(PQExpBuffer s, int8_t c)
+{
+	appendPQExpBufferChar(s, c);
+}
+
+DECLSPEC void
+pqbf_set_char(PQExpBuffer s, int8_t c)
+{
+	BAILIFNULL(s);
+	pqbf_encode_char(s, c);
+}
+
+DECLSPEC void
+pqbf_add_char(pqparam_buffer *pb, int8_t c)
+{
+	BAILIFNULL(pb);
+
+	/* encode bool */
+	pqbf_encode_char(pb->payload, c);
+
+	pqpb_add(pb, CHAROID, sizeof(char));
 }
 
 

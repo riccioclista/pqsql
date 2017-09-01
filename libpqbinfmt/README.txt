@@ -22,6 +22,8 @@ bool
 
 bytea
 
+"char"
+
 text
 
 int8
@@ -60,7 +62,6 @@ Unsupported datatypes
 =====================
 
 bit					src/backend/utils/adt/varbit.c
-"char"			src/backend/utils/adt/char.c
 cidr				src/backend/utils/adt/network.c
 inet				src/backend/utils/adt/network.c
 macaddr			src/backend/utils/adt/mac.c

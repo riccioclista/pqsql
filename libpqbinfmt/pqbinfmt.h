@@ -32,6 +32,10 @@ extern DECLSPEC int pqbf_get_bool(const char *ptr);
 extern DECLSPEC void pqbf_set_bool(PQExpBuffer s, int b);
 extern DECLSPEC void pqbf_add_bool(pqparam_buffer *pb, int b);
 
+extern DECLSPEC int8_t pqbf_get_char(const char *ptr);
+extern DECLSPEC void pqbf_set_char(PQExpBuffer s, int8_t c);
+extern DECLSPEC void pqbf_add_char(pqparam_buffer *pb, int8_t c);
+
 extern DECLSPEC void pqbf_get_bytea(const char *p, char* buf, size_t len);
 extern DECLSPEC void pqbf_set_bytea(PQExpBuffer s, const char* buf, size_t buflen);
 extern DECLSPEC void pqbf_add_bytea(pqparam_buffer *pb, const char* buf, size_t buflen);
