@@ -174,7 +174,7 @@ namespace PqsqlTests
 
 			PqsqlCommand cmd = mConnection.CreateCommand();
 			cmd.Transaction = t;
-			cmd.CommandText = "CREATE TEMP TABLE testcopy (c0 int2, c1 int4, c2 int8, c3 bool, c4 text, c5 float4, c6 float8, c7 timestamp, c8 interval, c9 numeric);";
+			cmd.CommandText = "CREATE TEMP TABLE testcopy (c0 int2, c1 int4, c2 int8, c3 bool, c4 text, c5 float4, c6 float8, c7 timestamp, c8 interval, c9 numeric, c10 date, c11 time, c12 timetz);";
 			cmd.CommandTimeout = 100;
 			cmd.CommandType = CommandType.Text;
 
@@ -183,13 +183,22 @@ namespace PqsqlTests
 			PqsqlCopyFrom copy = new PqsqlCopyFrom(mConnection)
 			{
 				Table = "testcopy",
-				ColumnList = "c0,c1,c2,c3,c4,c5,c6,c7,c8,c9",
+				ColumnList = "c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12",
 				CopyTimeout = 5
 			};
 
 			copy.Start();
 
 			DateTime now = new DateTime(2001, 1, 1, 1, 2, 3, DateTimeKind.Utc);
+			DateTime date = DateTime.UtcNow.Date;
+
+			TimeSpan time = DateTime.UtcNow.TimeOfDay;
+			long timeTicks = time.Ticks;
+			timeTicks = timeTicks - timeTicks % TimeSpan.TicksPerMillisecond;
+
+			TimeSpan timetz = DateTime.Now.TimeOfDay;
+			long timetzTicks = timetz.Ticks;
+			timetzTicks = timetzTicks - timetzTicks % TimeSpan.TicksPerMillisecond;
 
 			for (int i = 0; i < 4; i++)
 			{
@@ -203,6 +212,9 @@ namespace PqsqlTests
 				copy.WriteTimestamp(now.AddSeconds(i));
 				copy.WriteInterval(TimeSpan.FromHours(24) + TimeSpan.FromDays(7) + TimeSpan.FromMinutes(i));
 				copy.WriteNumeric((decimal) i / 10);
+				copy.WriteDate(date);
+				copy.WriteTime(time);
+				copy.WriteTimeTZ(timetz);
 			}
 
 			copy.End();
@@ -230,6 +242,20 @@ namespace PqsqlTests
 				Assert.AreEqual(now.AddSeconds(j), row.GetDateTime(7));
 				Assert.AreEqual(TimeSpan.FromHours(24) + TimeSpan.FromDays(7) + TimeSpan.FromMinutes(j), row.GetValue(8));
 				Assert.AreEqual((double)j / 10, row.GetValue(9));
+				Assert.AreEqual(date, row.GetValue(10));
+
+				TimeSpan c11 = (TimeSpan) row.GetValue(11);
+				long c11Ticks = c11.Ticks;
+				c11Ticks = c11Ticks - c11Ticks % TimeSpan.TicksPerMillisecond;
+
+				Assert.AreEqual(timeTicks, c11Ticks);
+
+				TimeSpan c12 = (TimeSpan)row.GetValue(12);
+				long c12Ticks = c12.Ticks;
+				c12Ticks = c12Ticks - c12Ticks % TimeSpan.TicksPerMillisecond;
+
+				Assert.AreEqual(timetzTicks, c12Ticks);
+
 				j++;
 			}
 
