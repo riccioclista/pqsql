@@ -8,11 +8,12 @@ Supported features
 - frontend to PQputCopyData() and PQputCopyEnd() (COPY FROM STDIN BINARY) using pqcopy_buffer and pqbf_set_TYPE() functions
 
 - arrays as parameter input and results in binary format using
-  - decoding binary format: pqbf_get_array(), pqbf_get_array_value()
+	- decoding binary format: pqbf_get_array(), pqbf_get_array_value()
 	- send binary input parameter: pqbf_add_array()
 	- frontend to PQputCopyData() and PQputCopyEnd(): pqbf_set_array()
 	- helper functions: pqbf_set_array_itemlength(), pqbf_update_array_itemlength(), pqbf_set_array_value() 
 
+- statement parser based on psqlscan with parameter replacement (:p => $N)
 
 
 Supported PostgreSQL datatypes
@@ -25,6 +26,10 @@ bytea
 "char"
 
 text
+varchar
+varchar(N)
+char(N)
+unknown
 
 int8
 int4
@@ -55,7 +60,7 @@ Unsupported features
 - COPY FROM STDIN BINARY
   Flags field: Bit 16 (if 1, OIDs are included in the data; if 0, not)
 
-
+- numeric can be accessed only as double currently
 
 
 Unsupported datatypes
@@ -64,7 +69,7 @@ Unsupported datatypes
 bit					src/backend/utils/adt/varbit.c
 cidr				src/backend/utils/adt/network.c
 inet				src/backend/utils/adt/network.c
-macaddr			src/backend/utils/adt/mac.c
+macaddr				src/backend/utils/adt/mac.c
 uuid				src/backend/utils/adt/uuid.c
 xid					src/backend/utils/adt/xid.c
 ...
@@ -72,12 +77,27 @@ xid					src/backend/utils/adt/xid.c
 
 Incorporated Postgresql code
 ============================
+src/backend/utils/adt/datetime.c
 src/backend/utils/adt/float.c
 src/backend/utils/adt/numeric.c
+
+src/common/fe_memutils.c
+
+src/fe_utils/psqlscan.l
+src/fe_utils/psqlscan.c
+
 src/include/c.h
 src/include/fmgr.h
 src/include/postgres.h
+
+src/include/common/fe_memutils.h
+
+src/include/fe_utils/psqlscan.h
+src/include/fe_utils/psqlscan_int.h
+
 src/include/utils/builtins.h
+src/include/utils/datetime.h
 src/include/utils/numeric.h
+
 src/interfaces/ecpg/ecpglib/pg_type.h
 src/interfaces/libpq/pqexpbuffer.h
