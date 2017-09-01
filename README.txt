@@ -6,8 +6,8 @@ libpqbinfmt
 
 Assumes that headers and lib files are installed in C:\pgsql
 
-Just unpack postgresql-9.6.4-1-windows-x64-binaries.zip from
-https://get.enterprisedb.com/postgresql/postgresql-9.6.4-1-windows-x64-binaries.zip
+Just unpack postgresql-9.6.5-1-windows-x64-binaries.zip from
+https://get.enterprisedb.com/postgresql/postgresql-9.6.5-1-windows-x64-binaries.zip
 into C:\pgsql
 
 
@@ -39,17 +39,17 @@ https://www.microsoft.com/en-us/download/details.aspx?id=53587
 The libpq DLLs depend on Visual C++ Redistributable Packages for Visual Studio 2013 from
 https://www.microsoft.com/en-us/download/details.aspx?id=40784
 
-libpqbinfmt is based on x64 libpq from PostgreSQL 9.6.4:
+libpqbinfmt is based on x64 libpq from PostgreSQL 9.6.5:
 http://www.postgresql.org/docs/current/static/libpq.html
 
-libpq DLLs can be retrieved from postgresql-9.6.4-1-windows-x64-binaries.zip:
-https://get.enterprisedb.com/postgresql/postgresql-9.6.4-1-windows-x64-binaries.zip
+libpq DLLs can be retrieved from postgresql-9.6.5-1-windows-x64-binaries.zip:
+https://get.enterprisedb.com/postgresql/postgresql-9.6.5-1-windows-x64-binaries.zip
 
-libpq 9.6.4 is linked with
+libpq 9.6.5 is linked with
 - OpenSSL 1.0.2l (libeay32.dll and ssleay32.dll)
 - libintl 0.19.6 (libintl-8.dll)
 
-postgresql-9.6.4-1-windows-x64-binaries.zip contains the necessary DLLs
+postgresql-9.6.5-1-windows-x64-binaries.zip contains the necessary DLLs
 for libpqbinfmt:
 - pgsql\bin\libpq.dll
 - pgsql\bin\libeay32.dll
@@ -133,6 +133,12 @@ Data types
 - add support for user-defined data types in PqsqlParameter and PqsqlParameterCollection
 
 - add support for further typcategory user-types in PqsqlDataReader (currently, only S (String types) is supported)
+
+- add support for enum types https://www.postgresql.org/docs/current/static/datatype-enum.html
+
+- add support for composite types https://www.postgresql.org/docs/current/static/rowtypes.html
+
+- add support for range types https://www.postgresql.org/docs/current/static/rangetypes.html
 
 - Textual I/O format not supported: some data types (aclitem, ...) do not support binary I/O, cf. also
   http://www.postgresql.org/message-id/flat/201102222230.41081.rsmogura@softperience.eu
