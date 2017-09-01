@@ -140,6 +140,13 @@ namespace Pqsql
 	/// <seealso cref="PqsqlException.CreateErrorCode"/>
 	public enum PqsqlState
 	{
+		#region Soon to be obsolete
+
+		// use PqsqlState.T_R_DEADLOCK_DETECTED instead
+		DEADLOCK_DETECTED = 16879620, // 40P01 (deadlock_detected)
+
+		#endregion
+
 		#region Class 00 - Successful Completion
 		SUCCESSFUL_COMPLETION = 0, // 00000 (successful_completion)
 		#endregion
