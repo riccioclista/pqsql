@@ -156,6 +156,11 @@ namespace PqsqlTests
 				buf.AddParameter(new PqsqlParameter { ParameterName = "p6", Value = new TimeSpan(1,2,3) });
 				buf.AddParameter(new PqsqlParameter { ParameterName = "p7", Value = (short)7 });
 				buf.AddParameter(new PqsqlParameter { ParameterName = "p8", Value = (long)8 });
+				buf.AddParameter(new PqsqlParameter { ParameterName = "p9", Value = true });
+				buf.AddParameter(new PqsqlParameter { ParameterName = "p10", Value = DateTime.Now });
+				buf.AddParameter(new PqsqlParameter { ParameterName = "p11", Value = 11.111M });
+				buf.AddParameter(new PqsqlParameter { ParameterName = "p12", Value = (sbyte)127 });
+				buf.AddParameter(new PqsqlParameter { ParameterName = "p13", Value = (float)13.45 });
 
 				IntPtr ptyps; // oid*
 				IntPtr pvals; // char**
@@ -164,7 +169,7 @@ namespace PqsqlTests
 
 				int num = buf.GetQueryParams(out ptyps, out pvals, out plens, out pfrms);
 
-				Assert.AreEqual(8, num);
+				Assert.AreEqual(13, num);
 				Assert.AreNotEqual(IntPtr.Zero, ptyps);
 				Assert.AreNotEqual(IntPtr.Zero, pvals);
 				Assert.AreNotEqual(IntPtr.Zero, plens);
