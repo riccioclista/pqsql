@@ -640,5 +640,34 @@ namespace PqsqlTests
 				reader.Close();
 			}
 		}
+
+		[TestMethod]
+		public void PqsqlDataReaderTest11()
+		{
+			mCmd.CommandText = @"select null, ''::varchar, '你', '好'::text, '吗'::char(1), 'x'::""char"" ;";
+
+			using (PqsqlDataReader reader = mCmd.ExecuteReader())
+			{
+				Assert.IsTrue(reader.HasRows);
+
+				reader.Read(); 
+
+				char c0 = reader.GetChar(0);
+				char c1 = reader.GetChar(1);
+				char c2 = reader.GetChar(2);
+				char c3 = reader.GetChar(3);
+				char c4 = reader.GetChar(4);
+				char c5 = reader.GetChar(5);
+
+				Assert.AreEqual(default(char), c0);
+				Assert.AreEqual(default(char), c1);
+				Assert.AreEqual('你', c2);
+				Assert.AreEqual('好', c3);
+				Assert.AreEqual('吗', c4);
+				Assert.AreEqual('x', c5);
+
+				reader.Close();
+			}
+		}
 	}
 }
