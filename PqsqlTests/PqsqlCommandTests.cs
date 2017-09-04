@@ -1,4 +1,7 @@
-﻿using System.Data;
+﻿using System;
+using System.Data;
+using System.Linq;
+using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Pqsql;
 
@@ -325,6 +328,71 @@ namespace PqsqlTests
 			Assert.AreEqual(4711 * 4711, x);
 
 			t.Rollback();
+		}
+
+		[TestMethod]
+		public void PqsqlCommandTest10()
+		{
+			StringBuilder sb = new StringBuilder();
+
+			const int N = 1664; // postgres can handle at most 1664 columns in a select
+			const int K = 5; // create K*(K+1) / 2 queries
+
+			PqsqlParameter[] pars = new PqsqlParameter[0];
+
+			for (int k = 1; k <= K; k++)
+			{
+				if (k > 1) sb.Append(';');
+				sb.Append("select ");
+
+				Array.Resize(ref pars, k * N);
+
+				using (PqsqlTransaction t = mConnection.BeginTransaction())
+				{
+					for (int i = 1; i <= N; i++)
+					{
+						int j = (k - 1) * N + i - 1;
+
+						if (i > 1) sb.Append(',');
+						sb.Append("generate_series(:p" + j + ",:p" + j + ")");
+
+						PqsqlParameter p = new PqsqlParameter
+						{
+							ParameterName = "p" + j,
+							DbType = DbType.Int32,
+							Value = j
+						};
+						pars[j] = p;
+					}
+
+					sb.Append(';');
+
+					using (PqsqlCommand cmd = mConnection.CreateCommand())
+					{
+						cmd.Transaction = t;
+						cmd.CommandText = sb.ToString();
+						cmd.CommandTimeout = 20;
+						cmd.CommandType = CommandType.Text;
+						cmd.Parameters.AddRange(pars.Take(k*N).ToArray());
+
+						using (PqsqlDataReader reader = cmd.ExecuteReader())
+						{
+							for (int n = 0; n < k; n++)
+							{
+								while (reader.Read())
+								{
+									for (int m = 0; m < N; m++)
+									{
+										int o = reader.GetInt32(m);
+										Assert.AreEqual(n*N + m, o);
+									}
+								}
+								reader.NextResult();
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 }
