@@ -75,6 +75,12 @@ xid					src/backend/utils/adt/xid.c
 ...
 
 
+TODO
+====
+
+- add basic unit tests
+
+
 Incorporated Postgresql code
 ============================
 src/backend/utils/adt/datetime.c

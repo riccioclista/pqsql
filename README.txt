@@ -48,6 +48,7 @@ https://get.enterprisedb.com/postgresql/postgresql-9.6.5-1-windows-x64-binaries.
 libpq 9.6.5 is linked with
 - OpenSSL 1.0.2l (libeay32.dll and ssleay32.dll)
 - libintl 0.19.6 (libintl-8.dll)
+- libiconv 1.14.0.0 (libiconv-2.dll)
 
 postgresql-9.6.5-1-windows-x64-binaries.zip contains the necessary DLLs
 for libpqbinfmt:
@@ -55,6 +56,7 @@ for libpqbinfmt:
 - pgsql\bin\libeay32.dll
 - pgsql\bin\ssleay32.dll
 - pgsql\bin\libintl-8.dll
+- pgsql\bin\libiconv-2.dll
 
 
 
