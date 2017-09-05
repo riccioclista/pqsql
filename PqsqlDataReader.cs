@@ -916,8 +916,9 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o;";
 					return new DateTime(GetDateTime(mResult, mRowNum, ordinal));
 
 				case PqsqlDbType.Time:
-				case PqsqlDbType.TimeTZ:
 					return new DateTime(GetTime(mResult, mRowNum, ordinal));
+				case PqsqlDbType.TimeTZ:
+					return new DateTime(GetTimeTZ(mResult, mRowNum, ordinal));
 
 				case PqsqlDbType.Date:
 					return GetDate(mResult, mRowNum, ordinal);
