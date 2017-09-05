@@ -680,6 +680,52 @@ namespace PqsqlTests
 		}
 
 
+		[TestMethod]
+		public void PqsqlDataReaderTest12()
+		{
+			mCmd.CommandText = @"select interval '23 days', timestamp '2038-01-01', timestamptz '2038-01-01 00:00:00+02', date '2038-01-01', time '00:00:00', timetz '23:23:23+02';";
+
+			using (PqsqlDataReader reader = mCmd.ExecuteReader())
+			{
+				Assert.IsTrue(reader.HasRows);
+
+				reader.Read();
+
+				TimeSpan ts0 = reader.GetTimeSpan(0);
+				Assert.AreEqual(TimeSpan.FromDays(23), ts0);
+
+				TimeSpan ts1 = reader.GetTimeSpan(1);
+				DateTime dt1 = reader.GetDateTime(1);
+				Assert.AreEqual(new DateTime(2038, 01, 01, 0, 0, 0), dt1);
+				DateTimeOffset dto1 = reader.GetDateTimeOffset(1);
+				Assert.AreEqual(new DateTimeOffset(2038,01,01,0,0,0,TimeSpan.Zero), dto1);
+
+				TimeSpan ts2 = reader.GetTimeSpan(2);
+				DateTime dt2 = reader.GetDateTime(2);
+				Assert.AreEqual(new DateTime(2037, 12, 31, 22, 0, 0), dt2);
+				DateTimeOffset dto2 = reader.GetDateTimeOffset(2);
+				Assert.AreEqual(new DateTimeOffset(2038, 01, 01, 0, 0, 0, TimeSpan.FromHours(2)), dto2);
+
+				TimeSpan ts3 = reader.GetTimeSpan(3);
+				DateTime dt3 = reader.GetDateTime(3);
+				Assert.AreEqual(new DateTime(2038, 01, 01, 0, 0, 0), dt3);
+				DateTimeOffset dto3 = reader.GetDateTimeOffset(3);
+				Assert.AreEqual(new DateTimeOffset(2038, 01, 01, 0, 0, 0, TimeSpan.Zero), dto3);
+
+				TimeSpan ts4 = reader.GetTimeSpan(4);
+				Assert.AreEqual(TimeSpan.FromSeconds(0), ts4);
+				DateTime dt4 = reader.GetDateTime(4);
+				Assert.AreEqual(DateTime.MinValue, dt4);
+				DateTimeOffset dto4 = reader.GetDateTimeOffset(4);
+				Assert.AreEqual(DateTimeOffset.MinValue, dto4);
+
+				TimeSpan ts5 = reader.GetTimeSpan(5);
+				//Assert.AreEqual(TimeSpan.FromHours(21).Add(TimeSpan.FromMinutes(23)).Add(TimeSpan.FromSeconds(23)), ts5);
+				DateTime dt5 = reader.GetDateTime(5);
+				//Assert.AreEqual(DateTime.MinValue.AddHours(21).AddMinutes(23).AddSeconds(23), dt5);
+				DateTimeOffset dto5 = reader.GetDateTimeOffset(5);
+				//Assert.AreEqual(new DateTimeOffset(DateTime.MinValue.AddHours(23).AddMinutes(23).AddSeconds(23), TimeSpan.FromHours(2)), dto5);
+
 				reader.Close();
 			}
 		}
