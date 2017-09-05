@@ -169,5 +169,51 @@ namespace PqsqlTests
 				transaction.Rollback();
 			}
 		}
+
+
+		[TestMethod]
+		public void PqsqlCommandBuilderTest4()
+		{
+			using (PqsqlConnection connection = new PqsqlConnection(connectionString))
+			using (PqsqlCommand command = connection.CreateCommand())
+			{
+				PqsqlTransaction transaction = connection.BeginTransaction();
+				command.Transaction = transaction;
+				command.CommandText = "create temp table temptab (c0 int4 primary key, c1 float8, c2 timestamp);";
+				command.CommandType = CommandType.Text;
+				command.ExecuteNonQuery();
+				transaction.Commit(); // temp table must be visible in the next transaction
+
+				transaction = connection.BeginTransaction();
+
+				PqsqlDataAdapter adapter = new PqsqlDataAdapter("select * from temptab", connection)
+				{
+					SelectCommand =
+					{
+						Transaction = transaction
+					},
+				};
+
+				adapter.RowUpdated += Adapter_RowUpdated;
+
+				PqsqlCommandBuilder builder = new PqsqlCommandBuilder(adapter);
+
+				DataTableMapping mapping = adapter.TableMappings.Add("Table", "temptab");
+				mapping.ColumnMappings.Add("c0", "id");
+				mapping.ColumnMappings.Add("c2", "time");
+
+				DataSet ds = new DataSet();
+				adapter.FillSchema(ds, SchemaType.Mapped);
+				adapter.Fill(ds);
+
+				DataTable tab = ds.Tables[0];
+
+				Assert.AreEqual("id", tab.Columns[0].ColumnName);
+				Assert.AreEqual("c1", tab.Columns[1].ColumnName);
+				Assert.AreEqual("time", tab.Columns[2].ColumnName);
+
+				transaction.Rollback();
+			}
+		}
 	}
 }
