@@ -92,8 +92,9 @@ namespace Pqsql
 			// PQexec does not set field types in PQresult for COPY FROM statements,
 			// just retrieve 0 rows for the field types of Table
 
+			// TODO use PqsqlCopyColumnsCollection for ColumnList
 			StringBuilder sb = new StringBuilder();
-			sb.AppendFormat("SELECT {0} FROM {1} LIMIT 0", (object) ColumnList ?? '*' , Table);
+			sb.AppendFormat("SELECT {0} FROM {1} LIMIT 0;", (object) ColumnList ?? '*' , Table);
 
 			// fetch number of columns and store column information
 			using (PqsqlCommand cmd = new PqsqlCommand(mConn))
