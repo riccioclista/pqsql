@@ -652,19 +652,33 @@ namespace PqsqlTests
 
 				reader.Read(); 
 
-				char c0 = reader.GetChar(0);
 				char c1 = reader.GetChar(1);
+				string s1 = reader.GetString(1);
 				char c2 = reader.GetChar(2);
+				string s2 = reader.GetString(2);
 				char c3 = reader.GetChar(3);
+				string s3 = reader.GetString(3);
 				char c4 = reader.GetChar(4);
+				string s4 = reader.GetString(4);
 				char c5 = reader.GetChar(5);
+				string s5 = reader.GetString(5);
 
-				Assert.AreEqual(default(char), c0);
+				Assert.IsTrue(reader.IsDBNull(0));
 				Assert.AreEqual(default(char), c1);
+				Assert.AreEqual(string.Empty, s1);
 				Assert.AreEqual('你', c2);
+				Assert.AreEqual("你", s2);
 				Assert.AreEqual('好', c3);
+				Assert.AreEqual("好", s3);
 				Assert.AreEqual('吗', c4);
+				Assert.AreEqual("吗", s4);
 				Assert.AreEqual('x', c5);
+				Assert.AreEqual("x", s5);
+
+				reader.Close();
+			}
+		}
+
 
 				reader.Close();
 			}
