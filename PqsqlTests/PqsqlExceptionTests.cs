@@ -24,6 +24,13 @@ namespace PqsqlTests
 		public void TestInitialize()
 		{
 			mConnection = new PqsqlConnection(connectionString);
+
+			// force english error messages
+			using (PqsqlCommand cmd = new PqsqlCommand("SET lc_messages TO 'en';", mConnection))
+			{
+				cmd.ExecuteNonQuery();
+			}
+
 			mCmd = mConnection.CreateCommand();
 		}
 
