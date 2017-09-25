@@ -204,6 +204,9 @@ namespace Pqsql
 			public static extern uint pqparse_num_statements(IntPtr pstate);
 
 			[DllImport("libpqbinfmt.dll")]
+			public static extern int pqparse_num_unknown_variables(IntPtr pstate);
+
+			[DllImport("libpqbinfmt.dll")]
 			public static extern IntPtr pqparse_get_statements(IntPtr pstate);
 
 			[DllImport("libpqbinfmt.dll")]
