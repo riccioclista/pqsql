@@ -24,6 +24,8 @@ extern DECLSPEC size_t pqparse_num_statements(pqparse_state *pstate);
 
 extern DECLSPEC const char * const *pqparse_get_statements(pqparse_state *pstate);
 
+extern DECLSPEC int pqparse_num_unknown_variables(pqparse_state *pstate);
+
 extern DECLSPEC int pqparse_add_statements(pqparse_state *pstate, const char *buffer);
 
 extern DECLSPEC void pqparse_destroy(pqparse_state *pstate);

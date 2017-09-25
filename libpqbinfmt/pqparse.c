@@ -30,6 +30,7 @@ typedef struct pqparse_state
 	PQExpBufferData scan_buf;
 	const char * const *variables;
 	char **statements;
+	int unknown_variables;
 	size_t alloc_statements;
 	size_t index;
 } pqparse_state;
@@ -54,8 +55,11 @@ pqparse_error(const char *fmt,...)
 static char*
 pqparse_get_variable(const char *varname, PsqlScanQuoteType quote, void *passthrough)
 {
+	if (passthrough == NULL)
+		return NULL;
+
 	pqparse_state *pstate = passthrough;
-	const char * const *variables = pstate ? pstate->variables : NULL;
+	const char * const *variables = pstate->variables;
 	const char * const *var;
 	int i;
 	char buf[64];
@@ -68,7 +72,10 @@ pqparse_get_variable(const char *varname, PsqlScanQuoteType quote, void *passthr
 		/* :variables[i] => $(i+1) */
 		int n = snprintf(buf, 64, "$%i", i + 1);
 		if (n < 0 || n >= 64)
+		{
+			pstate->unknown_variables++;
 			return NULL;
+		}
 
 		buf[n] = '\0';
 
@@ -84,6 +91,7 @@ pqparse_get_variable(const char *varname, PsqlScanQuoteType quote, void *passthr
 		break;
 	}
 	
+	pstate->unknown_variables++;
 	return NULL;
 }
 
@@ -116,6 +124,7 @@ pqparse_init(const char * const * variables)
 	initPQExpBuffer(&pstate->scan_buf);
 
 	pstate->variables = variables;
+	pstate->unknown_variables = 0;
 	
 	pstate->alloc_statements = ALLOC_BLOCK;
 	pstate->statements = (char **) malloc(sizeof(char *) * ALLOC_BLOCK);
@@ -132,15 +141,21 @@ pqparse_init(const char * const * variables)
 DECLSPEC size_t
 pqparse_num_statements(pqparse_state *pstate)
 {
-	return pstate->index;
+	return pstate ? pstate->index : 0;
 }
 
+/* returns number of unknown variables */
+DECLSPEC int
+pqparse_num_unknown_variables(pqparse_state *pstate)
+{
+	return pstate ? pstate->unknown_variables : -1;
+}
 
 /* returns currently parsed statements pstate->statements */
 DECLSPEC const char * const *
 pqparse_get_statements(pqparse_state *pstate)
 {
-	return pstate->statements;
+	return pstate ? pstate->statements : NULL;
 }
 
 
@@ -173,6 +188,7 @@ pqparse_destroy(pqparse_state *pstate)
 	pstate->alloc_statements = 0;
 	pstate->index = 0;
 	pstate->variables = NULL;
+	pstate->unknown_variables = 0;
 }
 
 
@@ -190,7 +206,7 @@ pqparse_add_statements(pqparse_state *pstate, const char *buffer)
 	int was_incomplete;
 	size_t old_index;
 
-	if (pstate == NULL || pstate->sstate == NULL || pstate->statements == NULL)
+	if (pstate == NULL || pstate->sstate == NULL || pstate->statements == NULL || pstate->unknown_variables)
 		return -1;
 
 	if (pstate->scan_buf.len > 0) /* previous scan was incomplete, restart */
@@ -223,7 +239,8 @@ pqparse_add_statements(pqparse_state *pstate, const char *buffer)
 		prompt = PROMPT_READY;
 		sr = psql_scan(pstate->sstate, &pstate->scan_buf, &prompt);		
 
-		if (sr != PSCAN_SEMICOLON) /* reached PSCAN_EOL || PSCAN_INCOMPLETE || PSCAN_BACKSLASH */
+		/* could not substitute variables, or reached PSCAN_EOL || PSCAN_INCOMPLETE || PSCAN_BACKSLASH */
+		if (sr != PSCAN_SEMICOLON || pstate->unknown_variables)
 			break;
 
 		/* collect the next SQL statement */
@@ -274,8 +291,11 @@ pqparse_add_statements(pqparse_state *pstate, const char *buffer)
 			}
 		}
 
+		/* reset index and unknown variables, the next round might work */
 		pstate->index = old_index;
+		pstate->unknown_variables = 0;
 
+		/* indicates that we can retry to call pqparse_add_statements with a larger input */
 		return 1;
 	}
 
@@ -287,7 +307,7 @@ pqparse_add_statements(pqparse_state *pstate, const char *buffer)
 	pstate->statements[pstate->index] = NULL;	
 
 	/* 0: (PSCAN_EOL && !PROMPT_CONTINUE) || (PSCAN_INCOMPLETE && PROMPT_READY)
-	 * -1: PSCAN_BACKSLASH if we reached a backslash, bail with error
+	 * -1: either PSCAN_BACKSLASH or variable mapping was missing, bail with error
 	 */
-	return sr == PSCAN_BACKSLASH ? -1 : 0;
+	return sr != PSCAN_BACKSLASH && pstate->unknown_variables == 0 ? 0 : -1;
 }
