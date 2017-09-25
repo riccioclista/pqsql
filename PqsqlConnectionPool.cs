@@ -161,43 +161,38 @@ namespace Pqsql
 			// now create connection
 			IntPtr conn = PqsqlWrapper.PQconnectdbParams(keys, vals, 0);
 
-			if (conn != IntPtr.Zero)
+			if (conn == IntPtr.Zero)
 			{
-				// always force client_encoding to utf8
-				int client_encoding = PqsqlWrapper.PQclientEncoding(conn);
+				connStatus = ConnStatusType.CONNECTION_BAD;
+				tranStatus = PGTransactionStatusType.PQTRANS_UNKNOWN;
+				return conn;
+			}
 
-				if (client_encoding == (int)PgEnc.PG_UTF8) // done
+			// always force client_encoding to utf8
+			int client_encoding = PqsqlWrapper.PQclientEncoding(conn);
+
+			if (client_encoding == (int) PgEnc.PG_UTF8) // done
+			{
+				connStatus = PqsqlWrapper.PQstatus(conn);
+				tranStatus = PqsqlWrapper.PQtransactionStatus(conn);
+			}
+			else if (client_encoding == -1) // bail out, but keep connection object
+			{
+				connStatus = ConnStatusType.CONNECTION_BAD;
+				tranStatus = PGTransactionStatusType.PQTRANS_UNKNOWN;
+			}
+			else // try to set client_encoding to utf8
+			{
+				if (PqsqlWrapper.PQsetClientEncoding(conn, PgEncName.PG_UTF8) == 0) // success
 				{
 					connStatus = PqsqlWrapper.PQstatus(conn);
 					tranStatus = PqsqlWrapper.PQtransactionStatus(conn);
 				}
-				else if (client_encoding == -1) // bail out
+				else // bail out, but keep connection object
 				{
-					PqsqlWrapper.PQfinish(conn);
-					conn = IntPtr.Zero;
 					connStatus = ConnStatusType.CONNECTION_BAD;
 					tranStatus = PGTransactionStatusType.PQTRANS_UNKNOWN;
 				}
-				else // set client_encoding to utf8
-				{
-					if (PqsqlWrapper.PQsetClientEncoding(conn, PgEncName.PG_UTF8) == 0) // success
-					{
-						connStatus = PqsqlWrapper.PQstatus(conn);
-						tranStatus = PqsqlWrapper.PQtransactionStatus(conn);
-					}
-					else // bail out
-					{
-						PqsqlWrapper.PQfinish(conn);
-						conn = IntPtr.Zero;
-						connStatus = ConnStatusType.CONNECTION_BAD;
-						tranStatus = PGTransactionStatusType.PQTRANS_UNKNOWN;
-					}
-				}
-			}
-			else
-			{
-				connStatus = ConnStatusType.CONNECTION_BAD;
-				tranStatus = PGTransactionStatusType.PQTRANS_UNKNOWN;
 			}
 
 			return conn;
