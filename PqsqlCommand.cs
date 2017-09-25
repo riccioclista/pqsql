@@ -744,7 +744,32 @@ namespace Pqsql
 
 				if (parsingState != 0)
 				{
-					string msg = string.Format(CultureInfo.InvariantCulture, "Syntax error in «{0}»", CommandText);
+					string msg;
+					int unknown = PqsqlBinaryFormat.pqparse_num_unknown_variables(pstate);
+					if (unknown != 0)
+					{
+						int numParams = 0;
+						StringBuilder paramList = new StringBuilder();
+
+						foreach (PqsqlParameter param in mParams)
+						{
+							if (numParams > 0)
+								paramList.Append(',');
+							numParams++;
+							paramList.Append(param.PsqlParameterName);
+							if (numParams > 128)
+							{
+								paramList.Append(",...");
+								break;
+							}
+						}
+
+						msg = string.Format(CultureInfo.InvariantCulture, "Could not substitute {0} variable name(s) in «{1}» using PqsqlCommand.Parameters «{2}»", unknown, CommandText, paramList);
+					}
+					else
+					{
+						msg = string.Format(CultureInfo.InvariantCulture, "Syntax error in «{0}»", CommandText);
+					}
 					throw new PqsqlException(msg, (int) PqsqlState.SYNTAX_ERROR);
 				}
 
