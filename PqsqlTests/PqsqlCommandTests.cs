@@ -394,5 +394,61 @@ namespace PqsqlTests
 				}
 			}
 		}
+
+		[TestMethod]
+		public void PqsqlCommandTest11()
+		{
+			PqsqlCommand cmd = new PqsqlCommand("select :p1;", mConnection);
+			cmd.CommandType = CommandType.Text;
+
+			// recursive parameters
+			PqsqlParameter p1 = cmd.Parameters.AddWithValue(":p1", ":p1");
+
+			PqsqlDataReader r = cmd.ExecuteReader();
+			while (r.Read())
+			{
+				string s = r.GetString(0);
+				Assert.AreEqual(p1.Value, s);
+			}
+		}
+
+		[TestMethod]
+		[ExpectedException(typeof(PqsqlException), "syntax error should have been given")]
+		public void PqsqlCommandTest12()
+		{
+			PqsqlCommand cmd = new PqsqlCommand("select :p1;", mConnection)
+			{
+				CommandType = CommandType.Text,
+				Parameters =
+				{
+					// do not add parameter :p1, add p0 and p2 instead
+					new PqsqlParameter(":p0", DbType.String, "p0value"),
+					new PqsqlParameter(":p2", DbType.String, "p2value")
+				}
+			};
+
+			using (PqsqlDataReader r = cmd.ExecuteReader())
+			{
+				Assert.Fail("ExecuteReader() must fail");
+			}
+		}
+
+		[TestMethod]
+		[ExpectedException(typeof(PqsqlException), "syntax error should have been given")]
+		public void PqsqlCommandTest13()
+		{
+			PqsqlCommand cmd = new PqsqlCommand("select :貓1;", mConnection)
+			{
+				CommandType = CommandType.Text
+			};
+
+			// add non-standard parametername
+			cmd.Parameters.AddWithValue(":貓1", "喵");
+
+			using (PqsqlDataReader r = cmd.ExecuteReader())
+			{
+				Assert.Fail("ExecuteReader() must fail");
+			}
+		}
 	}
 }
