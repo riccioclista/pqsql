@@ -28,6 +28,13 @@ namespace PqsqlTests
 		public void TestInitialize()
 		{
 			mConnection = new PqsqlConnection(connectionString);
+
+			// force UTC
+			using (var cmd = new PqsqlCommand("set timezone to 'UTC';", mConnection))
+			{
+				cmd.ExecuteNonQuery();
+			}
+
 			mCmd = mConnection.CreateCommand();
 		}
 
