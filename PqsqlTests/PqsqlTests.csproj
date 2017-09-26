@@ -106,7 +106,9 @@
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTestFramework, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
+    <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTestFramework, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <Private>False</Private>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
@@ -127,6 +129,7 @@
     <Compile Include="PqsqlExceptionTests.cs" />
     <Compile Include="PqsqlDataAdapterTests.cs" />
     <Compile Include="PqsqlDataReaderTests.cs" />
+    <Compile Include="PqsqlTestsInitialize.cs" />
     <Compile Include="PqsqlLargeObjectTests.cs" />
     <Compile Include="PqsqlParameterBufferTests.cs" />
     <Compile Include="PqsqlProviderFactoryTests.cs" />
