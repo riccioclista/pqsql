@@ -38,23 +38,31 @@ namespace PqsqlTests
 			builder[PqsqlConnectionStringBuilder.keepalives_count] = "3";
 			builder[PqsqlConnectionStringBuilder.keepalives_interval] = "3";
 
+			string dataSource;
+
 			using (PqsqlConnection connection = new PqsqlConnection(builder))
-			using (PqsqlCommand cmd = new PqsqlCommand("show all", connection))
-			using (PqsqlDataReader r = cmd.ExecuteReader())
 			{
-				object value;
-				if (builder.TryGetValue(PqsqlConnectionStringBuilder.host, out value))
+				// closed connection with service file should give us empty data source
+				Assert.IsTrue(string.IsNullOrEmpty(connection.DataSource));
+
+				using (PqsqlCommand cmd = new PqsqlCommand("show all", connection))
+				using (PqsqlDataReader r = cmd.ExecuteReader())
 				{
-					Assert.AreEqual(connection.DataSource, value);
+					object value;
+					if (builder.TryGetValue(PqsqlConnectionStringBuilder.host, out value))
+					{
+						Assert.AreEqual(connection.DataSource, value);
+						dataSource = value.ToString();
+					}
+					else // no datasource specified
+					{
+						dataSource = connection.DataSource;
+					}
+					cmd.Cancel();
 				}
-				else
-				{
-					Assert.AreEqual(connection.DataSource, string.Empty);
-				}
-				cmd.Cancel();
 			}
 
-			builder[PqsqlConnectionStringBuilder.host] = "127.0.0.1";
+			builder[PqsqlConnectionStringBuilder.host] = dataSource;
 
 			using (PqsqlConnection connection = new PqsqlConnection(builder))
 			using (PqsqlCommand cmd = new PqsqlCommand("show all", connection))
@@ -67,7 +75,7 @@ namespace PqsqlTests
 				}
 				else
 				{
-					Assert.AreEqual(connection.DataSource, string.Empty);
+					Assert.Fail("host part is not available");
 				}
 				cmd.Cancel();
 			}

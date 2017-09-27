@@ -80,7 +80,10 @@ namespace PqsqlTests
 			Assert.AreEqual(ConnectionState.Closed, connection.State, "wrong connection state");
 			Assert.AreEqual(connectionString.Replace(" ","").Replace("\t","").Replace("\n",""), connection.ConnectionString, "wrong connection string");
 			Assert.AreEqual(3, connection.ConnectionTimeout, "wrong connection timeout");
-			Assert.AreEqual("postgres", connection.Database, "wrong connection database");
+
+			// closed connection with service file should give us empty database name
+			string dbname = connection.Database;
+			Assert.AreEqual(string.Empty, dbname, "wrong connection database");
 
 			string serverVersion = connection.ServerVersion;
 			Assert.IsFalse(string.IsNullOrEmpty(serverVersion));
@@ -90,11 +93,32 @@ namespace PqsqlTests
 
 			Assert.AreEqual(ConnectionState.Open, connection.State, "wrong connection state");
 
+			dbname = connection.Database;
+			Assert.AreNotEqual(string.Empty, dbname, "wrong connection database");
+
 			serverVersion = connection.ServerVersion;
 			Assert.IsFalse(string.IsNullOrEmpty(serverVersion));
-			Assert.IsTrue(serverVersion.Length >= 5);
+
+			if (serverVersion.Length >= 6) // expect 100000 or later
+			{
+				int version = Convert.ToInt32(serverVersion);
+				Assert.IsTrue(version >= 100000);
+			}
+			else if (serverVersion.Length >= 5) // expect 90400 .. 90699
+			{
+				int version = Convert.ToInt32(serverVersion);
+				Assert.IsTrue(version >= 90400);
+				Assert.IsTrue(version <= 90699);
+			}
+			else
+			{
+				Assert.Fail("wrong server version");
+			}
 
 			connection.Close();
+
+			dbname = connection.Database;
+			Assert.AreEqual(string.Empty, dbname, "wrong connection database");
 
 			serverVersion = connection.ServerVersion;
 			Assert.IsFalse(string.IsNullOrEmpty(serverVersion));

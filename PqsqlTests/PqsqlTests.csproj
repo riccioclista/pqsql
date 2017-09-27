@@ -145,6 +145,9 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <None Include="pg_service.conf">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="Ximes.snk" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />

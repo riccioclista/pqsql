@@ -21,8 +21,9 @@
 
 	<!-- Parameters used by tests at runtime -->
 	<TestRunParameters>
-		<Parameter name="connectionString" value="host=localhost; port=5432; user=postgres; password=postgres; dbname=postgres; connect_timeout=3" />
+		<Parameter name="connectionString" value="service=pqsqltests; connect_timeout=3" />
 		<Parameter name="libpqPath" value="c:\pgsql\bin\" />
+		<Parameter name="pgServiceFile" value="pg_service.conf" />
 	</TestRunParameters>
 
 	<!-- Adapter Specific sections -->
