@@ -450,5 +450,59 @@ namespace PqsqlTests
 				Assert.Fail("ExecuteReader() must fail");
 			}
 		}
+
+		[TestMethod]
+		[ExpectedException(typeof(PqsqlException), "row is too big error should have been given")]
+		public void PqsqlCommandTest14()
+		{
+			const int n = 600;
+			PqsqlTransaction t = mConnection.BeginTransaction();
+
+			StringBuilder sb = new StringBuilder("CREATE TEMP TABLE testcopy (c0 int4,");
+			for (int i = 1; i < n; i++)
+			{
+				if (i > 1)
+					sb.Append(',');
+				sb.AppendFormat("c{0} text", i);
+			}
+			sb.Append(");");
+
+			PqsqlCommand cmd = mConnection.CreateCommand();
+			cmd.Transaction = t;
+			cmd.CommandText = sb.ToString();
+			cmd.CommandTimeout = 100;
+			cmd.CommandType = CommandType.Text;
+
+			cmd.ExecuteNonQuery();
+
+			sb.Clear();
+			sb.Append("INSERT INTO testcopy VALUES (:p0,");
+			cmd.Parameters.AddWithValue(":p0", 0);
+
+			for (int i = 1; i < n; i++)
+			{
+				if (i > 1)
+					sb.Append(',');
+
+				string par = ":p" + i;
+				sb.AppendFormat(par);
+				cmd.Parameters.AddWithValue(par, "01234567890123456789");
+			}
+			sb.Append(");");
+
+			cmd.CommandText = sb.ToString();
+
+			try
+			{
+				cmd.ExecuteNonQuery();
+			}
+			catch (PqsqlException e)
+			{
+				Assert.AreEqual((int)PqsqlState.PROGRAM_LIMIT_EXCEEDED, e.ErrorCode);
+				throw;
+			}
+
+			Assert.Fail();
+		}
 	}
 }
