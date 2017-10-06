@@ -409,5 +409,63 @@ namespace PqsqlTests
 			}
 		}
 
+		[TestMethod]
+		[ExpectedException(typeof(PqsqlException), "row is too big error should have been given")]
+		public void PqsqlCopyFromTest8()
+		{
+			const int n = 600;
+			PqsqlTransaction t = mConnection.BeginTransaction();
+
+			StringBuilder sb = new StringBuilder("CREATE TEMP TABLE testcopy (c0 int4,");
+			for (int i = 1; i < n; i++)
+			{
+				if (i > 1)
+					sb.Append(',');
+				sb.AppendFormat("c{0} text", i);
+			}
+			sb.Append(");");
+
+			PqsqlCommand cmd = mConnection.CreateCommand();
+			cmd.Transaction = t;
+			cmd.CommandText = sb.ToString();
+			cmd.CommandTimeout = 100;
+			cmd.CommandType = CommandType.Text;
+
+			cmd.ExecuteNonQuery();
+
+			sb.Clear();
+			for (int i = 0; i < n; i++)
+			{
+				if (i > 0)
+					sb.Append(',');
+				sb.AppendFormat("c{0}", i);
+			}
+
+			PqsqlCopyFrom copy = new PqsqlCopyFrom(mConnection)
+			{
+				Table = "testcopy",
+				ColumnList = sb.ToString(),
+				CopyTimeout = 50
+			};
+
+			copy.Start();
+
+			copy.WriteInt4(1);
+			for (int i = 1; i < n; i++)
+			{
+				copy.WriteText("01234567890123456789");
+			}
+
+			try
+			{
+				copy.End();
+			}
+			finally
+			{
+				copy.Close();
+			}
+
+			Assert.Fail();
+		}
 	}
 }
