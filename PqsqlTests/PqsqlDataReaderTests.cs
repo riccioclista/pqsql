@@ -160,6 +160,9 @@ namespace PqsqlTests
 		{
 			mConnection.Open();
 
+			// get dbname from connection
+			object dbname = mConnection.Database;
+
 			PqsqlDataReader reader = new PqsqlDataReader(mCmd, CommandBehavior.SchemaOnly, new[] {"select oid as ObjectId from pg_class"});
 			DataTable schematable = reader.GetSchemaTable();
 
@@ -175,7 +178,7 @@ namespace PqsqlTests
 			Assert.AreEqual(PqsqlDbType.Oid, (PqsqlDbType) row[PqsqlSchemaTableColumn.TypeOid]);
 			Assert.AreEqual(true, row[SchemaTableColumn.AllowDBNull]);
 			Assert.AreEqual("objectid", row[SchemaTableColumn.BaseColumnName]);
-			Assert.AreEqual("postgres", row[SchemaTableOptionalColumn.BaseCatalogName]);
+			Assert.AreEqual(dbname, row[SchemaTableOptionalColumn.BaseCatalogName]);
 			Assert.AreEqual("pg_catalog", row[SchemaTableColumn.BaseSchemaName]);
 			Assert.AreEqual("pg_class", row[SchemaTableColumn.BaseTableName]);
 			Assert.AreEqual("objectid", row[SchemaTableColumn.ColumnName]);

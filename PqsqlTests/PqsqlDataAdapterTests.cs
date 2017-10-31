@@ -45,6 +45,9 @@ namespace PqsqlTests
 			mCmd.CommandType = CommandType.StoredProcedure;
 			object curdb = mCmd.ExecuteScalar();
 
+			// get dbname from connection
+			object dbname = mConnection.Database;
+
 			// fetch pg_database tuple
 			mCmd.CommandText = "select datname,pg_encoding_to_char(encoding),datcollate,datctype,datallowconn from pg_database where datname=:dat";
 			mCmd.CommandType = CommandType.Text;
@@ -77,7 +80,7 @@ namespace PqsqlTests
 						switch (columns)
 						{
 						case 0: // datname
-							Assert.AreEqual("postgres", item, "wrong database name");
+							Assert.AreEqual(dbname, item, "wrong database name");
 							break;
 						case 1: // encoding
 							Assert.AreEqual("UTF8", item, "wrong encoding id");
@@ -110,6 +113,9 @@ namespace PqsqlTests
 			mCmd.CommandType = CommandType.StoredProcedure;
 			object curdb = mCmd.ExecuteScalar();
 
+			// get dbname from connection
+			object dbname = mConnection.Database;
+
 			// fetch pg_database tuple
 			string select = "select datname,pg_encoding_to_char(encoding),datcollate,datctype,datallowconn from pg_database where datname='" + curdb + "'";
 
@@ -135,7 +141,7 @@ namespace PqsqlTests
 						switch (columns)
 						{
 							case 0: // datname
-								Assert.AreEqual("postgres", item, "wrong database name");
+								Assert.AreEqual(dbname, item, "wrong database name");
 								break;
 							case 1: // encoding
 								Assert.AreEqual("UTF8", item, "wrong encoding id");
