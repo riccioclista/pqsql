@@ -24,13 +24,6 @@ namespace PqsqlTests
 		public void TestInitialize()
 		{
 			mConnection = new PqsqlConnection(connectionString);
-
-			// force english error messages
-			using (PqsqlCommand cmd = new PqsqlCommand("SET lc_messages TO 'en';", mConnection))
-			{
-				cmd.ExecuteNonQuery();
-			}
-
 			mCmd = mConnection.CreateCommand();
 		}
 
@@ -92,7 +85,7 @@ namespace PqsqlTests
 			catch (PqsqlException e)
 			{
 				Assert.IsNotNull(e.Message);
-				Assert.AreEqual("ERROR:  division by zero\n", e.Message);
+				Assert.AreNotEqual(string.Empty, e.Message); // ERROR:  division by zero
 				Assert.AreEqual(string.Empty, e.Hint);
 				Assert.AreEqual("22012", e.SqlState);
 				Assert.AreEqual((int)PqsqlState.DIVISION_BY_ZERO, e.ErrorCode);
@@ -113,7 +106,8 @@ namespace PqsqlTests
 			{
 				Assert.IsNotNull(e.Message);
 				Assert.AreNotEqual(string.Empty, e.Message);
-				Assert.AreEqual("No function matches the given name and argument types. You might need to add explicit type casts.", e.Hint);
+				Assert.IsNotNull(e.Hint);
+				Assert.AreNotEqual(string.Empty, e.Hint); // No function matches the given name and argument types. You might need to add explicit type casts.
 				Assert.AreEqual("42883", e.SqlState);
 				Assert.AreEqual((int)PqsqlState.UNDEFINED_FUNCTION, e.ErrorCode);
 			}
