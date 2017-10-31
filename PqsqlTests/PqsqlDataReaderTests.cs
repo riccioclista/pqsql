@@ -200,8 +200,8 @@ namespace PqsqlTests
 								select interval '20 days', interval '123 secs', interval '20 years 10 months', now(), :p4, timestamp 'infinity', timestamp '-infinity', date 'infinity', date '-infinity';
 								select 123.456::numeric, :p3::text ;
 								select 'NaN'::numeric, '-1234567898765432123456789.87654321'::numeric ;
-								select generate_series(1,10000000),generate_series(1,10000000);
-								select generate_series(1,10000000),generate_series(1,10000000);
+								select generate_series(1,1000000),generate_series(1,1000000);
+								select generate_series(1,1000000),generate_series(1,1000000);
 								select :p1,:p2::text ;
 								select extract(epoch from date_trunc('day',current_date - :p9 ))::integer ";
 
@@ -400,7 +400,7 @@ namespace PqsqlTests
 
 			int comp = 1;
 
-			// select generate_series(1,10000000),generate_series(1,10000000)
+			// select generate_series(1,1000000),generate_series(1,1000000)
 			while (r.Read())
 			{
 				int gen = r.GetInt32(0);
@@ -412,14 +412,14 @@ namespace PqsqlTests
 
 			comp = 1;
 
-			// select generate_series(1,10000000),generate_series(1,10000000)
+			// select generate_series(1,1000000),generate_series(1,1000000)
 			while (r.Read())
 			{
 				int gen = r.GetInt32(0);
 				Assert.AreEqual(comp++, gen);
 			}
 
-			Assert.AreEqual(10000001, comp);
+			Assert.AreEqual(1000001, comp);
 
 			next = r.NextResult();
 			Assert.IsTrue(next);
