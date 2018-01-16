@@ -31,6 +31,7 @@ typedef struct pqparse_state
 	const char * const *variables;
 	char **statements;
 	int unknown_variables;
+	int slash_star_comment;
 	size_t alloc_statements;
 	size_t index;
 } pqparse_state;
@@ -125,6 +126,7 @@ pqparse_init(const char * const * variables)
 
 	pstate->variables = variables;
 	pstate->unknown_variables = 0;
+	pstate->slash_star_comment = 0;
 	
 	pstate->alloc_statements = ALLOC_BLOCK;
 	pstate->statements = (char **) malloc(sizeof(char *) * ALLOC_BLOCK);
@@ -155,7 +157,7 @@ pqparse_num_unknown_variables(pqparse_state *pstate)
 DECLSPEC const char * const *
 pqparse_get_statements(pqparse_state *pstate)
 {
-	return pstate ? pstate->statements : NULL;
+	return pstate ? (const char * const *) pstate->statements : NULL;
 }
 
 
@@ -189,6 +191,7 @@ pqparse_destroy(pqparse_state *pstate)
 	pstate->index = 0;
 	pstate->variables = NULL;
 	pstate->unknown_variables = 0;
+	pstate->slash_star_comment = 0;
 }
 
 
@@ -199,7 +202,7 @@ pqparse_destroy(pqparse_state *pstate)
 DECLSPEC int
 pqparse_add_statements(pqparse_state *pstate, const char *buffer)
 {
-	const char *b;
+	const char *inputbuf;
 	size_t len;
 	PsqlScanResult sr;
 	promptStatus_t prompt;
@@ -209,26 +212,31 @@ pqparse_add_statements(pqparse_state *pstate, const char *buffer)
 	if (pstate == NULL || pstate->sstate == NULL || pstate->statements == NULL || pstate->unknown_variables)
 		return -1;
 
-	if (pstate->scan_buf.len > 0) /* previous scan was incomplete, restart */
+	/* save input of previous run */
+	PQExpBufferData temp_buf;
+	initPQExpBuffer(&temp_buf);
+	appendPQExpBufferStr(&temp_buf, pstate->scan_buf.data);
+
+	if (pstate->scan_buf.len > 0 && !pstate->slash_star_comment) /* previous scan was incomplete, restart */
 	{
 		appendPQExpBufferStr(&pstate->scan_buf, buffer);
 
-		b = pg_strdup(pstate->scan_buf.data);
+		inputbuf = pg_strdup(pstate->scan_buf.data);
 		len = pstate->scan_buf.len;
 		was_incomplete = 1;
 
 		/* output buffer is processed */
 		resetPQExpBuffer(&pstate->scan_buf);
 	}
-	else
+	else /* pstate->slash_star_comment || !pstate->scan_buf.len: keep parsing in comment and empty mode */
 	{
-		b = buffer;
+		inputbuf = buffer;
 		len = strlen(buffer);
 		was_incomplete = 0;
 	}
 
 	/* we force encoding = 6 (UTF-8) and stdstrings = true */
-	psql_scan_setup(pstate->sstate, b, len, 6, true);
+	psql_scan_setup(pstate->sstate, inputbuf, len, 6, true);
 	
 	/* save current statement index */
 	old_index = pstate->index;
@@ -242,6 +250,8 @@ pqparse_add_statements(pqparse_state *pstate, const char *buffer)
 		/* could not substitute variables, or reached PSCAN_EOL || PSCAN_INCOMPLETE || PSCAN_BACKSLASH */
 		if (sr != PSCAN_SEMICOLON || pstate->unknown_variables)
 			break;
+
+		/* PSCAN_SEMICOLON && !unknown_variables: pstate->scan_buf contains statement */
 
 		/* collect the next SQL statement */
 		pstate->statements[pstate->index] = pg_strdup(pstate->scan_buf.data);
@@ -264,22 +274,40 @@ pqparse_add_statements(pqparse_state *pstate, const char *buffer)
 
 	} while (1);
 
-	/* we are finished with parsing b */
+	/* terminate statements array */
+	pstate->statements[pstate->index] = NULL;
+
+	if (was_incomplete) /* did we copy inputbuf before? */
+	{
+		free((void *)inputbuf);
+		inputbuf = NULL;
+	}
+
+	/* we are finished with parsing inputbuf */
 	psql_scan_finish(pstate->sstate);
 
-	/* output buffer is processed */
-	resetPQExpBuffer(&pstate->scan_buf);
+	if (prompt == PROMPT_COMMENT) /* did we end up in an unfinished slash-star comment? */
+	{
+		/* keep pstate->scan_buf intact for the next round.
+		 * ignore slash-star and everything that follows,
+		 * (one of the) next rounds must add a closing star-slash.
+		 */
+		pstate->slash_star_comment = 1;
 
-	/* keep pstate->scan_buf intact for the next round */
+		termPQExpBuffer(&temp_buf); /* clean up temp buffer */
+
+		/* indicates that we can retry to call pqparse_add_statements with a larger input */
+		return 1;
+	}
+
+	/* restore input buffer for the next round */
 	if ((sr == PSCAN_INCOMPLETE && prompt != PROMPT_READY) || (sr == PSCAN_EOL && prompt == PROMPT_CONTINUE))
 	{
-		/* rescue b, we might have replaced incomplete variable names that get expanded in the next round */
-		appendPQExpBufferStr(&pstate->scan_buf, b);
+		appendPQExpBufferStr(&temp_buf, buffer);
+		resetPQExpBuffer(&pstate->scan_buf);
+		appendPQExpBufferStr(&pstate->scan_buf, temp_buf.data);
 
-		if (was_incomplete) /* did we copy b before? */
-		{
-			free((void *) b);
-		}
+		termPQExpBuffer(&temp_buf); /* clean up temp buffer */
 
 		/* remove everything we have parsed so far, try to fix it in the next round */
 		for (size_t i = old_index; i < pstate->index; i++)
@@ -291,20 +319,20 @@ pqparse_add_statements(pqparse_state *pstate, const char *buffer)
 			}
 		}
 
-		/* reset index and unknown variables, the next round might work */
+		/* reset index, unknown variables, and slash-star comments,
+		 * but keep pstate->scan_buf as is: we might had replaced
+		 * incomplete variable names here that get re-expanded in the
+		 * next round
+		 */
 		pstate->index = old_index;
 		pstate->unknown_variables = 0;
+		pstate->slash_star_comment = 0;
 
 		/* indicates that we can retry to call pqparse_add_statements with a larger input */
 		return 1;
 	}
 
-	if (was_incomplete) /* did we copy b? */
-	{
-		free((void *)b);
-	}
-
-	pstate->statements[pstate->index] = NULL;	
+	termPQExpBuffer(&temp_buf);
 
 	/* 0: (PSCAN_EOL && !PROMPT_CONTINUE) || (PSCAN_INCOMPLETE && PROMPT_READY)
 	 * -1: either PSCAN_BACKSLASH or variable mapping was missing, bail with error
