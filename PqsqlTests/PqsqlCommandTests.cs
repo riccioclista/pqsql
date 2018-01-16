@@ -504,5 +504,75 @@ namespace PqsqlTests
 
 			Assert.Fail();
 		}
+
+		[TestMethod]
+		public void PqsqlCommandTest15()
+		{
+			using (PqsqlCommand cmd =
+				new PqsqlCommand("select state from pg_stat_activity --\n; /* select 1 */", mConnection) {CommandType = CommandType.Text})
+			{
+				PqsqlDataReader r = cmd.ExecuteReader();
+				while (r.Read())
+				{
+					string s = r.GetString(0);
+				}
+			}
+		}
+
+		[TestMethod]
+		public void PqsqlCommandTest16()
+		{
+			using (PqsqlCommand cmd =
+				new PqsqlCommand("select state from /* xxx */ pg_stat_activity\n;", mConnection) { CommandType = CommandType.Text })
+			{
+				PqsqlDataReader r = cmd.ExecuteReader();
+				while (r.Read())
+				{
+					string s = r.GetString(0);
+				}
+			}
+		}
+
+		[TestMethod]
+		public void PqsqlCommandTest17()
+		{
+			using (PqsqlCommand cmd =
+				new PqsqlCommand("select /*state*/'x' from /* xxx */ pg_stat_activity ", mConnection) { CommandType = CommandType.Text })
+			{
+				PqsqlDataReader r = cmd.ExecuteReader();
+				while (r.Read())
+				{
+					string s = r.GetString(0);
+				}
+			}
+		}
+
+		[TestMethod]
+		public void PqsqlCommandTest18()
+		{
+			using (PqsqlCommand cmd =
+				new PqsqlCommand("select state from pg_stat_activity -- forcing ;", mConnection) { CommandType = CommandType.Text })
+			{
+				PqsqlDataReader r = cmd.ExecuteReader();
+				while (r.Read())
+				{
+					string s = r.GetString(0);
+				}
+			}
+		}
+
+		[TestMethod]
+		public void PqsqlCommandTest19()
+		{
+			using (PqsqlCommand cmd =
+				new PqsqlCommand("select state from pg_stat_activity -- no semicolon", mConnection) { CommandType = CommandType.Text })
+			{
+				PqsqlDataReader r = cmd.ExecuteReader();
+				while (r.Read())
+				{
+					string s = r.GetString(0);
+				}
+			}
+		}
 	}
 }
