@@ -694,6 +694,10 @@ namespace Pqsql
 					int offset = 0;
 					varArray = Marshal.AllocHGlobal((mParams.Count + 1) * sizeof(sbyte*));
 					
+					// always write NULL before we continue, so finally clause can clean up properly
+					// if we get hit by an exception
+					Marshal.WriteIntPtr(varArray, offset, IntPtr.Zero);
+
 					foreach (PqsqlParameter param in mParams)
 					{
 						// always write NULL before we continue, so finally clause can clean up properly
@@ -731,10 +735,18 @@ namespace Pqsql
 				pstate = PqsqlBinaryFormat.pqparse_init(varArray);
 
 				// always terminate CommandText with a ; (prevents unnecessary re-parsing)
+				// we have the following cases:
+				// 1) "select 1; select 2"
+				// 2) "select 1; select 2 -- dash-dash comment forces newline for semicolon"
+				// 3) "select 1; select 2; /* slash-star comment forces unnecessary semicolon */"
+				// 4) "select 1; select 2 -- dash-dash comment triggers ;"
+				//
+				// For (1), (2), (3) we simply add a newline + semicolon.  Case (4) is more tricky
+				// and requires to re-start the parser for another round.
 				string commands = CommandText.TrimEnd();
 				if (!commands.EndsWith(";", StringComparison.Ordinal))
 				{
-					commands += ';';
+					commands += "\n;";
 				}
 
 				byte[] statementsString = PqsqlUTF8Statement.CreateUTF8Statement(commands);
@@ -742,35 +754,17 @@ namespace Pqsql
 				// add a semicolon-separated list of UTF-8 statements
 				int parsingState = PqsqlBinaryFormat.pqparse_add_statements(pstate, statementsString);
 
-				if (parsingState != 0)
+				if (parsingState == -1) // syntax error or missing parameter
 				{
-					string msg;
-					int unknown = PqsqlBinaryFormat.pqparse_num_unknown_variables(pstate);
-					if (unknown != 0)
+					ParsingError(pstate);
+				}
+				else if (parsingState == 1) // incomplete input, continue with current parsing state and force final "\n;"
+				{
+					statementsString = PqsqlUTF8Statement.CreateUTF8Statement("\n;");
+					if (PqsqlBinaryFormat.pqparse_add_statements(pstate, statementsString) != 0)
 					{
-						int numParams = 0;
-						StringBuilder paramList = new StringBuilder();
-
-						foreach (PqsqlParameter param in mParams)
-						{
-							if (numParams > 0)
-								paramList.Append(',');
-							numParams++;
-							paramList.Append(param.PsqlParameterName);
-							if (numParams > 128)
-							{
-								paramList.Append(",...");
-								break;
-							}
-						}
-
-						msg = string.Format(CultureInfo.InvariantCulture, "Could not substitute {0} variable name(s) in «{1}» using PqsqlCommand.Parameters «{2}»", unknown, CommandText, paramList);
+						ParsingError(pstate); // syntax error / missing parameter / incomplete input
 					}
-					else
-					{
-						msg = string.Format(CultureInfo.InvariantCulture, "Syntax error in «{0}»", CommandText);
-					}
-					throw new PqsqlException(msg, (int) PqsqlState.SYNTAX_ERROR);
 				}
 
 				uint num = PqsqlBinaryFormat.pqparse_num_statements(pstate);
@@ -831,6 +825,41 @@ namespace Pqsql
 					Marshal.FreeHGlobal(varArray);
 				}
 			}
+		}
+
+		private void ParsingError(IntPtr pstate)
+		{
+			string msg;
+			int unknown = PqsqlBinaryFormat.pqparse_num_unknown_variables(pstate);
+
+			if (unknown != 0)
+			{
+				int numParams = 0;
+				StringBuilder paramList = new StringBuilder();
+
+				foreach (PqsqlParameter param in mParams)
+				{
+					if (numParams > 0)
+						paramList.Append(',');
+					numParams++;
+					paramList.Append(param.PsqlParameterName);
+					if (numParams > 128)
+					{
+						paramList.Append(",...");
+						break;
+					}
+				}
+
+				msg = string.Format(CultureInfo.InvariantCulture,
+					"Could not substitute {0} variable name(s) in «{1}» using PqsqlCommand.Parameters «{2}»", unknown, CommandText,
+					paramList);
+			}
+			else
+			{
+				msg = string.Format(CultureInfo.InvariantCulture, "Syntax error in «{0}»", CommandText);
+			}
+
+			throw new PqsqlException(msg, (int) PqsqlState.SYNTAX_ERROR);
 		}
 
 		#endregion
