@@ -20,7 +20,7 @@
 
 /* Macros for returning results of standard types */
 
-#define PG_RETURN_DATUM(x)       return (x)
+#define PG_RETURN_DATUM(x)	 return (x)
 #define PG_RETURN_POINTER(x) return PointerGetDatum(x)
 #define PG_RETURN_CSTRING(x) return CStringGetDatum(x)
 /* these macros hide the pass-by-reference-ness of the datatype: */
@@ -28,4 +28,4 @@
 /* RETURN macros for other pass-by-ref types will typically look like this: */
 #define PG_RETURN_BYTEA_P(x)   PG_RETURN_POINTER(x)
 
-#endif FMGR_H
+#endif   /* FMGR_H */
