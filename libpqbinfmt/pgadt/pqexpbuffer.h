@@ -1,3 +1,9 @@
+/**
+ * @file pqexpbuffer.h
+ * @brief excerpt from src/interfaces/libpq/pqexpbuffer.h (internal/pqexpbuffer.h is not usable for MSVC)
+ * @date 2015-11-03
+ * @author Thomas Krennwallner <krennwallner@ximes.com>
+ */
 /*-------------------------------------------------------------------------
  *
  * pqexpbuffer.h
@@ -22,15 +28,8 @@
  *
  *-------------------------------------------------------------------------
  */
-/**
- * @file pqexpbuffer.h
- * @brief excerpt from src/interfaces/libpq/pqexpbuffer.h (internal/pqexpbuffer.h is not usable for MSVC)
- * @date 2015-11-03
- * @author Thomas Krennwallner <krennwallner@ximes.com>
- */
-
-#ifndef __PQEXPBUFFER_H
-#define __PQEXPBUFFER_H
+#ifndef PQEXPBUFFER_H
+#define PQEXPBUFFER_H
 
 #ifdef  __cplusplus
 extern "C" {
@@ -169,4 +168,4 @@ extern void appendBinaryPQExpBuffer(PQExpBuffer str,
 }
 #endif
 
-#endif /* __PQEXPBUFFER_H */
+#endif   /* PQEXPBUFFER_H */
