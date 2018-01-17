@@ -6,8 +6,8 @@ libpqbinfmt
 
 Assumes that headers and lib files are installed in C:\pgsql
 
-Just unpack postgresql-9.6.5-1-windows-x64-binaries.zip from
-https://get.enterprisedb.com/postgresql/postgresql-9.6.5-1-windows-x64-binaries.zip
+Just unpack postgresql-9.6.6-3-windows-x64-binaries.zip from
+https://get.enterprisedb.com/postgresql/postgresql-9.6.6-3-windows-x64-binaries.zip
 into C:\pgsql
 
 
@@ -39,18 +39,18 @@ https://www.microsoft.com/en-us/download/details.aspx?id=53587
 The libpq DLLs depend on Visual C++ Redistributable Packages for Visual Studio 2013 from
 https://www.microsoft.com/en-us/download/details.aspx?id=40784
 
-libpqbinfmt is based on x64 libpq from PostgreSQL 9.6.5:
+libpqbinfmt is based on x64 libpq from PostgreSQL 9.6.6:
 http://www.postgresql.org/docs/current/static/libpq.html
 
-libpq DLLs can be retrieved from postgresql-9.6.5-1-windows-x64-binaries.zip:
-https://get.enterprisedb.com/postgresql/postgresql-9.6.5-1-windows-x64-binaries.zip
+libpq DLLs can be retrieved from postgresql-9.6.6-3-windows-x64-binaries.zip:
+https://get.enterprisedb.com/postgresql/postgresql-9.6.6-3-windows-x64-binaries.zip
 
-libpq 9.6.5 is linked with
-- OpenSSL 1.0.2l (libeay32.dll and ssleay32.dll)
-- libintl 0.19.6 (libintl-8.dll)
+libpq 9.6.6 is linked with
+- OpenSSL 1.0.2n (libeay32.dll and ssleay32.dll)
+- libintl 0.19.6.0 (libintl-8.dll)
 - libiconv 1.14.0.0 (libiconv-2.dll)
 
-postgresql-9.6.5-1-windows-x64-binaries.zip contains the necessary DLLs
+postgresql-9.6.6-3-windows-x64-binaries.zip contains the necessary DLLs
 for libpqbinfmt:
 - pgsql\bin\libpq.dll
 - pgsql\bin\libeay32.dll
