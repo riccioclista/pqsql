@@ -490,7 +490,16 @@ float8_numeric(double val)
 	if (isnan(val))
 		PG_RETURN_NUMERIC(make_result(&const_nan));
 
-	sprintf(buf, "%.*g", DBL_DIG, val);
+	if (isinf(val))
+#if 1
+			return 0;
+#else
+			ereport(ERROR,
+						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						 errmsg("cannot convert infinity to numeric")));
+#endif
+
+	snprintf(buf, sizeof(buf), "%.*g", DBL_DIG, val);
 
 	init_var(&result);
 
