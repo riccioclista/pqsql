@@ -99,6 +99,7 @@ src/include/postgres.h (23b09e15b9f40baeff527ca4dbc40afc823dd962)
 src/include/utils/builtins.h (ed0097e4f9e6b1227935e01fa67f12a238b66064)
 src/include/utils/datetime.h (ee943004466418595363d567f18c053bae407792)
 src/include/utils/numeric.h (9389fbd0385776adf3252eb8cfe6e37a640fdff4)
+src/include/datatype/timestamp.h (a70e13a39eccf5fc944c66e0029004b6abcb3cae)
 
 src/interfaces/ecpg/ecpglib/pg_type.h (ee943004466418595363d567f18c053bae407792)
 src/interfaces/libpq/pqexpbuffer.h (ee943004466418595363d567f18c053bae407792)
