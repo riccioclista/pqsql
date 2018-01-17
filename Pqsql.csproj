@@ -219,9 +219,7 @@
     <Compile Include="PqsqlCommandBuilder.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="PqsqlConnection.cs">
-      <SubType>Component</SubType>
-    </Compile>
+    <Compile Include="PqsqlConnection.cs" />
     <Compile Include="PqsqlConnectionPool.cs" />
     <Compile Include="PqsqlConnectionStringBuilder.cs" />
     <Compile Include="PqsqlCopyFrom.cs" />
