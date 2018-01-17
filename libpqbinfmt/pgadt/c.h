@@ -26,7 +26,7 @@
  *	  section	description
  *	  -------	------------------------------------------------
  *		0)		pg_config.h and standard system headers
- *		1)		hacks to cope with non-ANSI C compilers
+ *		1)		compiler characteristics
  *		2)		bool, true, false, TRUE, FALSE, NULL
  *		3)		standard system types
  *		4)		IsValid macros for system types
@@ -64,26 +64,71 @@
 /* Must be before gettext() games below */
 #include <locale.h>
 
-#define _(x) gettext(x)
-
 #ifdef ENABLE_NLS
 #include <libintl.h>
+#endif
+
+/* ----------------------------------------------------------------
+ *				Section 1: compiler characteristics
+ *
+ * type prefixes (const, signed, volatile, inline) are handled in pg_config.h.
+ * ----------------------------------------------------------------
+ */
+
+/*
+ * Attribute macros
+ *
+ * GCC: https://gcc.gnu.org/onlinedocs/gcc/Function-Attributes.html
+ * GCC: https://gcc.gnu.org/onlinedocs/gcc/Type-Attributes.html
+ * Sunpro: https://docs.oracle.com/cd/E18659_01/html/821-1384/gjzke.html
+ * XLC: http://www-01.ibm.com/support/knowledgecenter/SSGH2K_11.1.0/com.ibm.xlc111.aix.doc/language_ref/function_attributes.html
+ * XLC: http://www-01.ibm.com/support/knowledgecenter/SSGH2K_11.1.0/com.ibm.xlc111.aix.doc/language_ref/type_attrib.html
+ */
+
+/* only GCC supports the unused attribute */
+#ifdef __GNUC__
+#define pg_attribute_unused() __attribute__((unused))
 #else
-#define gettext(x) (x)
-#define dgettext(d,x) (x)
-#define ngettext(s,p,n) ((n) == 1 ? (s) : (p))
-#define dngettext(d,s,p,n) ((n) == 1 ? (s) : (p))
+#define pg_attribute_unused()
+#endif
+
+/* GCC and XLC support format attributes */
+#if defined(__GNUC__) || defined(__IBMC__)
+#define pg_attribute_format_arg(a) __attribute__((format_arg(a)))
+#define pg_attribute_printf(f,a) __attribute__((format(PG_PRINTF_ATTRIBUTE, f, a)))
+#else
+#define pg_attribute_format_arg(a)
+#define pg_attribute_printf(f,a)
+#endif
+
+/* GCC, Sunpro and XLC support aligned, packed and noreturn */
+#if defined(__GNUC__) || defined(__SUNPRO_C) || defined(__IBMC__)
+#define pg_attribute_aligned(a) __attribute__((aligned(a)))
+#define pg_attribute_noreturn() __attribute__((noreturn))
+#define pg_attribute_packed() __attribute__((packed))
+#define HAVE_PG_ATTRIBUTE_NORETURN 1
+#else
+/*
+ * NB: aligned and packed are not given default definitions because they
+ * affect code functionality; they *must* be implemented by the compiler
+ * if they are to be used.
+ */
+#define pg_attribute_noreturn()
 #endif
 
 /*
- *	Use this to mark string constants as needing translation at some later
- *	time, rather than immediately.  This is useful for cases where you need
- *	access to the original string and translated string, and for cases where
- *	immediate translation is not possible, like when initializing global
- *	variables.
- *		http://www.gnu.org/software/autoconf/manual/gettext/Special-cases.html
+ * Mark a point as unreachable in a portable fashion.  This should preferably
+ * be something that the compiler understands, to aid code generation.
+ * In assert-enabled builds, we prefer abort() for debugging reasons.
  */
-#define gettext_noop(x) (x)
+#if defined(HAVE__BUILTIN_UNREACHABLE) && !defined(USE_ASSERT_CHECKING)
+#define pg_unreachable() __builtin_unreachable()
+#elif defined(_MSC_VER) && !defined(USE_ASSERT_CHECKING)
+#define pg_unreachable() __assume(0)
+#else
+#define pg_unreachable() abort()
+#endif
+
 
 /* ----------------------------------------------------------------
  *				Section 2:	bool, true, false, TRUE, FALSE, NULL
@@ -105,6 +150,7 @@
 #ifndef FALSE
 #define FALSE   0
 #endif
+
 
 /* ----------------------------------------------------------------
  *				Section 3:	standard system types
@@ -143,17 +189,12 @@ typedef uint32_t uint32;
 /*
  * 64-bit integers
  */
+/* We have working support for "long long int", use that */
 typedef int64_t int64;
 typedef uint64_t uint64;
 
-/* Decide if we need to decorate 64-bit constants */
-#ifdef HAVE_LL_CONSTANTS
-#define INT64CONST(x)  ((int64) x##LL)
-#define UINT64CONST(x) ((uint64) x##ULL)
-#else
-#define INT64CONST(x)  ((int64) x)
-#define UINT64CONST(x) ((uint64) x)
-#endif
+#define INT64CONST(x)  (x##LL)
+#define UINT64CONST(x) (x##ULL)
 
 /* snprintf format strings to use for 64-bit integers */
 #define INT64_FORMAT "%" INT64_MODIFIER "d"
@@ -161,11 +202,14 @@ typedef uint64_t uint64;
 
 /*
  * 128-bit signed and unsigned integers
- *		There currently is only a limited support for the type. E.g. 128bit
- *		literals and snprintf are not supported; but math is.
+ *		There currently is only limited support for such types.
+ *		E.g. 128bit literals and snprintf are not supported; but math is.
+ *		Also, because we exclude such types when choosing MAXIMUM_ALIGNOF,
+ *		it must be possible to coerce the compiler to allocate them on no
+ *		more than MAXALIGN boundaries.
  */
 #if defined(PG_INT128_TYPE)
-#define HAVE_INT128
+#define HAVE_INT128 1
 typedef PG_INT128_TYPE int128;
 typedef unsigned PG_INT128_TYPE uint128;
 #endif
@@ -184,62 +228,52 @@ typedef float float4;
 typedef double float8;
 
 
-#define VARHDRSZ                ((int32) sizeof(int32))
-
 /*
  * Array indexing support
  */
 #define MAXDIM 6
 
-
-
 /* ----------------
- * Attribute macros
+ *		Variable-length datatypes all share the 'struct varlena' header.
  *
- * GCC: https://gcc.gnu.org/onlinedocs/gcc/Function-Attributes.html
- * GCC: https://gcc.gnu.org/onlinedocs/gcc/Type-Attributes.html
- * Sunpro: https://docs.oracle.com/cd/E18659_01/html/821-1384/gjzke.html
- * XLC: http://www-01.ibm.com/support/knowledgecenter/SSGH2K_11.1.0/com.ibm.xlc111.aix.doc/language_ref/function_attributes.html
- * XLC: http://www-01.ibm.com/support/knowledgecenter/SSGH2K_11.1.0/com.ibm.xlc111.aix.doc/language_ref/type_attrib.html
+ * NOTE: for TOASTable types, this is an oversimplification, since the value
+ * may be compressed or moved out-of-line.  However datatype-specific routines
+ * are mostly content to deal with de-TOASTed values only, and of course
+ * client-side routines should never see a TOASTed value.  But even in a
+ * de-TOASTed value, beware of touching vl_len_ directly, as its representation
+ * is no longer convenient.  It's recommended that code always use the VARDATA,
+ * VARSIZE, and SET_VARSIZE macros instead of relying on direct mentions of
+ * the struct fields.  See postgres.h for details of the TOASTed form.
  * ----------------
  */
 
-/* only GCC supports the unused attribute */
-#ifdef __GNUC__
-#define pg_attribute_unused() __attribute__((unused))
-#else
-#define pg_attribute_unused()
-#endif
+#define VARHDRSZ		((int32) sizeof(int32))
 
-/* GCC and XLC support format attributes */
-#if defined(__GNUC__) || defined(__IBMC__)
-#define pg_attribute_format_arg(a) __attribute__((format_arg(a)))
-#define pg_attribute_printf(f,a) __attribute__((format(PG_PRINTF_ATTRIBUTE, f, a)))
-#else
-#define pg_attribute_format_arg(a)
-#define pg_attribute_printf(f,a)
-#endif
 
-/* GCC, Sunpro and XLC support aligned, packed and noreturn */
-#if defined(__GNUC__) || defined(__SUNPRO_C) || defined(__IBMC__)
-#define pg_attribute_aligned(a) __attribute__((aligned(a)))
-#define pg_attribute_noreturn() __attribute__((noreturn))
-#define pg_attribute_packed() __attribute__((packed))
-#define HAVE_PG_ATTRIBUTE_NORETURN 1
-#else
-/*
- * NB: aligned and packed are not given default definitions because they
- * affect code functionality; they *must* be implemented by the compiler
- * if they are to be used.
+/* ----------------------------------------------------------------
+ *				Section 4:	IsValid macros for system types
+ * ----------------------------------------------------------------
  */
-#define pg_attribute_noreturn()
-#endif
+
+
+/* ----------------------------------------------------------------
+ *				Section 5:	offsetof, lengthof, endof, alignment
+ * ----------------------------------------------------------------
+ */
+
 
 /* ----------------------------------------------------------------
  *				Section 6:	assertions
  * ----------------------------------------------------------------
  */
- 
+
+/*
+ * USE_ASSERT_CHECKING, if defined, turns on all the assertions.
+ * - plai  9/5/90
+ *
+ * It should _NOT_ be defined in releases or in benchmark copies
+ */
+
 /*
  * Assert() can be used in both frontend and backend code. In frontend code it
  * just calls the standard assert, if it's available. If use of assertions is
@@ -247,8 +281,6 @@ typedef double float8;
  */
 #include <assert.h>
 #define Assert(p) assert(p)
-
-
 
 
 /* ----------------------------------------------------------------
@@ -329,9 +361,9 @@ typedef double float8;
 			_val == 0 && \
 			_len <= MEMSET_LOOP_LIMIT && \
 			/* \
- 			 *	If MEMSET_LOOP_LIMIT == 0, optimizer should find \
- 			 *	the whole "if" false at compile time. \
- 			 */ \
+			 *	If MEMSET_LOOP_LIMIT == 0, optimizer should find \
+			 *	the whole "if" false at compile time. \
+			 */ \
 			MEMSET_LOOP_LIMIT != 0) \
 		{ \
 			long *_start = (long *) _vstart; \
@@ -395,18 +427,43 @@ typedef double float8;
 	} while (0)
 
 
-/*
- * Mark a point as unreachable in a portable fashion.  This should preferably
- * be something that the compiler understands, to aid code generation.
- * In assert-enabled builds, we prefer abort() for debugging reasons.
+/* ----------------------------------------------------------------
+ *				Section 8:	random stuff
+ * ----------------------------------------------------------------
  */
-#if defined(HAVE__BUILTIN_UNREACHABLE) && !defined(USE_ASSERT_CHECKING)
-#define pg_unreachable() __builtin_unreachable()
-#elif defined(_MSC_VER) && !defined(USE_ASSERT_CHECKING)
-#define pg_unreachable() __assume(0)
-#else
-#define pg_unreachable() abort()
+
+/*
+ * gettext support
+ */
+
+#ifndef ENABLE_NLS
+/* stuff we'd otherwise get from <libintl.h> */
+#define gettext(x) (x)
+#define dgettext(d,x) (x)
+#define ngettext(s,p,n) ((n) == 1 ? (s) : (p))
+#define dngettext(d,s,p,n) ((n) == 1 ? (s) : (p))
 #endif
 
+#define _(x) gettext(x)
 
-#endif /* C_H */
+/*
+ *	Use this to mark string constants as needing translation at some later
+ *	time, rather than immediately.  This is useful for cases where you need
+ *	access to the original string and translated string, and for cases where
+ *	immediate translation is not possible, like when initializing global
+ *	variables.
+ *		http://www.gnu.org/software/autoconf/manual/gettext/Special-cases.html
+ */
+#define gettext_noop(x) (x)
+
+
+/* ----------------------------------------------------------------
+ *				Section 9: system-specific hacks
+ *
+ *		This should be limited to things that absolutely have to be
+ *		included in every source file.  The port-specific header file
+ *		is usually a better place for this sort of thing.
+ * ----------------------------------------------------------------
+ */
+
+#endif   /* C_H */
