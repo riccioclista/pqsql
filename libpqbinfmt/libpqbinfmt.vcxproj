@@ -127,6 +127,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common\fe_memutils.h" />
+    <ClInclude Include="fe_utils\postgres_fe.h" />
     <ClInclude Include="fe_utils\psqlscan.h" />
     <ClInclude Include="fe_utils\psqlscan_int.h" />
     <ClInclude Include="pgadt\builtins.h" />

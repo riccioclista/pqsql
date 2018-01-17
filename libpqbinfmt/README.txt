@@ -106,6 +106,8 @@ src/interfaces/libpq/pqexpbuffer.h (ee943004466418595363d567f18c053bae407792)
 
 The following files stem from postgresql/master branch:
 
+src/include/postgres_fe.h (9d4649ca49416111aee2c84b7e4441a0b7aa2fac)
+
 src/common/fe_memutils.c (9d4649ca49416111aee2c84b7e4441a0b7aa2fac)
 src/include/common/fe_memutils.h (9d4649ca49416111aee2c84b7e4441a0b7aa2fac)
 
