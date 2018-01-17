@@ -104,6 +104,22 @@ You can run the tests in the Debug configuration:
 TODO
 ====
 
+Target Framework
+----------------
+current target framework is v4, add support for v4.5 / v4.6 / etc.
+
+
+Obsolete
+--------
+- mark PqsqlState.DEADLOCK_DETECTED as [Obsolete]
+
+
+Error codes
+-----------
+check current list of error codes for PqsqlState:
+https://www.postgresql.org/docs/current/static/errcodes-appendix.html
+
+
 Fix deprecated methods
 ----------------------
 http://go.microsoft.com/fwlink/?linkid=14202
@@ -112,7 +128,6 @@ https://msdn.microsoft.com/en-us/library/hh419161.aspx#data
 
 Connection pooling
 ------------------
-
 - add connection pooling settings to PqsqlConnectionStringBuilder
 
 
@@ -129,7 +144,6 @@ https://msdn.microsoft.com/en-us/library/87z0hy49(v=vs.110).aspx
 
 Data types
 ----------
-
 - see README Section "Unsupported datatypes" of libpqbinfmt
 
 - add support for user-defined data types in PqsqlParameter and PqsqlParameterCollection
