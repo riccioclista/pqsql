@@ -3,17 +3,17 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
 VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pqsql", "Pqsql.csproj", "{B74C0366-2647-452D-9EB8-D4E8916B9775}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pqsql", "Pqsql-VS2015.csproj", "{B74C0366-2647-452D-9EB8-D4E8916B9775}"
 	ProjectSection(ProjectDependencies) = postProject
 		{49C56B70-6C43-4038-B493-6146E4C98078} = {49C56B70-6C43-4038-B493-6146E4C98078}
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PqsqlTests", "PqsqlTests\PqsqlTests.csproj", "{ECC585A1-94F7-4E92-BE1C-20CC48079083}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PqsqlTests", "PqsqlTests\PqsqlTests-VS2015.csproj", "{ECC585A1-94F7-4E92-BE1C-20CC48079083}"
 	ProjectSection(ProjectDependencies) = postProject
 		{49C56B70-6C43-4038-B493-6146E4C98078} = {49C56B70-6C43-4038-B493-6146E4C98078}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libpqbinfmt", "libpqbinfmt\libpqbinfmt.vcxproj", "{49C56B70-6C43-4038-B493-6146E4C98078}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libpqbinfmt", "libpqbinfmt\libpqbinfmt-VS2015.vcxproj", "{49C56B70-6C43-4038-B493-6146E4C98078}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
