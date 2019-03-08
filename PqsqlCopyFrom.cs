@@ -663,7 +663,30 @@ namespace Pqsql
 
 		public int WriteDate(DateTime value)
 		{
+			if (mRowInfo == null)
+			{
+				throw new InvalidOperationException($"{nameof(PqsqlCopyFrom)}.{nameof(Start)} must be called before we can write data");
+			}
+
 			long begin = LengthCheckReset();
+
+#if CODECONTRACTS
+			Contract.Assume(mRowInfo != null);
+			Contract.Assume(mPos >= 0 && mPos < mRowInfo.Length);
+#endif
+
+			PqsqlColInfo ci = mRowInfo[mPos];
+			if (ci == null)
+			{
+				throw new PqsqlException($"{nameof(PqsqlCopyFrom)}.{nameof(Start)} could not setup column information for column {mPos}");
+			}
+
+			PqsqlDbType oid = ci.Oid;
+
+			if (oid != PqsqlDbType.Date)
+			{
+				throw new PqsqlException($"{nameof(PqsqlCopyFrom)}.{nameof(WriteDate)}: cannot write {PqsqlDbType.Date} into column {mPos} of type {oid}");
+			}
 
 			int year;
 			int month;

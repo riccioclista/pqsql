@@ -467,5 +467,44 @@ namespace PqsqlTests
 
 			Assert.Fail();
 		}
+
+		[TestMethod]
+		[ExpectedException(typeof(PqsqlException), "cannot write Date into column should have been thrown")]
+		public void PqsqlCopyFromTest9()
+		{
+			PqsqlTransaction tran = null;
+			PqsqlCopyFrom copy = null;
+
+			try
+			{
+				tran = mConnection.BeginTransaction();
+				mCmd.Transaction = tran;
+
+				mCmd.CommandText = "CREATE TEMP TABLE temp (col timestamp)";
+				mCmd.CommandTimeout = 200;
+				mCmd.CommandType = CommandType.Text;
+
+				int q = mCmd.ExecuteNonQuery();
+				Assert.AreEqual(0, q);
+
+				copy = new PqsqlCopyFrom(mConnection)
+				{
+					Table = "temp",
+					CopyTimeout = 5
+				};
+
+				copy.Start();
+				copy.WriteDate(DateTime.UtcNow);
+				copy.End();
+				copy.Close();
+
+				Assert.Fail();
+			}
+			finally
+			{
+				copy?.Dispose();
+				tran?.Dispose();
+			}
+		}
 	}
 }
