@@ -534,7 +534,11 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o;";
 			}
 
 			if (ndim < 0 || ndim > maxdim)
+			{
+				Marshal.FreeCoTaskMem(dimbuf);
+				Marshal.FreeCoTaskMem(lboundbuf);
 				throw new ArgumentOutOfRangeException(nameof(ndim));
+			}
 
 			dim = new int[ndim];
 			lbound = new int[ndim];
