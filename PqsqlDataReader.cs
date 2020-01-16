@@ -58,7 +58,7 @@ namespace Pqsql
 		const string CatalogColumnByTableOid = @"SELECT current_catalog, n.nspname, c.relname
 FROM pg_namespace n, pg_class c
 WHERE c.relnamespace=n.oid AND c.relkind IN ('r','v') AND c.oid=:o;
-SELECT ca.attname, ca.attnotnull, ca.attnum, ad.adsrc, pg_column_is_updatable(:o, ca.attnum, false), greatest(ind.indisunique,false) indisunique, greatest(ind.indisprimary,false) indisprimary
+SELECT ca.attname, ca.attnotnull, ca.attnum, pg_get_expr(ad.adbin, ad.adrelid), pg_column_is_updatable(:o, ca.attnum, false), greatest(ind.indisunique,false) indisunique, greatest(ind.indisprimary,false) indisprimary
 FROM (pg_attribute ca LEFT JOIN pg_attrdef ad ON (attrelid = adrelid AND attnum = adnum))
      LEFT OUTER JOIN
      (SELECT a.attname, bool_or(i.indisunique) indisunique, bool_or(i.indisprimary) indisprimary
