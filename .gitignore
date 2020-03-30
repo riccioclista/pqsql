@@ -8,3 +8,5 @@ Pqsql-VS2015.VC.db
 Pqsql-VS2015.VC.VC.opendb
 *.user
 packages/
+/libpqbinfmt/Debug/
+/libpqbinfmt/libpqbinfmt.aps
