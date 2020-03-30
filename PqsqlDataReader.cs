@@ -4,12 +4,13 @@ using System.Data;
 using System.ComponentModel;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 #if CODECONTRACTS
 using System.Diagnostics.Contracts;
 #endif
 using System.Globalization;
 using System.Runtime.InteropServices;
-
+using System.Text;
 using PqsqlWrapper = Pqsql.UnsafeNativeMethods.PqsqlWrapper;
 using PqsqlBinaryFormat = Pqsql.UnsafeNativeMethods.PqsqlBinaryFormat;
 
@@ -926,10 +927,14 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o;";
 
 				case PqsqlDbType.Date:
 					return GetDate(mResult, mRowNum, ordinal);
-
-				default:
-					throw new InvalidCastException("Trying to access datatype " + oid + " as datatype DateTime");
 			}
+
+			if (oid == PqsqlTypeRegistry.DateTimeOffsetOid)
+			{
+				return new DateTime(GetDateTime(mResult, mRowNum, ordinal));
+			}
+
+			throw new InvalidCastException("Trying to access datatype " + oid + " as datatype DateTime");
 		}
 
 		public DateTimeOffset GetDateTimeOffset(int ordinal)
@@ -970,11 +975,26 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o;";
 					break;
 
 				default:
-					throw new InvalidCastException("Trying to access datatype " + oid + " as datatype DateTime");
+					throw new InvalidCastException("Trying to access datatype " + oid + " as datatype DateTimeOffset");
 			}
 
 			return timestamp;
 		}
+
+		public static UInt32 ReverseBytes(UInt32 value)
+		{
+			return (value & 0x000000FFU) << 24 | (value & 0x0000FF00U) << 8 |
+			       (value & 0x00FF0000U) >> 8 | (value & 0xFF000000U) >> 24;
+		}
+
+		public static UInt64 ReverseBytes(UInt64 value)
+		{
+			return (value & 0x00000000000000FFUL) << 56 | (value & 0x000000000000FF00UL) << 40 |
+			       (value & 0x0000000000FF0000UL) << 24 | (value & 0x00000000FF000000UL) << 8 |
+			       (value & 0x000000FF00000000UL) >> 8 | (value & 0x0000FF0000000000UL) >> 24 |
+			       (value & 0x00FF000000000000UL) >> 40 | (value & 0xFF00000000000000UL) >> 56;
+		}
+
 
 		internal static long GetDateTime(IntPtr res, int row, int ordinal)
 		{
@@ -990,6 +1010,35 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o;";
 
 			unsafe
 			{
+				//PqsqlDbType oid = (PqsqlDbType) PqsqlWrapper.PQftype(v, ordinal);
+				//Debug.WriteLine(oid);
+
+				var p = (UInt32 *) v.ToPointer();
+				var hex = $"{*p:X}";
+				//Debug.WriteLine(hex);
+				//Debug.WriteLine(ReverseBytes(*p));
+
+				var lp = (UInt64*) p;
+				Debug.WriteLine(ReverseBytes(*lp));
+
+				//p++;
+				//hex = $"{*p:X}";
+				//Debug.WriteLine(hex);
+				//Debug.WriteLine(ReverseBytes(*p));
+
+				//p++;
+				//hex = $"{*p:X}";
+				//Debug.WriteLine(hex);
+				//Debug.WriteLine(ReverseBytes(*p));
+
+				//p++;
+				//hex = $"{*p:X}";
+				//Debug.WriteLine(hex);
+				//Debug.WriteLine(ReverseBytes(*p));
+				
+
+				//Debug.WriteLine(ReverseBytes(*bp));
+
 				PqsqlBinaryFormat.pqbf_get_timestamp(v, &sec, &usec);
 			}
 
@@ -1055,6 +1104,27 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o;";
 			return PqsqlBinaryFormat.GetTicksFromTimeTZ(h, m, s, f, tz);
 		}
 
+		internal static long GetDateTimeOffset(IntPtr res, int row, int ordinal)
+		{
+#if CODECONTRACTS
+			Contract.Ensures(Contract.Result<System.Int64>() >= DateTime.MinValue.Ticks);
+			Contract.Ensures(Contract.Result<System.Int64>() <= DateTime.MaxValue.Ticks);
+#endif
+
+			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
+
+			long sec;
+			int usec;
+
+			throw new NotImplementedException();
+			unsafe
+			{
+				//PqsqlBinaryFormat.pqbf_get_datetimeoffset(v, &sec, &usec);
+			}
+
+			//return PqsqlBinaryFormat.GetTicksFromTimestamp(sec, usec);
+		}
+
 		public TimeSpan GetTimeSpan(int ordinal)
 		{
 			CheckBoundsValue(ordinal);
@@ -1066,6 +1136,12 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o;";
 #endif
 
 			PqsqlDbType oid = mRowInfo[ordinal].Oid;
+
+			if (oid == PqsqlTypeRegistry.DateTimeOffsetOid)
+			{
+				return GetInterval(mResult, mRowNum, ordinal);
+			}
+
 			switch (oid)
 			{
 				case PqsqlDbType.Interval:
@@ -1422,6 +1498,64 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o;";
 		{
 			IntPtr v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
 			return PqsqlBinaryFormat.pqbf_get_int8(v);
+		}
+
+		public object GetCompositeType(int ordinal)
+		{
+			CheckBoundsValueType(ordinal, mRowInfo[ordinal].Oid);
+
+#if CODECONTRACTS
+			Contract.Assert(ordinal >= 0);
+			Contract.Assert(mRowInfo != null);
+			Contract.Assume(ordinal < mRowInfo.Length);
+#endif
+
+			return GetCompositeType(mResult, mRowNum, ordinal);
+		}
+
+		internal static object GetCompositeType(IntPtr res, int row, int ordinal)
+		{
+			var v = PqsqlWrapper.PQgetvalue(res, row, ordinal);
+			var ncolumns = 0;
+			
+			var dt = DateTime.MinValue;
+			var ts = TimeSpan.Zero;
+
+			unsafe
+			{
+				v = PqsqlBinaryFormat.pqbf_get_composite_type(v, &ncolumns);
+
+				for (int i = 0; i < ncolumns; i++)
+				{
+					uint o;
+					int collen;
+					v = PqsqlBinaryFormat.pqbf_get_composite_type_value(v, &o, &collen);
+
+					var oid = (PqsqlDbType) o;
+					
+					switch (oid)
+					{
+						case PqsqlDbType.Timestamp:
+							long sec;
+							int usec;
+							PqsqlBinaryFormat.pqbf_get_timestamp(v, &sec, &usec);
+							var ticks = PqsqlBinaryFormat.GetTicksFromTimestamp(sec, usec);
+							dt = new DateTime(ticks);
+							break;
+						case PqsqlDbType.Interval:
+							long offset;
+							int day;
+							int month;
+							PqsqlBinaryFormat.pqbf_get_interval(v, &offset, &day, &month);
+							ts = PqsqlBinaryFormat.GetTimeSpan(offset, day, month);
+							break;
+					}
+
+					v += collen;
+				}
+			}
+
+			return new DateTimeOffset(dt, ts);
 		}
 
 		//

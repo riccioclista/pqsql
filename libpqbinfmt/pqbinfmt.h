@@ -123,6 +123,8 @@ extern DECLSPEC void pqbf_set_array_itemlength(PQExpBuffer a, int32_t itemlen);
 extern DECLSPEC void pqbf_update_array_itemlength(PQExpBuffer a, ptrdiff_t offset, int32_t itemlen);
 extern DECLSPEC void pqbf_set_array_value(PQExpBuffer a, const char* p, int32_t itemlen);
 
+extern DECLSPEC const char * pqbf_get_composite_type(const char* p, int32_t* ncolumns);
+extern DECLSPEC const char * pqbf_get_composite_type_value(const char* p, uint32_t* oid, int32_t* collen);
 #ifdef  __cplusplus
 }
 #endif

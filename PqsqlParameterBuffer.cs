@@ -597,6 +597,18 @@ namespace Pqsql
 			PqsqlBinaryFormat.pqbf_add_date(pb, year, month, day);
 		}
 
+		internal static void SetDateTimeOffset(IntPtr pb, object val, PqsqlDbType oid)
+		{
+			//DateTime dt = (DateTime)val;
+
+			//int year;
+			//int month;
+			//int day;
+			//PqsqlBinaryFormat.GetDate(dt, out year, out month, out day);
+
+			//PqsqlBinaryFormat.pqbf_add_date(pb, year, month, day);
+		}
+
 		#endregion
 	}
 }

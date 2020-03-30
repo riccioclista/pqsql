@@ -27,6 +27,8 @@ namespace Pqsql
 
 		#endregion
 
+		internal static PqsqlDbType DateTimeOffsetOid;
+
 		/// <summary>
 		/// stores Type, datatype name, and GetValue delegate for PqsqlDataReader
 		/// </summary>
@@ -1181,6 +1183,40 @@ namespace Pqsql
 							};
 
 							return tn;
+						}
+						
+						if (typcategory == 'C')
+						{
+							string typname = reader.GetString(1);
+
+							if (typname == null)
+								throw new PqsqlException("Could not fetch datatype " + oid + " for connection " + connectionString);
+							
+
+
+							if (typname == "datetimeoffset")
+							{
+								PqsqlTypeEntry tn = new PqsqlTypeEntry
+								{
+									TypeValue = new PqsqlTypeValue
+									{
+										DataTypeName = typname,
+										ProviderType = typeof(DateTimeOffset),
+										GetValue = (res, row, ord, typmod) => PqsqlDataReader.GetDateTimeOffset(res, row, ord),
+									},
+									TypeParameter = new PqsqlTypeParameter
+									{
+										TypeCode = (TypeCode) PqsqlTypeCode.DateTimeOffset,
+										ArrayDbType = PqsqlDbType.Array,
+										SetValue = PqsqlParameterBuffer.SetDateTimeOffset,
+										SetArrayItem = null,
+									},
+									DbType = DbType.DateTimeOffset,
+								};
+
+								DateTimeOffsetOid = oid;
+								return tn;
+							}
 						}
 
 						// TODO other types not implemented

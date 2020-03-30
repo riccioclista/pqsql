@@ -739,5 +739,28 @@ namespace PqsqlTests
 				reader.Close();
 			}
 		}
+		
+		[TestMethod]
+		public void PqsqlDataReaderTest13()
+		{
+			mCmd.CommandText = "select row('2038-01-01 00:00:00.000', '+02:01')::datetimeoffset;";
+
+			using (PqsqlDataReader reader = mCmd.ExecuteReader())
+			{
+				Assert.IsTrue(reader.HasRows);
+
+				reader.Read();
+
+				var dto = reader.GetCompositeType(0);
+
+				//var ts = reader.GetTimeSpan(0);
+				//DateTime dt2 = reader.GetDateTime(0);
+				//Assert.AreEqual(new DateTime(2038, 01, 01, 0, 0, 0), dt2);
+				//DateTimeOffset dto2 = reader.GetDateTimeOffset(0);
+				//Assert.AreEqual(new DateTimeOffset(2038, 01, 01, 0, 0, 0, TimeSpan.FromHours(2)), dto2);
+
+				reader.Close();
+			}
+		}
 	}
 }

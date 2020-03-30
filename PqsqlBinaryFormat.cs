@@ -457,6 +457,12 @@ namespace Pqsql
 			[DllImport("libpqbinfmt")]
 			public static extern IntPtr pqbf_get_array_value(IntPtr p, int* itemlen);
 
+			[DllImport("libpqbinfmt.dll")]
+			public static extern IntPtr pqbf_get_composite_type(IntPtr p, int* ncolumns);
+
+			[DllImport("libpqbinfmt.dll")]
+			public static extern IntPtr pqbf_get_composite_type_value(IntPtr p, uint* oid, int* collen);
+
 			#endregion
 
 			#region interface to pqcopy_buffer
