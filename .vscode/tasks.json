@@ -1,0 +1,86 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "create bin dir",
+            "command": "mkdir -p ${workspaceFolder}/libpqbinfmt/bin",
+            "type": "shell",
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "build pqsql",
+            "command": "dotnet",
+            "type": "shell",
+            "args": [
+                "build",
+                "${workspaceFolder}/Pqsql.csproj",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary"
+            ],
+            "group": "build",
+            "presentation": {
+                "reveal": "silent"
+            },
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "build pqsql tests",
+            "command": "dotnet",
+            "type": "shell",
+            "args": [
+                "build",
+                "${workspaceFolder}/PqsqlTests/PqsqlTests.csproj",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary"
+            ],
+            "group": "build",
+            "presentation": {
+                "reveal": "silent"
+            },
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "configure libpqbinfmt",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}/libpqbinfmt/bin"
+            },
+            "command": "cmake",
+            "args": [
+                "-G",
+                "'Unix Makefiles'",
+                "${workspaceFolder}/libpqbinfmt"
+            ],
+            "problemMatcher": [],
+            "group": "build"
+        },
+        {
+            "label": "build libpqbinfmt",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}/libpqbinfmt/bin"
+            },
+            "command": "make",
+            "problemMatcher": [
+                "$gcc",
+            ],
+            "group": "build"
+        },
+        {
+            "label": "build",
+            "dependsOn": [
+                "create bin dir",
+                "configure libpqbinfmt",
+                "build libpqbinfmt",
+                "build pqsql"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
+}

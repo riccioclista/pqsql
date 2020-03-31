@@ -9,6 +9,11 @@
 #ifndef __PQ_BINFMT_CONFIG_H
 #define __PQ_BINFMT_CONFIG_H
 
+#define pqbinfmt_VERSION_MAJOR @pqbinfmt_VERSION_MAJOR@
+#define pqbinfmt_VERSION_MINOR @pqbinfmt_VERSION_MINOR@
+#define pqbinfmt_VERSION_PATCH @pqbinfmt_VERSION_PATCH@
+#define pqbinfmt_VERSION_TWEAK @pqbinfmt_VERSION_TWEAK@
+
 #if defined _WIN32
 	#if defined DLL_EXPORT
 		#define DECLSPEC __declspec(dllexport)

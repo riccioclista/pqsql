@@ -1665,15 +1665,15 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o;";
 				if (colInfo == null)
 					throw new PqsqlException("SchemaTableColumnInfo is null for ColumnName " + name, (int) PqsqlState.INTERNAL_ERROR);
 
-				row.SetField(j++, ci.Oid); // TypeOid
-				row.SetField(j++, !colInfo.Item4); // AllowDBNull
-				row.SetField(j++, name); // BaseColumnName
-				row.SetField(j++, catalogName); // BaseCatalogName
-				row.SetField(j++, schemaName); // BaseSchemaName
-				row.SetField(j++, tableName); // BaseTableName
+				row[j++] = ci.Oid; // TypeOid
+				row[j++] = !colInfo.Item4; // AllowDBNull
+				row[j++] = name; // BaseColumnName
+				row[j++] = catalogName; // BaseCatalogName
+				row[j++] = schemaName; // BaseSchemaName
+				row[j++] = tableName; // BaseTableName
 
-				row.SetField(j++, name); // ColumnName
-				row.SetField(j++, i + 1); // ColumnOrdinal
+				row[j++] = name; // ColumnName
+				row[j++] = i + 1; // ColumnOrdinal
 
 				switch (ci.Oid)
 				{
@@ -1684,40 +1684,40 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o;";
 				case PqsqlDbType.Refcursor:
 				case PqsqlDbType.BPChar:
 				case PqsqlDbType.Char:
-					row.SetField(j++, modifier > -1 ? modifier - 4 : size); // ColumnSize
-					row.SetField(j++, 0); // NumericPrecision
-					row.SetField(j++, 0); // NumericScale
+					row[j++] = modifier > -1 ? modifier - 4 : size; // ColumnSize
+					row[j++] = 0; // NumericPrecision
+					row[j++] = 0; // NumericScale
 					break;
 
 				case PqsqlDbType.Numeric:
-					row.SetField(j++, size); // ColumnSize
+					row[j++] = size; // ColumnSize
 					modifier -= 4;
-					row.SetField(j++, (modifier >> 16) & ushort.MaxValue); // NumericPrecision
-					row.SetField(j++, modifier & ushort.MaxValue); // NumericScale
+					row[j++] = (modifier >> 16) & ushort.MaxValue; // NumericPrecision
+					row[j++] = modifier & ushort.MaxValue; // NumericScale
 					break;
 
 				default:
-					row.SetField(j++, size); // ColumnSize
-					row.SetField(j++, 0); // NumericPrecision
-					row.SetField(j++, 0); // NumericScale
+					row[j++] = size; // ColumnSize
+					row[j++] = 0; // NumericPrecision
+					row[j++] = 0; // NumericScale
 					break;
 				}
 
-				row.SetField(j++, ct.DataTypeName); // ProviderType
-				row.SetField(j++, ct.ProviderType); // DataType
+				row[j++] = ct.DataTypeName; // ProviderType
+				row[j++] = ct.ProviderType; // DataType
 
 				if ((mBehaviour & CommandBehavior.KeyInfo) == CommandBehavior.KeyInfo)
 				{
-					row.SetField(j++, colInfo.Item3); // IsKey
-					row.SetField(j++, colInfo.Item5); // IsUnique
-					row.SetField(j++, false); // IsAliased TODO
-					row.SetField(j++, false); // IsExpression
-					row.SetField(j++, false); // IsAutoIncrement TODO
-					row.SetField(j++, false); // IsRowVersion
-					row.SetField(j++, false); // IsHidden
-					row.SetField(j++, false); // IsLong TODO blob?
-					row.SetField(j++, !colInfo.Item6); // IsReadOnly
-					row.SetField(j, colInfo.Item2); // DefaultValue
+					row[j++] = colInfo.Item3; // IsKey
+					row[j++] = colInfo.Item5; // IsUnique
+					row[j++] = false; // IsAliased TODO
+					row[j++] = false; // IsExpression
+					row[j++] = false; // IsAutoIncrement TODO
+					row[j++] = false; // IsRowVersion
+					row[j++] = false; // IsHidden
+					row[j++] = false; // IsLong TODO blob?
+					row[j++] = !colInfo.Item6; // IsReadOnly
+					row[j] = colInfo.Item2; // DefaultValue
 				}
 
 				srows.Add(row);

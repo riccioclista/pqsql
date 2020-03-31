@@ -39,6 +39,7 @@
 #include "pgadt/builtins.h"
 #include "pgadt/postgres.h"
 
+#if defined(WIN32)
 /*
  * Visual C++ sometimes misses isinf
  */
@@ -57,7 +58,7 @@ isinf(double x)
 #endif
 
 #define pg_strncasecmp(s1,s2,c) _strnicmp(s1,s2,c)
-
+#endif
 
 
 #ifndef M_PI

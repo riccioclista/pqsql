@@ -1,0 +1,52 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <DefineConstants>TRACE;DEBUG;CODE_ANALYSIS</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>Ximes.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="GlobalSuppressions.cs" />
+    <Compile Include="PqsqlBinaryFormat.cs" />
+    <Compile Include="PqsqlCommand.cs" />
+    <Compile Include="PqsqlCommandBuilder.cs" />
+    <Compile Include="PqsqlConnection.cs" />
+    <Compile Include="PqsqlConnectionPool.cs" />
+    <Compile Include="PqsqlConnectionStringBuilder.cs" />
+    <Compile Include="PqsqlCopyFrom.cs" />
+    <Compile Include="PqsqlDataAdapter.cs" />
+    <Compile Include="PqsqlDataReader.cs" />
+    <Compile Include="PqsqlDbType.cs" />
+    <Compile Include="PqsqlException.cs" />
+    <Compile Include="PqsqlLargeObject.cs" />
+    <Compile Include="PqsqlParameter.cs" />
+    <Compile Include="PqsqlParameterBuffer.cs" />
+    <Compile Include="PqsqlParameterCollection.cs" />
+    <Compile Include="PqsqlProviderFactory.cs" />
+    <Compile Include="PqsqlTransaction.cs" />
+    <Compile Include="PqsqlTypeRegistry.cs" />
+    <Compile Include="PqsqlUTF8Statement.cs" />
+    <Compile Include="PqsqlWrapper.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="PqsqlDllMap.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Ximes.snk" />
+    <None Include="Properties\Pqsql.config" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="libpqbinfmt\bin\libpqbinfmt.*" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="README.txt" />
+  </ItemGroup>
+</Project>

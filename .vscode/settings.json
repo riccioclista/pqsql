@@ -1,0 +1,9 @@
+{
+    "files.associations": {
+        "*.h.in": "c"
+    },
+    "cmake.sourceDirectory": "${workspaceFolder}/libpqbinfmt",
+    "cmake.buildDirectory": "${workspaceFolder}/libpqbinfmt/bin",
+    "dotnet-test-explorer.testProjectPath": "PqsqlTests/PqsqlTests.csproj",
+    "dotnet-test-explorer.testArguments": "-s ../Pqsql.runsettings",
+}

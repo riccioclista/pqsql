@@ -41,6 +41,9 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdbool.h>
+#ifndef _WIN32
+#include <stdlib.h>
+#endif
 
 #define DLL_EXPORT
 #include "pqbinfmt_config.h"
@@ -471,7 +474,7 @@ numeric_out(Numeric num)
  */
 
 
-#if (_MSC_VER < 1800)
+#if defined(WIN32) && (_MSC_VER < 1800)
 #define isinf(x) ((_fpclass(x) == _FPCLASS_PINF) || (_fpclass(x) == _FPCLASS_NINF))
 #define isnan(x) _isnan(x)
 #endif

@@ -45,6 +45,13 @@
 #ifndef C_H
 #define C_H
 
+#if !defined(WIN32)
+#include <stddef.h>
+
+/* excerpt from pg_config.h */
+#define PG_PRINTF_ATTRIBUTE gnu_printf
+#endif
+
 #include <stdint.h>
 
 /* pg_config.h */
@@ -464,6 +471,9 @@ typedef double float8;
  *		included in every source file.  The port-specific header file
  *		is usually a better place for this sort of thing.
  * ----------------------------------------------------------------
- */
+ *
+/* /port compatibility functions */
+/* excerpt from port.h */
+extern int	pg_strncasecmp(const char *s1, const char *s2, size_t n);
 
 #endif   /* C_H */
