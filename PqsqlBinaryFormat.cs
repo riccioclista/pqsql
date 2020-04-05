@@ -267,7 +267,12 @@ namespace Pqsql
 			public static extern void pqbf_add_null(IntPtr pb, uint oid);
 
 			[DllImport("libpqbinfmt.dll")]
+			public static extern void pqbf_add_text(IntPtr pb, sbyte* t, uint oid);
+
+#if WIN32
+			[DllImport("libpqbinfmt.dll")]
 			public static extern void pqbf_add_unicode_text(IntPtr pb, char* t, uint oid);
+#endif
 
 			[DllImport("libpqbinfmt.dll")]
 			public static extern void pqbf_add_bool(IntPtr pb, int b);
@@ -322,7 +327,12 @@ namespace Pqsql
 			#region encode datatype to binary PQExpBuffer
 
 			[DllImport("libpqbinfmt.dll")]
+			public static extern void pqbf_set_text(IntPtr s, sbyte* t);
+
+#if WIN32
+			[DllImport("libpqbinfmt.dll")]
 			public static extern void pqbf_set_unicode_text(IntPtr s, char* t);
+#endif
 
 			[DllImport("libpqbinfmt.dll")]
 			public static extern void pqbf_set_bool(IntPtr s, int b);
@@ -385,8 +395,10 @@ namespace Pqsql
 			[DllImport("libpqbinfmt.dll")]
 			public static extern IntPtr pqbf_get_text(IntPtr p, ulong* len);
 
+#if WIN32
 			[DllImport("libpqbinfmt.dll")]
 			public static extern IntPtr pqbf_get_unicode_text(IntPtr p, int* len);
+#endif
 
 			[DllImport("libpqbinfmt.dll")]
 			public static extern void pqbf_free_unicode_text(IntPtr ptr);

@@ -596,10 +596,14 @@ namespace Pqsql
 			long begin = LengthCheckReset();
 			unsafe
 			{
+#if !WIN32
+				PqsqlUTF8Statement.SetText(mExpBuf, value);
+#else
 				fixed (char* sp = value)
 				{
 					PqsqlBinaryFormat.pqbf_set_unicode_text(mExpBuf, sp);
 				}
+#endif
 				long end = PqsqlBinaryFormat.pqbf_get_buflen(mExpBuf);
 				long len = end - begin;
 

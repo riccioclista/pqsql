@@ -75,7 +75,13 @@ namespace PqsqlTests
 			DateTime nowutc0 = now0.ToUniversalTime();
 
 			TimeZoneInfo tzi_from_china_pgsql = TimeZoneInfo.CreateCustomTimeZone(new_tz, ts, new_tz, new_tz);
-			TimeZoneInfo tzi_from_china_sys = TimeZoneInfo.FindSystemTimeZoneById("China Standard Time");
+
+#if WIN32
+			var tz = "China Standard Time";
+#else
+			var tz = "Asia/Shanghai";
+#endif
+			TimeZoneInfo tzi_from_china_sys = TimeZoneInfo.FindSystemTimeZoneById(tz);
 
 			TimeSpan china_off = tzi_from_china_sys.GetUtcOffset(nowutc0);
 			TimeSpan local_off = TimeZoneInfo.Local.GetUtcOffset(nowutc0);

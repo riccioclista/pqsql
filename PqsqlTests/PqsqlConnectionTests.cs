@@ -152,8 +152,23 @@ namespace PqsqlTests
 			Assert.AreEqual(conn_attempt1, conn_attempt2, "connection was not received from internal connection pool");
 		}
 
+#if WIN32
 		[DllImport("ws2_32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
 		public static extern int closesocket(IntPtr s);
+#else
+		[DllImport("libc", CharSet = CharSet.Ansi, SetLastError = true)]
+		public static extern int close(int fd);
+#endif
+
+		private int CloseSocket(int fd)
+		{
+#if WIN32
+			var handle = (IntPtr) fd;
+			return closesocket(handle);
+#else
+			return close(fd);
+#endif
+		}
 
 		[TestMethod]
 		public void PqsqlConnectionTest4()
@@ -167,10 +182,9 @@ namespace PqsqlTests
 
 			int sock1 = PqsqlWrapper.PQsocket(conn_attempt1);
 			Assert.AreNotEqual(-1, sock1, "wrong socket");
-			IntPtr sockhandle1 = (IntPtr) sock1;
 
 			// close the underlying socket without letting Pqsql and libpq know
-			int closed = closesocket(sockhandle1);
+			int closed = CloseSocket(sock1);
 			Assert.AreEqual(0, closed, "closesocket failed");
 
 			connection.Close();
@@ -184,10 +198,9 @@ namespace PqsqlTests
 			Assert.AreEqual(ConnectionState.Open, connection.State, "wrong connection state");
 
 			int sock2 = PqsqlWrapper.PQsocket(conn_attempt2);
-			IntPtr sockhandle2 = (IntPtr) sock2;
 
 			// close the underlying socket without letting Pqsql and libpq know
-			closed = closesocket(sockhandle2);
+			closed = CloseSocket(sock2);
 			Assert.AreEqual(0, closed, "closesocket failed");
 		}
 

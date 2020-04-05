@@ -1835,11 +1835,19 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o;";
 			Contract.Assert(itemlen >= 0);
 #endif
 
+#if WIN32
 			int unicode_len = itemlen;
+#else
+			var unicode_len = (ulong) itemlen;
+#endif
 
 			unsafe
 			{
+#if WIN32
 				utp = PqsqlBinaryFormat.pqbf_get_unicode_text(v, &unicode_len);
+#else
+				utp = PqsqlBinaryFormat.pqbf_get_text(v, &unicode_len);
+#endif
 			}
 
 			if (utp == IntPtr.Zero)
@@ -1847,7 +1855,11 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o;";
 
 			if (itemlen == 0) // itemlen == 0 => utp is a NUL-terminated (maybe empty) string
 			{
+#if WIN32
 				uni = Marshal.PtrToStringUni(utp);
+#else
+				uni = Marshal.PtrToStringUTF8(utp);
+#endif
 			}
 			else if (unicode_len == 0) // itemlen > 0 && unicode_len == 0: empty string
 			{
@@ -1855,14 +1867,20 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o;";
 			}
 			else // itemlen > 0 && unicode_len > 0 => v is a non-NUL-terminated non-empty string
 			{
+#if WIN32
 				uni = Marshal.PtrToStringUni(utp, unicode_len);
+#else
+				uni = Marshal.PtrToStringUTF8(utp, (int) unicode_len);
+#endif
 			}
 
 #if CODECONTRACTS
 			Contract.Assert(utp != IntPtr.Zero);
 #endif
 
+#if WIN32
 			PqsqlBinaryFormat.pqbf_free_unicode_text(utp);
+#endif
 			return uni;
 		}
 

@@ -344,13 +344,20 @@ namespace Pqsql
 
 			PqsqlBinaryFormat.pqbf_set_array_itemlength(a, -2); // first set an invalid item length
 
+#if !WIN32
+			PqsqlUTF8Statement.SetText(a, v);
+#else
 			unsafe
 			{
 				fixed (char* t = v)
 				{
+
+
 					PqsqlBinaryFormat.pqbf_set_unicode_text(a, t); // encode text value (variable length)
+
 				}
 			}
+#endif
 
 			int len = (int) (PqsqlBinaryFormat.pqbf_get_buflen(a) - len0); // get new buffer length
 			// update array item length == len - 4 bytes
@@ -513,10 +520,14 @@ namespace Pqsql
 		// into pqparam_buffer pb
 		internal static unsafe void SetText(IntPtr pb, object val, PqsqlDbType oid)
 		{
+#if !WIN32
+			PqsqlUTF8Statement.AddText(pb, (string) val, (uint) oid);
+#else
 			fixed (char* t = (string) val)
 			{
 				PqsqlBinaryFormat.pqbf_add_unicode_text(pb, t, (uint) oid);
 			}
+#endif
 		}
 
 		// sets val as DateTime with Oid oid (PqsqlDbType.Timestamp, PqsqlDbType.TimestampTZ) into pqparam_buffer pb

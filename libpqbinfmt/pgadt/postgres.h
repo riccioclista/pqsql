@@ -704,7 +704,7 @@ extern Datum Float4GetDatum(float4 X);
  */
 
 #ifdef USE_FLOAT8_BYVAL
-inline float8
+static inline float8
 DatumGetFloat8(Datum X)
 {
 	union
@@ -729,7 +729,7 @@ DatumGetFloat8(Datum X)
  */
 
 #ifdef USE_FLOAT8_BYVAL
-inline Datum Float8GetDatum(float8 X)
+static inline Datum Float8GetDatum(float8 X)
 {
 	union
 	{

@@ -6,23 +6,23 @@
 		<MaxCpuCount>4</MaxCpuCount>
 
 		<!-- Path relative to solution directory -->
-		<ResultsDirectory>.\TestResults</ResultsDirectory>
+		<ResultsDirectory>./TestResults</ResultsDirectory>
 	
 		<!-- [x86] | x64
 			- You can also change it from menu Test, Test Settings, Default Processor Architecture -->
 		<TargetPlatform>x64</TargetPlatform>
 	
 		<!-- Framework35 | [Framework40] | Framework45 -->
-		<TargetFrameworkVersion>Framework40</TargetFrameworkVersion>
+		<TargetFrameworkVersion>netcoreapp3.1</TargetFrameworkVersion>
 	
 		<!-- Path to Test Adapters -->
-		<TestAdaptersPaths>%SystemDrive%\Temp\foo;%SystemDrive%\Temp\bar</TestAdaptersPaths>
+		<!--<TestAdaptersPaths>%SystemDrive%\Temp\foo;%SystemDrive%\Temp\bar</TestAdaptersPaths>-->
 	</RunConfiguration>	
 
 	<!-- Parameters used by tests at runtime -->
 	<TestRunParameters>
 		<Parameter name="connectionString" value="service=pqsqltests; connect_timeout=3" />
-		<Parameter name="libpqPath" value="c:\pgsql\bin\" />
+		<Parameter name="libpqPath" value="/opt/pgsql/9.6.17/bin/lib" />
 		<Parameter name="pgServiceFile" value="pg_service.conf" />
 	</TestRunParameters>
 
@@ -35,7 +35,7 @@
 		<DeleteDeploymentDirectoryAfterTestRunIsComplete>False</DeleteDeploymentDirectoryAfterTestRunIsComplete>
 		<DeploymentEnabled>False</DeploymentEnabled>
 		<AssemblyResolution>
-			<Directory Path="C:\pgsql\bin\" includeSubDirectories="false"/>
+			<Directory Path="/opt/pgsql/9.6.17/bin" includeSubDirectories="false"/>
 		</AssemblyResolution>
 	</MSTest> 
 

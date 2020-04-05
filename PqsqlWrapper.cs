@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security;
 
@@ -537,6 +538,11 @@ namespace Pqsql
 	[SuppressUnmanagedCodeSecurity]
 	internal static partial class UnsafeNativeMethods
 	{
+		static UnsafeNativeMethods()
+		{
+			PqsqlDllMap.Register(Assembly.GetExecutingAssembly());
+		}
+
 		/// <summary>
 		/// wraps C functions from libpq.dll
 		/// </summary>

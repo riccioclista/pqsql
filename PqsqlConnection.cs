@@ -4,6 +4,7 @@ using System.Data;
 using System.ComponentModel;
 using System.Globalization;
 using System.Text;
+using System.Reflection;
 #if CODECONTRACTS
 using System.Diagnostics.Contracts;
 #endif
@@ -71,6 +72,11 @@ namespace Pqsql
 #endif
 
 		#region ctors and dtors
+
+		static PqsqlConnection()
+		{
+			PqsqlDllMap.Register(Assembly.GetExecutingAssembly());
+		}
 
 		public PqsqlConnection(string connectionString)
 			: this(new PqsqlConnectionStringBuilder(connectionString))

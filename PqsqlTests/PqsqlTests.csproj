@@ -24,6 +24,10 @@
     <Compile Include="PqsqlConnectionTests.cs" />
     <Compile Include="PqsqlParameterCollectionTests.cs" />
   </ItemGroup>
+  
+  <ItemGroup>
+    <None Include="pg_service.conf" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.5.0" />
