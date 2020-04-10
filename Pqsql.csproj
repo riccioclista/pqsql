@@ -49,7 +49,7 @@
   <ItemGroup>
     <None Include="Ximes.snk" />
     <None Include="Properties\Pqsql.config" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="libpqbinfmt\bin\libpqbinfmt.*" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="libpqbinfmt\bin\$(Configuration)\libpqbinfmt.*" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="README.txt" />

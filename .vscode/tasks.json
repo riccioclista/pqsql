@@ -4,14 +4,7 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "create bin dir",
-            "command": "mkdir -p ${workspaceFolder}/libpqbinfmt/bin",
-            "type": "shell",
-            "group": "build",
-            "problemMatcher": []
-        },
-        {
-            "label": "build pqsql",
+            "label": "debug build pqsql",
             "command": "dotnet",
             "type": "shell",
             "args": [
@@ -19,6 +12,24 @@
                 "${workspaceFolder}/Pqsql.csproj",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary"
+            ],
+            "group": "build",
+            "presentation": {
+                "reveal": "silent"
+            },
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "release build pqsql",
+            "command": "dotnet",
+            "type": "shell",
+            "args": [
+                "build",
+                "${workspaceFolder}/Pqsql.csproj",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary",
+                "-c",
+                "Release"
             ],
             "group": "build",
             "presentation": {
@@ -43,44 +54,100 @@
             "problemMatcher": "$msCompile"
         },
         {
-            "label": "configure libpqbinfmt",
+            "label": "debug reconfigure libpqbinfmt",
+            "command": "dotnet",
             "type": "shell",
-            "options": {
-                "cwd": "${workspaceFolder}/libpqbinfmt/bin"
-            },
-            "command": "cmake",
             "args": [
-                "-G",
-                "'Unix Makefiles'",
-                "${workspaceFolder}/libpqbinfmt"
+                "msbuild",
+                "-target:Reconfigure",
+                "-property:PgsqlPath=/opt/pgsql/9.6.17/bin",
+                "-consoleloggerparameters:NoSummary",
+                "${workspaceFolder}/libpqbinfmt/libpqbinfmt.proj"
             ],
-            "problemMatcher": [],
-            "group": "build"
-        },
-        {
-            "label": "build libpqbinfmt",
-            "type": "shell",
-            "options": {
-                "cwd": "${workspaceFolder}/libpqbinfmt/bin"
+            "group": "build",
+            "presentation": {
+                "reveal": "silent"
             },
-            "command": "make",
-            "problemMatcher": [
-                "$gcc",
-            ],
-            "group": "build"
+            "problemMatcher": "$msCompile"
         },
         {
-            "label": "build",
+            "label": "release reconfigure libpqbinfmt",
+            "command": "dotnet",
+            "type": "shell",
+            "args": [
+                "msbuild",
+                "-target:Reconfigure",
+                "-property:Configuration=Release",
+                "-property:PgsqlPath=/opt/pgsql/9.6.17/bin",
+                "-consoleloggerparameters:NoSummary",
+                "${workspaceFolder}/libpqbinfmt/libpqbinfmt.proj"
+            ],
+            "group": "build",
+            "presentation": {
+                "reveal": "silent"
+            },
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "debug build libpqbinfmt",
+            "command": "dotnet",
+            "type": "shell",
+            "args": [
+                "msbuild",
+                "-target:Build",
+                "-consoleloggerparameters:NoSummary",
+                "${workspaceFolder}/libpqbinfmt/libpqbinfmt.proj"
+            ],
+            "group": "build",
+            "presentation": {
+                "reveal": "silent"
+            },
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "release build libpqbinfmt",
+            "command": "dotnet",
+            "type": "shell",
+            "args": [
+                "msbuild",
+                "-target:Build",
+                "-property:Configuration=Release",
+                "-consoleloggerparameters:NoSummary",
+                "${workspaceFolder}/libpqbinfmt/libpqbinfmt.proj"
+            ],
+            "group": "build",
+            "presentation": {
+                "reveal": "silent"
+            },
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "debug build",
             "dependsOn": [
-                "create bin dir",
-                "configure libpqbinfmt",
-                "build libpqbinfmt",
-                "build pqsql"
+                "debug build libpqbinfmt",
+                "debug build pqsql",
+                "build pqsql tests",
             ],
             "group": {
                 "kind": "build",
                 "isDefault": true
-            }
+            },
+            "problemMatcher": [
+                "$gcc",
+                "$msCompile"
+            ]
+        },
+        {
+            "label": "release build",
+            "dependsOn": [
+                "release build libpqbinfmt",
+                "release build pqsql",
+            ],
+            "group": "build",
+            "problemMatcher": [
+                "$gcc",
+                "$msCompile"
+            ]
         }
     ]
 }

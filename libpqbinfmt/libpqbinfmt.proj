@@ -1,0 +1,39 @@
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration>Debug</Configuration>
+    <OutputPath>bin/$(Configuration)</OutputPath>
+    <ConfigureResult>$(OutputPath)/CMakeFiles/cmake.check_cache</ConfigureResult>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <CMakeLists Include="CMakeLists.txt" />
+  </ItemGroup>
+
+  <Target Name="Configure" Inputs="@(CMakeLists)" Outputs="$(ConfigureResult)">
+    <PropertyGroup>
+      <RelProjectPath>$([System.IO.Path]::GetRelativePath($(OutputPath), .))</RelProjectPath>
+    </PropertyGroup>
+    <MakeDir Directories="$(OutputPath)"/>
+    <Exec Command="cmake -DCMAKE_BUILD_TYPE=$(Configuration) \
+                         -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON \
+                         -DCMAKE_PREFIX_PATH:STRING=$(PgsqlPath) \
+                         $(RelProjectPath)"
+          WorkingDirectory="$(OutputPath)" />
+  </Target>
+
+  <Target Name="CleanConfigure">
+    <RemoveDir Directories="$(OutputPath)" />
+  </Target>
+
+  <Target Name="Reconfigure" DependsOnTargets="CleanConfigure;Configure" />
+
+  <Target Name="Build" DependsOnTargets="Configure">
+    <Exec Command="cmake --build ." WorkingDirectory="$(OutputPath)" />
+  </Target>
+
+  <Target Name="Clean">
+    <Exec Command="cmake --build . --target clean" WorkingDirectory="$(OutputPath)" />
+  </Target>
+
+  <Target Name="Rebuild" DependsOnTargets="Clean;Build" />
+</Project>
