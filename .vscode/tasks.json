@@ -54,13 +54,30 @@
             "problemMatcher": "$msCompile"
         },
         {
+            "label": "setup dependencies",
+            "command": "dotnet",
+            "type": "shell",
+            "args": [
+                "msbuild",
+                "-target:SetupDependencies",
+                "-property:PgsqlDownloadUrl=https://sbp.enterprisedb.com/getfile.jsp?fileid=12354",
+                "-consoleloggerparameters:NoSummary",
+                "${workspaceFolder}/libpqbinfmt/libpqbinfmt.proj"
+            ],
+            "group": "build",
+            "presentation": {
+                "reveal": "silent"
+            },
+            "problemMatcher": "$msCompile"
+        },
+        {
             "label": "debug reconfigure libpqbinfmt",
             "command": "dotnet",
             "type": "shell",
             "args": [
                 "msbuild",
                 "-target:Reconfigure",
-                "-property:PgsqlPath=/opt/pgsql/9.6.17/bin",
+                "-property:PgsqlPath=${workspaceFolder}/libpqbinfmt/deps/pgsql",
                 "-consoleloggerparameters:NoSummary",
                 "${workspaceFolder}/libpqbinfmt/libpqbinfmt.proj"
             ],

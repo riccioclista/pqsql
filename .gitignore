@@ -10,3 +10,4 @@ Pqsql-VS2015.VC.VC.opendb
 packages/
 /libpqbinfmt/Debug/
 /libpqbinfmt/libpqbinfmt.aps
+deps/

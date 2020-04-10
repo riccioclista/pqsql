@@ -9,6 +9,23 @@
     <CMakeLists Include="CMakeLists.txt" />
   </ItemGroup>
 
+  <Target Name="DownloadDependencies">
+    <Error Text="PgsqlDownloadUrl not specified." Condition="'$(PgsqlDownloadUrl)' == ''" />
+    <Message Importance="high" Text="Downloading pgsql from $(PgsqlDownloadUrl) ..." />
+    <DownloadFile SourceUrl="$(PgsqlDownloadUrl)" DestinationFolder="deps">
+      <Output TaskParameter="DownloadedFile" PropertyName="PgsqlPkgFile" />
+    </DownloadFile>
+  </Target>
+
+  <Target Name="UnpackDependencies">
+    <Error Text="PgsqlPkgFile not specified." Condition="'$(PgsqlPkgFile)' == ''" />
+    <Message Importance="high" Text="Unpacking $(PgsqlPkgFile) ..." />
+    <Unzip Condition="$(PgsqlPkgFile.EndsWith('.zip'))" SourceFiles="$(PgsqlPkgFile)" DestinationFolder="deps" />
+    <Exec Condition="$(PgsqlPkgFile.EndsWith('.tar.gz'))" Command="tar -xzf $(PgsqlPkgFile)" WorkingDirectory="deps" />
+  </Target>
+
+  <Target Name="SetupDependencies" DependsOnTargets="DownloadDependencies;UnpackDependencies" />
+
   <Target Name="Configure" Inputs="@(CMakeLists)" Outputs="$(ConfigureResult)">
     <PropertyGroup>
       <RelProjectPath>$([System.IO.Path]::GetRelativePath($(OutputPath), .))</RelProjectPath>
