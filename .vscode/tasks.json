@@ -165,6 +165,39 @@
                 "$gcc",
                 "$msCompile"
             ]
+        },
+        {
+            "label": "start docker pgsql 9.6",
+            "command": "dotnet",
+            "type": "shell",
+            "args": [
+                "msbuild",
+                "-target:StartPgsqlContainer",
+                "-property:PgsqlDockerImg=postgres:9.6",
+                "-consoleloggerparameters:NoSummary",
+                "${workspaceFolder}/PqsqlTests/PqsqlTests.csproj"
+            ],
+            "group": "test",
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "run tests",
+            "type": "shell",
+            "command": "dotnet",
+            "args": [
+                "test",
+                "PqsqlTests.csproj",
+                "-s",
+                "../Pqsql.runsettings"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/PqsqlTests"
+            },
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "problemMatcher": "$msCompile"
         }
     ]
 }
