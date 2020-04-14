@@ -6,7 +6,7 @@
     <CMakeExe>cmake</CMakeExe>
   </PropertyGroup>
 
-  <PropertyGroup Condition="$(IsWindows)">
+  <PropertyGroup Condition="'$(IsWindows)' == 'true'">
     <OutputPath>bin</OutputPath>
   </PropertyGroup>
 
@@ -39,10 +39,10 @@
     <PropertyGroup>
       <RelProjectPath>$([System.IO.Path]::GetRelativePath($(OutputPath), .))</RelProjectPath>
     </PropertyGroup>
-    <PropertyGroup Condition="!$(IsWindows)">
+    <PropertyGroup Condition="'$(IsWindows)' != 'true'">
       <BuildTypeArg>-DCMAKE_BUILD_TYPE=$(Configuration)</BuildTypeArg>
     </PropertyGroup>
-    <PropertyGroup Condition="$(IsWindows)">
+    <PropertyGroup Condition="'$(IsWindows)' == 'true'">
       <ArchitectureArg>-A x64</ArchitectureArg>
     </PropertyGroup>
     <MakeDir Directories="$(OutputPath)"/>
@@ -57,7 +57,7 @@
   <Target Name="Reconfigure" DependsOnTargets="CleanConfigure;Configure" />
 
   <Target Name="Build" DependsOnTargets="Configure">
-    <PropertyGroup Condition="$(IsWindows)">
+    <PropertyGroup Condition="'$(IsWindows)' == 'true'">
       <ConfigArg>--config $(Configuration)</ConfigArg>
     </PropertyGroup>
     <Exec Command="&quot;$(CMakeExe)&quot; --build .  $(ConfigArg)" WorkingDirectory="$(OutputPath)" />
