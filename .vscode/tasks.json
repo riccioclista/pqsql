@@ -114,7 +114,7 @@
                 "msbuild",
                 "-target:Reconfigure",
                 "-property:Configuration=Release",
-                "-property:PgsqlPath=/opt/pgsql/9.6.17/bin",
+                "-property:PgsqlPath=${workspaceFolder}/libpqbinfmt/deps/pgsql",
                 "-consoleloggerparameters:NoSummary",
                 "${workspaceFolder}/libpqbinfmt/libpqbinfmt.proj"
             ],
