@@ -1,5 +1,18 @@
-find_package(PkgConfig)
-pkg_check_modules(PC_pq QUIET libpq)
+if(WIN32)
+    set(PC_pq_INCLUDE_DIRS "${CMAKE_PREFIX_PATH}/include")
+    set(PC_pq_LINK_LIBRARIES "${CMAKE_PREFIX_PATH}/lib/libpq.lib")
+
+    execute_process(
+        COMMAND "${CMAKE_PREFIX_PATH}/bin/postgres" "--version"
+        OUTPUT_VARIABLE PGSQL_VERSION_OUTPUT
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+
+    string(REGEX MATCH "([0-9]+\\.)*[0-9]+$" PC_pq_VERSION ${PGSQL_VERSION_OUTPUT})
+else()
+    find_package(PkgConfig)
+    pkg_check_modules(PC_pq QUIET libpq)
+endif()
 
 find_path(pq_INCLUDE_DIR
     NAMES libpq-fe.h

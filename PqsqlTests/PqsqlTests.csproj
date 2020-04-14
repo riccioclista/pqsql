@@ -5,6 +5,11 @@
     <IsPackable>false</IsPackable>
     <EnableDefaultItems>false</EnableDefaultItems>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <IsWindows Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))' == 'true'">true</IsWindows> 
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$(IsWindows)">
+    <DefineConstants>WIN32</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
@@ -49,6 +54,29 @@
     <Error Text="PgsqlDockerImg not specified." Condition="'$(PgsqlDockerImg)' == ''" />
     <Message Importance="high" Text="Starting docker image $(PgsqlDockerImg) ..." />
     <Exec Command="docker run -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d $(PgsqlDockerImg)" />
+  </Target>
+
+  <Target Name="ConfigureRunsettings">
+    <PropertyGroup>
+      <RunsettingsInFile>../Pqsql.runsettings.in</RunsettingsInFile>
+      <RunsettingsFile>../Pqsql.runsettings</RunsettingsFile>
+    </PropertyGroup>
+    
+    <ConvertToAbsolutePath Condition="'$(PgsqlPath)' == ''" Paths="../libpqbinfmt/deps/pgsql">
+      <Output TaskParameter="AbsolutePaths" PropertyName="PgsqlPath" />
+    </ConvertToAbsolutePath>
+    <CombinePath BasePath="$(PgsqlPath)" Paths="bin">
+      <Output TaskParameter="CombinedPaths" PropertyName="PgsqlBinPath" />
+    </CombinePath>
+
+    <Message Importance="high" Text="Configuring test runsettings using PGSQL path '$(PgsqlPath)'." />
+    <Copy SourceFiles="$(RunsettingsInFile)" DestinationFiles="$(RunsettingsFile)" />
+    <XmlPoke XmlInputPath="$(RunSettingsFile)"
+             Query="/RunSettings/TestRunParameters/Parameter[@name='libpqPath']/@value"
+             Value="$(PgsqlBinPath)" />
+    <XmlPoke XmlInputPath="$(RunSettingsFile)"
+             Query="/RunSettings/MSTest/AssemblyResolution/Directory/@Path"
+             Value="$(PgsqlBinPath)" />
   </Target>
 
 </Project>

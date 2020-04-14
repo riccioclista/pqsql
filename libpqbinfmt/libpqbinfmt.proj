@@ -2,6 +2,15 @@
   <PropertyGroup>
     <Configuration>Debug</Configuration>
     <OutputPath>bin/$(Configuration)</OutputPath>
+    <IsWindows Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))' == 'true'">true</IsWindows> 
+    <CMakeExe>cmake</CMakeExe>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$(IsWindows)">
+    <OutputPath>bin</OutputPath>
+  </PropertyGroup>
+
+  <PropertyGroup>
     <ConfigureResult>$(OutputPath)/CMakeFiles/cmake.check_cache</ConfigureResult>
   </PropertyGroup>
 
@@ -30,11 +39,14 @@
     <PropertyGroup>
       <RelProjectPath>$([System.IO.Path]::GetRelativePath($(OutputPath), .))</RelProjectPath>
     </PropertyGroup>
+    <PropertyGroup Condition="!$(IsWindows)">
+      <BuildTypeArg>-DCMAKE_BUILD_TYPE=$(Configuration)</BuildTypeArg>
+    </PropertyGroup>
+    <PropertyGroup Condition="$(IsWindows)">
+      <ArchitectureArg>-A x64</ArchitectureArg>
+    </PropertyGroup>
     <MakeDir Directories="$(OutputPath)"/>
-    <Exec Command="cmake -DCMAKE_BUILD_TYPE=$(Configuration) \
-                         -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON \
-                         -DCMAKE_PREFIX_PATH:STRING=$(PgsqlPath) \
-                         $(RelProjectPath)"
+    <Exec Command="&quot;$(CMakeExe)&quot; $(ArchitectureArg) $(BuildTypeArg) -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON -DCMAKE_PREFIX_PATH:STRING=$(PgsqlPath) $(RelProjectPath)"
           WorkingDirectory="$(OutputPath)" />
   </Target>
 
@@ -45,11 +57,14 @@
   <Target Name="Reconfigure" DependsOnTargets="CleanConfigure;Configure" />
 
   <Target Name="Build" DependsOnTargets="Configure">
-    <Exec Command="cmake --build ." WorkingDirectory="$(OutputPath)" />
+    <PropertyGroup Condition="$(IsWindows)">
+      <ConfigArg>--config $(Configuration)</ConfigArg>
+    </PropertyGroup>
+    <Exec Command="&quot;$(CMakeExe)&quot; --build .  $(ConfigArg)" WorkingDirectory="$(OutputPath)" />
   </Target>
 
   <Target Name="Clean">
-    <Exec Command="cmake --build . --target clean" WorkingDirectory="$(OutputPath)" />
+    <Exec Command="&quot;$(CMakeExe)&quot; --build . --target clean" WorkingDirectory="$(OutputPath)" />
   </Target>
 
   <Target Name="Rebuild" DependsOnTargets="Clean;Build" />

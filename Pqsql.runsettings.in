@@ -22,7 +22,7 @@
 	<!-- Parameters used by tests at runtime -->
 	<TestRunParameters>
 		<Parameter name="connectionString" value="service=pqsqltests; connect_timeout=3" />
-		<Parameter name="libpqPath" value="/opt/pgsql/9.6.17/bin/lib" />
+		<Parameter name="libpqPath" value="set pgsql bin path here" />
 		<Parameter name="pgServiceFile" value="pg_service.conf" />
 	</TestRunParameters>
 
@@ -35,7 +35,7 @@
 		<DeleteDeploymentDirectoryAfterTestRunIsComplete>False</DeleteDeploymentDirectoryAfterTestRunIsComplete>
 		<DeploymentEnabled>False</DeploymentEnabled>
 		<AssemblyResolution>
-			<Directory Path="/opt/pgsql/9.6.17/bin" includeSubDirectories="false"/>
+			<Directory Path="set pgsql bin path here" includeSubDirectories="false"/>
 		</AssemblyResolution>
 	</MSTest> 
 

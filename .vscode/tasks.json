@@ -64,6 +64,15 @@
                 "-consoleloggerparameters:NoSummary",
                 "${workspaceFolder}/libpqbinfmt/libpqbinfmt.proj"
             ],
+            "windows": {
+                "args": [
+                    "msbuild",
+                    "-target:SetupDependencies",
+                    "-property:PgsqlDownloadUrl=https://sbp.enterprisedb.com/getfile.jsp?fileid=12464",
+                    "-consoleloggerparameters:NoSummary",
+                    "${workspaceFolder}/libpqbinfmt/libpqbinfmt.proj"
+                ]
+            },
             "group": "build",
             "presentation": {
                 "reveal": "silent"
@@ -81,6 +90,16 @@
                 "-consoleloggerparameters:NoSummary",
                 "${workspaceFolder}/libpqbinfmt/libpqbinfmt.proj"
             ],
+            "windows": {
+                "args": [
+                    "msbuild",
+                    "-target:Reconfigure",
+                    "-property:PgsqlPath=${workspaceFolder}/libpqbinfmt/deps/pgsql",
+                    "-property:CMakeExe=C:\\Program Files\\CMake\\bin\\cmake.exe",
+                    "-consoleloggerparameters:NoSummary",
+                    "${workspaceFolder}/libpqbinfmt/libpqbinfmt.proj"
+                ]
+            },
             "group": "build",
             "presentation": {
                 "reveal": "silent"
@@ -99,6 +118,17 @@
                 "-consoleloggerparameters:NoSummary",
                 "${workspaceFolder}/libpqbinfmt/libpqbinfmt.proj"
             ],
+            "windows": {
+                "args": [
+                    "msbuild",
+                    "-target:Reconfigure",
+                    "-property:Configuration=Release",
+                    "-property:PgsqlPath=${workspaceFolder}/libpqbinfmt/deps/pgsql",
+                    "-property:CMakeExe=C:\\Program Files\\CMake\\bin\\cmake.exe",
+                    "-consoleloggerparameters:NoSummary",
+                    "${workspaceFolder}/libpqbinfmt/libpqbinfmt.proj"
+                ]
+            },
             "group": "build",
             "presentation": {
                 "reveal": "silent"
@@ -115,6 +145,15 @@
                 "-consoleloggerparameters:NoSummary",
                 "${workspaceFolder}/libpqbinfmt/libpqbinfmt.proj"
             ],
+            "windows": {
+                "args": [
+                    "msbuild",
+                    "-target:Build",
+                    "-property:CMakeExe=C:\\Program Files\\CMake\\bin\\cmake.exe",
+                    "-consoleloggerparameters:NoSummary",
+                    "${workspaceFolder}/libpqbinfmt/libpqbinfmt.proj"
+                ]
+            },
             "group": "build",
             "presentation": {
                 "reveal": "silent"
@@ -132,6 +171,16 @@
                 "-consoleloggerparameters:NoSummary",
                 "${workspaceFolder}/libpqbinfmt/libpqbinfmt.proj"
             ],
+            "windows": {
+                "args": [
+                    "msbuild",
+                    "-target:Build",
+                    "-property:Configuration=Release",
+                    "-property:CMakeExe=C:\\Program Files\\CMake\\bin\\cmake.exe",
+                    "-consoleloggerparameters:NoSummary",
+                    "${workspaceFolder}/libpqbinfmt/libpqbinfmt.proj"
+                ]
+            },
             "group": "build",
             "presentation": {
                 "reveal": "silent"
@@ -179,6 +228,21 @@
             ],
             "group": "test",
             "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "configure test runsettings",
+            "type": "shell",
+            "command": "dotnet",
+            "args": [
+                "msbuild",
+                "PqsqlTests.csproj",
+                "-t:ConfigureRunSettings"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/PqsqlTests"
+            },
+            "group": "test",
+            "problemMatcher": []
         },
         {
             "label": "run tests",

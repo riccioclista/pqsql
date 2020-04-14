@@ -17,6 +17,9 @@ list(APPEND SOURCES
 
 if (WIN32)
     list(APPEND SOURCES "${PROJECT_BINARY_DIR}/libpqbinfmt.rc")
+    set(CMAKE_SHARED_LIBRARY_PREFIX "lib")
+    set(CMAKE_STATIC_LIBRARY_PREFIX "lib")
+    set(CMAKE_IMPORT_LIBRARY_PREFIX "lib")
 endif()
 
 add_library(pqbinfmt SHARED ${SOURCES})
@@ -26,24 +29,28 @@ find_package(pq REQUIRED MODULE)
 
 set(pqbinfmt_VERSION ${pq_VERSION})
 
-string(REGEX MATCH "^([0-9]+)(\\.[0-9]+)*" _ ${pq_VERSION})
-if (${_})
+if (${pq_VERSION} MATCHES "^([0-9]+)(\\.[0-9]+)*")
     set(pqbinfmt_VERSION_MAJOR "${CMAKE_MATCH_1}")
+else()
+    set(pqbinfmt_VERSION_MAJOR 0)
 endif()
 
-string(REGEX MATCH "^[0-9]+\\.([0-9]+)(\\.[0-9]+)*" _ ${pq_VERSION})
-if (${_})
+if (${pq_VERSION} MATCHES "^[0-9]+\\.([0-9]+)(\\.[0-9]+)*")
     set(pqbinfmt_VERSION_MINOR "${CMAKE_MATCH_1}")
+else()
+    set(pqbinfmt_VERSION_MINOR 0)
 endif()
 
-string(REGEX MATCH "^[0-9]+\\.[0-9]+\\.([0-9]+)(\\.[0-9]+)*" _ ${pq_VERSION})
-if (${_})
+if (${pq_VERSION} MATCHES "^[0-9]+\\.[0-9]+\\.([0-9]+)(\\.[0-9]+)*")
     set(pqbinfmt_VERSION_PATCH "${CMAKE_MATCH_1}")
+else()
+    set(pqbinfmt_VERSION_PATCH 0)
 endif()
 
-string(REGEX MATCH "^[0-9]+\\.[0-9]+\\.[0-9]+\\.([0-9]+)" _ ${pq_VERSION})
-if (${_})
+if (${pq_VERSION} MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+\\.([0-9]+)")
     set(pqbinfmt_VERSION_TWEAK "${CMAKE_MATCH_1}")
+else()
+    set(pqbinfmt_VERSION_TWEAK 0)
 endif()
 
 message(STATUS "Setting pqbinfmt version: ${pqbinfmt_VERSION}")

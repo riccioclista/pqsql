@@ -11,3 +11,4 @@ packages/
 /libpqbinfmt/Debug/
 /libpqbinfmt/libpqbinfmt.aps
 deps/
+*.runsettings

@@ -75,7 +75,9 @@ namespace Pqsql
 
 		static PqsqlConnection()
 		{
+#if !WIN32
 			PqsqlDllMap.Register(Assembly.GetExecutingAssembly());
+#endif
 		}
 
 		public PqsqlConnection(string connectionString)

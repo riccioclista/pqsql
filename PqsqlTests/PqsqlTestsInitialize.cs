@@ -1,9 +1,7 @@
 ﻿using System;
-using System.Text;
-using System.Collections.Generic;
-using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Runtime.InteropServices;
+using System.IO;
 
 namespace PqsqlTests
 {
@@ -22,7 +20,7 @@ namespace PqsqlTests
 			if (libpqPath != null)
 			{
 				string path = Environment.GetEnvironmentVariable("PATH");
-				Environment.SetEnvironmentVariable("PATH", libpqPath + ";" + path, EnvironmentVariableTarget.Process);
+				Environment.SetEnvironmentVariable("PATH", $"{libpqPath}{Path.PathSeparator}{path}", EnvironmentVariableTarget.Process);
 			}
 
 			// https://www.postgresql.org/docs/current/static/libpq-pgservice.html

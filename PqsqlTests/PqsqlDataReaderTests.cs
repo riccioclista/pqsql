@@ -41,8 +41,8 @@ namespace PqsqlTests
 		[TestCleanup]
 		public void TestCleanup()
 		{
-			mCmd.Dispose();
-			mConnection.Dispose();
+			mCmd?.Dispose();
+			mConnection?.Dispose();
 		}
 
 		#endregion
