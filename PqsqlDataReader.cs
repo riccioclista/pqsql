@@ -1858,7 +1858,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o;";
 #if WIN32
 				uni = Marshal.PtrToStringUni(utp);
 #else
-				uni = Marshal.PtrToStringUTF8(utp);
+				uni = PqsqlUTF8Statement.PtrToStringUTF8(utp);
 #endif
 			}
 			else if (unicode_len == 0) // itemlen > 0 && unicode_len == 0: empty string
@@ -1870,7 +1870,7 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o;";
 #if WIN32
 				uni = Marshal.PtrToStringUni(utp, unicode_len);
 #else
-				uni = Marshal.PtrToStringUTF8(utp, (int) unicode_len);
+				uni = PqsqlUTF8Statement.PtrToStringUTF8(utp, (int) unicode_len);
 #endif
 			}
 

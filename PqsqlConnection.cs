@@ -73,13 +73,6 @@ namespace Pqsql
 
 		#region ctors and dtors
 
-		static PqsqlConnection()
-		{
-#if !WIN32
-			PqsqlDllMap.Register(Assembly.GetExecutingAssembly());
-#endif
-		}
-
 		public PqsqlConnection(string connectionString)
 			: this(new PqsqlConnectionStringBuilder(connectionString))
 		{

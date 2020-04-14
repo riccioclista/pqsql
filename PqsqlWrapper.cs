@@ -538,11 +538,6 @@ namespace Pqsql
 	[SuppressUnmanagedCodeSecurity]
 	internal static partial class UnsafeNativeMethods
 	{
-		static UnsafeNativeMethods()
-		{
-			PqsqlDllMap.Register(Assembly.GetExecutingAssembly());
-		}
-
 		/// <summary>
 		/// wraps C functions from libpq.dll
 		/// </summary>
@@ -554,15 +549,15 @@ namespace Pqsql
 
 			#region PQExpBuffer
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern IntPtr createPQExpBuffer();
 			// PQExpBuffer createPQExpBuffer(void);
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern void destroyPQExpBuffer(IntPtr s);
 			// void destroyPQExpBuffer(PQExpBuffer str);
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern void resetPQExpBuffer(IntPtr s);
 			// void resetPQExpBuffer(PQExpBuffer str);
 
@@ -574,11 +569,11 @@ namespace Pqsql
 
 			#region libpq setup
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern int PQlibVersion();
 			//int PQlibVersion(void)
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern int PQisthreadsafe();
 			//int PQisthreadsafe(void)
 
@@ -586,7 +581,7 @@ namespace Pqsql
 
 			#region Miscellaneous
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern void PQfreemem(IntPtr ptr);
 			// void PQfreemem(void *ptr); 
 
@@ -598,15 +593,15 @@ namespace Pqsql
 
 			#region blocking connection setup
 
-			[DllImport("libpq.dll", CharSet = CharSet.Ansi, BestFitMapping = false, ThrowOnUnmappableChar = true)]
+			[DllImport("libpq", CharSet = CharSet.Ansi, BestFitMapping = false, ThrowOnUnmappableChar = true)]
 			public static extern IntPtr PQconnectdb([MarshalAs(UnmanagedType.LPStr)] string conninfo);
 			// PGconn *PQconnectdb(const char *conninfo)
 
-			[DllImport("libpq.dll", CharSet = CharSet.Ansi, BestFitMapping = false, ThrowOnUnmappableChar = true)]
+			[DllImport("libpq", CharSet = CharSet.Ansi, BestFitMapping = false, ThrowOnUnmappableChar = true)]
 			public static extern IntPtr PQconnectdbParams([MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.LPStr)] string[] keywords, [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.LPStr)] string[] values, int expand_dbname);
 			// PGconn *PQconnectdbParams(const char * const *keywords, const char * const *values, int expand_dbname);
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern void PQreset(IntPtr conn);
 			// void PQreset(PGconn *conn);
 
@@ -614,19 +609,19 @@ namespace Pqsql
 
 			#region non-blocking connection setup
 
-			[DllImport("libpq.dll", CharSet = CharSet.Ansi, BestFitMapping = false, ThrowOnUnmappableChar = true)]
+			[DllImport("libpq", CharSet = CharSet.Ansi, BestFitMapping = false, ThrowOnUnmappableChar = true)]
 			public static extern IntPtr PQconnectStartParams([MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.LPStr)] string[] keywords, [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.LPStr)] string[] values, int expand_dbname);
 			// PGconn *PQconnectStartParams(const char * const *keywords, const char * const *values, int expand_dbname);
 
-			[DllImport("libpq.dll", CharSet = CharSet.Ansi, BestFitMapping = false, ThrowOnUnmappableChar = true)]
+			[DllImport("libpq", CharSet = CharSet.Ansi, BestFitMapping = false, ThrowOnUnmappableChar = true)]
 			public static extern IntPtr PQconnectStart([MarshalAs(UnmanagedType.LPStr)] string conninfo);
 			// PGconn *PQconnectStart(const char *conninfo);
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern int PQconnectPoll(IntPtr conn);
 			// PostgresPollingStatusType PQconnectPoll(PGconn *conn);
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern int PQsocket(IntPtr conn);
 			// int PQsocket(const PGconn *conn);
 
@@ -634,15 +629,15 @@ namespace Pqsql
 
 			#region connection settings
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern int PQsetSingleRowMode(IntPtr conn);
 			// int PQsetSingleRowMode(PGconn *conn);
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern int PQclientEncoding(IntPtr conn);
 			// int PQclientEncoding(const PGconn *conn);
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern int PQsetClientEncoding(IntPtr conn, byte[] encoding);
 			// int PQsetClientEncoding(PGconn* conn, const char* encoding);
 
@@ -650,7 +645,7 @@ namespace Pqsql
 
 			#region connection cleanup
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern void PQfinish(IntPtr conn);
 			// void PQfinish(PGconn *conn)
 
@@ -662,11 +657,11 @@ namespace Pqsql
 
 			#region connection status and error message
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern ConnStatusType PQstatus(IntPtr conn);
 			// ConnStatusType PQstatus(conn)
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern unsafe sbyte* PQerrorMessage(IntPtr conn);
 			// char *PQerrorMessage(const PGconn *conn);
 
@@ -674,7 +669,7 @@ namespace Pqsql
 
 			#region transaction status
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern PGTransactionStatusType PQtransactionStatus(IntPtr conn);
 			// PGTransactionStatusType PQtransactionStatus(const PGconn *conn);
 
@@ -682,27 +677,27 @@ namespace Pqsql
 
 			#region connection settings
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern int PQbackendPID(IntPtr conn);
 			// int PQbackendPID(const PGconn *conn);
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern int PQserverVersion(IntPtr conn);
 			// int PQserverVersion(const PGconn *conn);
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern unsafe sbyte* PQparameterStatus(IntPtr conn, byte[] paramName);
 			// const char *PQparameterStatus(const PGconn *conn, const char *paramName);
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern unsafe sbyte* PQdb(IntPtr conn);
 			// char *PQdb(const PGconn *conn);
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern unsafe sbyte* PQhost(IntPtr conn);
 			// char *PQhost(const PGconn *conn);
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern unsafe sbyte* PQport(IntPtr conn);
 			// char *PQport(const PGconn *conn);
 
@@ -714,11 +709,11 @@ namespace Pqsql
 
 			#region blocking queries
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern unsafe IntPtr PQexec(IntPtr conn, byte* query);
 			// PGresult *PQexec(PGconn *conn, const char *query);
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern unsafe int PQexecParams(IntPtr conn, byte* command, int nParams, IntPtr paramTypes, IntPtr paramValues, IntPtr paramLengths, IntPtr paramFormats, int resultFormat);
 			// PGresult *PQexecParams(PGconn *conn, const char *command, int nParams, const Oid *paramTypes, const char * const *paramValues, const int *paramLengths, const int *paramFormats, int resultFormat);
 
@@ -730,23 +725,23 @@ namespace Pqsql
 
 			#region non-blocking queries
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern unsafe int PQsendQuery(IntPtr conn, byte* query);
 			// int PQsendQuery(PGconn *conn, const char *command);
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern unsafe int PQsendQueryParams(IntPtr conn, byte* command, int nParams, IntPtr paramTypes, IntPtr paramValues, IntPtr paramLengths, IntPtr paramFormats, int resultFormat);
 			// int PQsendQueryParams(PGconn *conn, const char *command, int nParams, const Oid *paramTypes, const char * const *paramValues, const int *paramLengths, const int *paramFormats, int resultFormat);
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern IntPtr PQgetResult(IntPtr conn);
 			// PGresult *PQgetResult(PGconn *conn)
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern int PQconsumeInput(IntPtr conn);
 			// int PQconsumeInput(PGconn *conn);
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern int PQisBusy(IntPtr conn);
 			// int PQisBusy(PGconn *conn);
 
@@ -754,7 +749,7 @@ namespace Pqsql
 
 			#region result cleanup
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern void PQclear(IntPtr res);
 			// void PQclear(PGresult *res);
 
@@ -762,15 +757,15 @@ namespace Pqsql
 
 			#region number of rows and columns
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern int PQntuples(IntPtr res);
 			// int PQntuples(const PGresult *res);
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern int PQnfields(IntPtr res);
 			// int PQnfields(const PGresult *res);
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern unsafe sbyte* PQcmdTuples(IntPtr res);
 			// char* PQcmdTuples(PGresult* res);
 
@@ -778,31 +773,31 @@ namespace Pqsql
 
 			#region field type and size information
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern int PQfformat(IntPtr res, int column_number);
 			// int PQfformat(const PGresult *res, int column_number);
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern int PQftype(IntPtr res, int column_number);
 			// Oid PQftype(const PGresult *res, int column_number);
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern int PQfmod(IntPtr res, int column_number);
 			// int PQfmod(const PGresult *res, int column_number);
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern int PQfsize(IntPtr res, int column_number);
 			// int PQfsize(const PGresult *res, int column_number);
 
-			[DllImport("libpq.dll", CharSet=CharSet.Ansi, BestFitMapping = false, ThrowOnUnmappableChar = true)]
+			[DllImport("libpq", CharSet=CharSet.Ansi, BestFitMapping = false, ThrowOnUnmappableChar = true)]
 			public static extern int PQfnumber(IntPtr res, [MarshalAs(UnmanagedType.LPStr)] string column_name);
 			// int PQfnumber(const PGresult *res, const char *column_name);
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern unsafe sbyte* PQfname(IntPtr res, int column_number);
 			// char *PQfname(const PGresult *res, int column_number);
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern uint PQftable(IntPtr res, int column_number);
 			// Oid PQftable(const PGresult *res, int column_number);
 
@@ -810,15 +805,15 @@ namespace Pqsql
 
 			#region value access of specified row,column
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern IntPtr PQgetvalue(IntPtr res, int row_number, int column_number);
 			// char *PQgetvalue(const PGresult *res, int row_number, int column_number);
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern int PQgetisnull(IntPtr res, int row_number, int column_number);
 			// int PQgetisnull(const PGresult *res, int row_number, int column_number);
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern int PQgetlength(IntPtr res, int row_number, int column_number);
 			// int PQgetlength(const PGresult *res, int row_number, int column_number);
 
@@ -826,11 +821,11 @@ namespace Pqsql
 
 			#region result status and error message
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern ExecStatusType PQresultStatus(IntPtr res);
 			// ExecStatusType PQresultStatus(const PGresult *res);
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern unsafe sbyte* PQresultErrorField(IntPtr res, int fieldcode);
 			// char *PQresultErrorField(const PGresult *res, int fieldcode);
 
@@ -842,15 +837,15 @@ namespace Pqsql
 
 			#region cancel query
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern IntPtr PQgetCancel(IntPtr conn);
 			// PGcancel* PQgetCancel(PGconn* conn);
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern void PQfreeCancel(IntPtr cancel);
 			// void PQfreeCancel(PGcancel* cancel);
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern unsafe int PQcancel(IntPtr cancel, sbyte* errbuf, int errbufsize);
 			// int PQcancel(PGcancel *cancel, char *errbuf, int errbufsize);
 
@@ -862,11 +857,11 @@ namespace Pqsql
 
 			#region COPY FROM STDIN
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern int PQputCopyData(IntPtr conn, IntPtr buffer, int nbytes);
 			// int PQputCopyData(PGconn *conn, const char *buffer, int nbytes);
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern unsafe int PQputCopyEnd(IntPtr conn, byte* errormsg);
 			// int PQputCopyEnd(PGconn *conn, const char *errormsg);
 
@@ -874,7 +869,7 @@ namespace Pqsql
 
 			#region COPY TO STDOUT
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern int PQgetCopyData(IntPtr conn, IntPtr buffer, int async);
 			// int PQgetCopyData(PGconn* conn, char** buffer, int async);
 
@@ -886,15 +881,15 @@ namespace Pqsql
 
 			#region LO creat / unlink
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern uint lo_creat(IntPtr conn, int mode);
 			// Oid lo_creat(PGconn* conn, int mode);
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern uint lo_create(IntPtr conn, uint lobjId);
 			// Oid lo_create(PGconn *conn, Oid lobjId);
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern int lo_unlink(IntPtr conn, uint lobjId);
 			// int lo_unlink(PGconn *conn, Oid lobjId);
 
@@ -902,11 +897,11 @@ namespace Pqsql
 
 			#region LO open / close
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern int lo_open(IntPtr conn, uint lobjId, int mode);
 			// int lo_open(PGconn *conn, Oid lobjId, int mode);
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern int lo_close(IntPtr conn, int fd);
 			// int lo_close(PGconn *conn, int fd);
 
@@ -914,19 +909,19 @@ namespace Pqsql
 
 			#region LO lseek / tell
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern int lo_lseek(IntPtr conn, int fd, int offset, int whence);
 			// int lo_lseek(PGconn* conn, int fd, int offset, int whence);
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern long lo_lseek64(IntPtr conn, int fd, long offset, int whence);
 			// pg_int64 lo_lseek64(PGconn *conn, int fd, pg_int64 offset, int whence);
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern int lo_tell(IntPtr conn, int fd);
 			// int lo_tell(PGconn *conn, int fd);
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern long lo_tell64(IntPtr conn, int fd);
 			// pg_int64 lo_tell64(PGconn *conn, int fd);
 
@@ -934,19 +929,19 @@ namespace Pqsql
 
 			#region LO write / read / truncate
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern unsafe int lo_write(IntPtr conn, int fd, byte* buf, ulong len);
 			// int lo_write(PGconn *conn, int fd, const char *buf, size_t len);
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern unsafe int lo_read(IntPtr conn, int fd, byte* buf, ulong len);
 			// int lo_read(PGconn *conn, int fd, char *buf, size_t len);
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern int lo_truncate(IntPtr conn, int fd, long len);
 			// int lo_truncate(PGcon *conn, int fd, size_t len);
 
-			[DllImport("libpq.dll")]
+			[DllImport("libpq")]
 			public static extern int lo_truncate64(IntPtr conn, int fd, long len);
 			// int lo_truncate64(PGcon *conn, int fd, pg_int64 len);
 
