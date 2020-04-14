@@ -514,7 +514,7 @@ namespace PqsqlTests
 				PqsqlDataReader r = cmd.ExecuteReader();
 				while (r.Read())
 				{
-					string s = r.GetString(0);
+					string s = !r.IsDBNull(0) ? r.GetString(0) : null;
 				}
 			}
 		}
@@ -528,7 +528,7 @@ namespace PqsqlTests
 				PqsqlDataReader r = cmd.ExecuteReader();
 				while (r.Read())
 				{
-					string s = r.GetString(0);
+					string s = !r.IsDBNull(0) ? r.GetString(0) : null;
 				}
 			}
 		}
@@ -542,7 +542,7 @@ namespace PqsqlTests
 				PqsqlDataReader r = cmd.ExecuteReader();
 				while (r.Read())
 				{
-					string s = r.GetString(0);
+					string s = !r.IsDBNull(0) ? r.GetString(0) : null;
 				}
 			}
 		}
@@ -556,7 +556,7 @@ namespace PqsqlTests
 				PqsqlDataReader r = cmd.ExecuteReader();
 				while (r.Read())
 				{
-					string s = r.GetString(0);
+					string s = !r.IsDBNull(0) ? r.GetString(0) : null;
 				}
 			}
 		}
@@ -570,7 +570,7 @@ namespace PqsqlTests
 				PqsqlDataReader r = cmd.ExecuteReader();
 				while (r.Read())
 				{
-					string s = r.GetString(0);
+					string s = !r.IsDBNull(0) ? r.GetString(0) : null;
 				}
 			}
 		}
