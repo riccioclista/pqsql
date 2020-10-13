@@ -246,6 +246,18 @@ namespace Pqsql
 			}
 		}
 
+		public string GetConnectionStringWithObfuscatedPassword()
+		{
+			if (ConnectionString == null)
+			{
+				return null;
+			}
+
+			object pwd;
+			TryGetValue(password, out pwd);
+			return ConnectionString.Replace($"password={pwd}", "password=***");
+		}
+
 
 		// E.g.
 		// host=localhost; port=5432; user=postgres; password=P4$$word; dbname=postgres; connect_timeout=10
