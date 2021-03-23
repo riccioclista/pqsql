@@ -21,13 +21,13 @@
 		<EnvironmentVariables>
 		<!-- List of environment variables we want to set-->
 			<LD_LIBRARY_PATH>set path to libpq here</LD_LIBRARY_PATH>
+			<PGSERVICEFILE>pg_service.conf</PGSERVICEFILE>
 		</EnvironmentVariables>
 	</RunConfiguration>	
 
 	<!-- Parameters used by tests at runtime -->
 	<TestRunParameters>
 		<Parameter name="connectionString" value="service=pqsqltests; connect_timeout=3" />
-		<Parameter name="pgServiceFile" value="pg_service.conf" />
 	</TestRunParameters>
 
 	<!-- Adapter Specific sections -->
