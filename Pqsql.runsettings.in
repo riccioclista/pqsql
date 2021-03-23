@@ -17,12 +17,16 @@
 	
 		<!-- Path to Test Adapters -->
 		<!--<TestAdaptersPaths>%SystemDrive%\Temp\foo;%SystemDrive%\Temp\bar</TestAdaptersPaths>-->
+
+		<EnvironmentVariables>
+		<!-- List of environment variables we want to set-->
+			<LD_LIBRARY_PATH>set path to libpq here</LD_LIBRARY_PATH>
+		</EnvironmentVariables>
 	</RunConfiguration>	
 
 	<!-- Parameters used by tests at runtime -->
 	<TestRunParameters>
 		<Parameter name="connectionString" value="service=pqsqltests; connect_timeout=3" />
-		<Parameter name="libpqPath" value="set pgsql bin path here" />
 		<Parameter name="pgServiceFile" value="pg_service.conf" />
 	</TestRunParameters>
 
@@ -34,9 +38,6 @@
 		<CaptureTraceOutput>True</CaptureTraceOutput>
 		<DeleteDeploymentDirectoryAfterTestRunIsComplete>False</DeleteDeploymentDirectoryAfterTestRunIsComplete>
 		<DeploymentEnabled>False</DeploymentEnabled>
-		<AssemblyResolution>
-			<Directory Path="set pgsql bin path here" includeSubDirectories="false"/>
-		</AssemblyResolution>
 	</MSTest> 
 
 </RunSettings>

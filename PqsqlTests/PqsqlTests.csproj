@@ -65,18 +65,15 @@
     <ConvertToAbsolutePath Condition="'$(PgsqlPath)' == ''" Paths="../libpqbinfmt/deps/pgsql">
       <Output TaskParameter="AbsolutePaths" PropertyName="PgsqlPath" />
     </ConvertToAbsolutePath>
-    <CombinePath BasePath="$(PgsqlPath)" Paths="bin">
-      <Output TaskParameter="CombinedPaths" PropertyName="PgsqlBinPath" />
+    <CombinePath BasePath="$(PgsqlPath)" Paths="lib">
+      <Output TaskParameter="CombinedPaths" PropertyName="PgsqlLibPath" />
     </CombinePath>
 
     <Message Importance="high" Text="Configuring test runsettings using PGSQL path '$(PgsqlPath)'." />
     <Copy SourceFiles="$(RunsettingsInFile)" DestinationFiles="$(RunsettingsFile)" />
     <XmlPoke XmlInputPath="$(RunSettingsFile)"
-             Query="/RunSettings/TestRunParameters/Parameter[@name='libpqPath']/@value"
-             Value="$(PgsqlBinPath)" />
-    <XmlPoke XmlInputPath="$(RunSettingsFile)"
-             Query="/RunSettings/MSTest/AssemblyResolution/Directory/@Path"
-             Value="$(PgsqlBinPath)" />
+             Query="/RunSettings/RunConfiguration/EnvironmentVariables/LD_LIBRARY_PATH"
+             Value="$(PgsqlLibPath)" />
   </Target>
 
 </Project>
