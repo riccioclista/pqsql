@@ -1,4 +1,8 @@
-﻿Compiling Pqsql
+﻿!!! Visual Studio users: If the Project libpqbinfmt.proj cannot be loaded, you first need to build it with cmake.
+The easiest way is by running the "debug reconfigure libpqbinfmt" task in VS Code.
+
+
+Compiling Pqsql
 ===============
 
 
@@ -7,7 +11,7 @@ notes:
     * C# extension
     * CMake extension (optional)
     * .NET Core Test Explorer (optional)
- - get .net core 3.1
+ - get .net core 2.1
  - get cmake
  - get deps: task "setup dependencies" (this may take a while)
  - configure libpqbinfmt: task "debug reconfigure libpqbinfmt"
@@ -28,8 +32,8 @@ libpqbinfmt
 
 Assumes that headers and lib files are installed in C:\pgsql
 
-Just unpack postgresql-9.6.6-3-windows-x64-binaries.zip from
-https://get.enterprisedb.com/postgresql/postgresql-9.6.6-3-windows-x64-binaries.zip
+Just unpack postgresql-9.6.17-2-windows-x64-binaries.zip from
+https://get.enterprisedb.com/postgresql/postgresql-9.6.17-2-windows-x64-binaries.zip
 into C:\pgsql
 
 
@@ -61,18 +65,17 @@ https://www.microsoft.com/en-us/download/details.aspx?id=53587
 The libpq DLLs depend on Visual C++ Redistributable Packages for Visual Studio 2013 from
 https://www.microsoft.com/en-us/download/details.aspx?id=40784
 
-libpqbinfmt is based on x64 libpq from PostgreSQL 9.6.6:
+libpqbinfmt is based on x64 libpq from PostgreSQL 9.6.17:
 http://www.postgresql.org/docs/current/static/libpq.html
 
-libpq DLLs can be retrieved from postgresql-9.6.6-3-windows-x64-binaries.zip:
-https://get.enterprisedb.com/postgresql/postgresql-9.6.6-3-windows-x64-binaries.zip
+libpq DLLs can be retrieved from postgresql-9.6.17-2-windows-x64-binaries.zip:
+https://get.enterprisedb.com/postgresql/postgresql-9.6.17-2-windows-x64-binaries.zip
 
-libpq 9.6.6 is linked with
-- OpenSSL 1.0.2n (libeay32.dll and ssleay32.dll)
+libpq 9.6.17 is linked with
+- OpenSSL 1.1.1d (libssl-1_1-x64.dll and libcrypto-1_1-x64.dll)
 - libintl 0.19.6.0 (libintl-8.dll)
-- libiconv 1.14.0.0 (libiconv-2.dll)
 
-postgresql-9.6.6-3-windows-x64-binaries.zip contains the necessary DLLs
+postgresql-9.6.17-2-windows-x64-binaries.zip contains the necessary DLLs
 for libpqbinfmt:
 - pgsql\bin\libpq.dll
 - pgsql\bin\libeay32.dll
@@ -82,44 +85,10 @@ for libpqbinfmt:
 
 
 
-Code Contracts for .NET (only for Debug configuration)
-------------------------------------------------------
-
-https://marketplace.visualstudio.com/items?itemName=RiSEResearchinSoftwareEngineering.CodeContractsforNET
-
-
-
-pgBouncer (optional)
---------------------
-
-https://pgbouncer.github.io/
-pgbouncer-1.6.1-win-x64.zip: http://winpg.jp/~saito/pgbouncer/try_64bit/
-
-Installation: 
-
-- copy content of pgbouncer-1.6.1-win-x64.zip to C:\Program Files\pgBouncer
-- setup pgbouncer.ini and userlist.txt in  C:\Program Files\pgBouncer
-- register pgBouncer as Windows service:
-  $ pgbouncer -regservice config.ini
-
-
-
-
 Tests
 =====
 
-You can run the tests in the Debug configuration:
-
-   "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\bin\amd64\vcvars64.bat"
-
-   MSBuild.exe Pqsql-VS2015.sln /p:Configuration=Debug /p:Platform=x64
-
-   % setup libpq environment variables
-   % E.g.
-   set PGSERVICE=servicename
-   set PGPASSWORD=secure
-
-   vstest.console.exe bin\x64\Debug\PqsqlTests.dll /Settings:Pqsql.runsettings /logger:trx
+You can run the tests in the Debug configuration using the task "run tests"   
 
 
 
@@ -128,7 +97,7 @@ TODO
 
 Target Framework
 ----------------
-current target framework is v4, add support for v4.5 / v4.6 / etc.
+current target framework netstandard2.0
 
 
 Obsolete
