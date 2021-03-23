@@ -14,9 +14,6 @@
                 "/consoleloggerparameters:NoSummary"
             ],
             "group": "build",
-            "presentation": {
-                "reveal": "silent"
-            },
             "problemMatcher": "$msCompile"
         },
         {
@@ -32,9 +29,6 @@
                 "Release"
             ],
             "group": "build",
-            "presentation": {
-                "reveal": "silent"
-            },
             "problemMatcher": "$msCompile"
         },
         {
@@ -48,9 +42,6 @@
                 "/consoleloggerparameters:NoSummary"
             ],
             "group": "build",
-            "presentation": {
-                "reveal": "silent"
-            },
             "problemMatcher": "$msCompile"
         },
         {
@@ -74,9 +65,6 @@
                 ]
             },
             "group": "build",
-            "presentation": {
-                "reveal": "silent"
-            },
             "problemMatcher": "$msCompile"
         },
         {
@@ -101,9 +89,6 @@
                 ]
             },
             "group": "build",
-            "presentation": {
-                "reveal": "silent"
-            },
             "problemMatcher": "$msCompile"
         },
         {
@@ -130,9 +115,6 @@
                 ]
             },
             "group": "build",
-            "presentation": {
-                "reveal": "silent"
-            },
             "problemMatcher": "$msCompile"
         },
         {
@@ -155,9 +137,6 @@
                 ]
             },
             "group": "build",
-            "presentation": {
-                "reveal": "silent"
-            },
             "problemMatcher": "$msCompile"
         },
         {
@@ -182,9 +161,6 @@
                 ]
             },
             "group": "build",
-            "presentation": {
-                "reveal": "silent"
-            },
             "problemMatcher": "$msCompile"
         },
         {
