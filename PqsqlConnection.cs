@@ -591,7 +591,8 @@ namespace Pqsql
 					string err = GetErrorMessage();
 					PqsqlWrapper.PQfinish(mConnection); // force release of mConnection memory
 					Init();
-					throw new PqsqlException("Could not reset connection with connection string «" + mConnectionStringBuilder.ConnectionString + "»: " + err, (int) PqsqlState.CONNECTION_FAILURE);
+					var connStr = mConnectionStringBuilder.GetConnectionStringWithObfuscatedPassword();
+					throw new PqsqlException("Could not reset connection with connection string «" + connStr + "»: " + err, (int) PqsqlState.CONNECTION_FAILURE);
 				}
 
 				OnStateChange(new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open));
@@ -621,7 +622,8 @@ namespace Pqsql
 				string err = GetErrorMessage();
 				PqsqlWrapper.PQfinish(mConnection); // force release of mConnection memory
 				Init();
-				throw new PqsqlException("Could not create connection with connection string «" + mConnectionStringBuilder.ConnectionString + "»: " + err);
+				var connStr = mConnectionStringBuilder.GetConnectionStringWithObfuscatedPassword();
+				throw new PqsqlException("Could not create connection with connection string «" + connStr + "»: " + err);
 			}
 
 			mNewConnectionString = false;
