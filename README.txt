@@ -1,6 +1,28 @@
 ﻿Compiling Pqsql
 ===============
 
+
+notes:
+ - get vscode
+    * C# extension
+    * CMake extension (optional)
+    * .NET Core Test Explorer (optional)
+ - get .net core 3.1
+ - get cmake
+ - get deps: task "setup dependencies" (this may take a while)
+ - configure libpqbinfmt: task "debug reconfigure libpqbinfmt"
+ - build: task "debug build pqsql"
+ - build tests: task "build pqsql tests"
+ - configure tests: task "configure test runsettings"
+ - add current user to docker group (linux only)
+ - start postgres docker test instance: task "start docker pgsql 9.6" (may take a little longer on first run)
+ - run tests: task "run tests"
+
+
+
+
+
+
 libpqbinfmt
 -----------
 
