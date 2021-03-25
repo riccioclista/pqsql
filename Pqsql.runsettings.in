@@ -13,7 +13,7 @@
 		<TargetPlatform>x64</TargetPlatform>
 	
 		<!-- Framework35 | [Framework40] | Framework45 -->
-		<TargetFrameworkVersion>netcoreapp3.1</TargetFrameworkVersion>
+		<!--<TargetFrameworkVersion>FrameworkCore10</TargetFrameworkVersion>-->
 	
 		<!-- Path to Test Adapters -->
 		<!--<TestAdaptersPaths>%SystemDrive%\Temp\foo;%SystemDrive%\Temp\bar</TestAdaptersPaths>-->
