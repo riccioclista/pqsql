@@ -6,7 +6,7 @@ Compiling Pqsql
 ===============
 
 
-notes:
+Build:
  - get vscode
     * C# extension
     * CMake extension (optional)
@@ -16,6 +16,9 @@ notes:
  - get deps: task "setup dependencies" (this may take a while)
  - configure libpqbinfmt: task "debug reconfigure libpqbinfmt"
  - build: task "debug build pqsql"
+
+Run tests:
+ - make sure to use at least vstest version 16.7.2, because we need environment variable support in .runsettings
  - build tests: task "build pqsql tests"
  - configure tests: task "configure test runsettings"
  - add current user to docker group (linux only)
@@ -30,26 +33,14 @@ notes:
 libpqbinfmt
 -----------
 
-Assumes that headers and lib files are installed in C:\pgsql
-
-Just unpack postgresql-9.6.17-2-windows-x64-binaries.zip from
-https://get.enterprisedb.com/postgresql/postgresql-9.6.17-2-windows-x64-binaries.zip
-into C:\pgsql
+Assumes that headers and lib files are installed using the "setup dependencies" task
 
 
 Build
 -----
 
-Setup environment variables:
-	"C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\bin\amd64\vcvars64.bat"
-
-Release:
-
-	MSBuild.exe Pqsql-VS2015.sln /p:Configuration=Release /p:Platform=x64
-
-Debug:
-
-	MSBuild.exe Pqsql-VS2015.sln /p:Configuration=Debug /p:Platform=x64
+ - configure: task "debug reconfigure libpqbinfmt"
+ - build: task "debug build libpqbinfmt"
 
 
 Dependencies of Pqsql
@@ -68,20 +59,18 @@ https://www.microsoft.com/en-us/download/details.aspx?id=40784
 libpqbinfmt is based on x64 libpq from PostgreSQL 9.6.17:
 http://www.postgresql.org/docs/current/static/libpq.html
 
-libpq DLLs can be retrieved from postgresql-9.6.17-2-windows-x64-binaries.zip:
-https://get.enterprisedb.com/postgresql/postgresql-9.6.17-2-windows-x64-binaries.zip
+libpq DLLs can be retrieved from postgresql-9.6.17 by running the "setup dependencies" task
 
 libpq 9.6.17 is linked with
 - OpenSSL 1.1.1d (libssl-1_1-x64.dll and libcrypto-1_1-x64.dll)
 - libintl 0.19.6.0 (libintl-8.dll)
 
-postgresql-9.6.17-2-windows-x64-binaries.zip contains the necessary DLLs
+postgresql 9.6.17 package contains the necessary DLLs
 for libpqbinfmt:
 - pgsql\bin\libpq.dll
-- pgsql\bin\libeay32.dll
-- pgsql\bin\ssleay32.dll
+- pgsql\bin\libssl-1_1-x64.dll
+- pgsql\bin\libcrypto-1_1-x64.dll
 - pgsql\bin\libintl-8.dll
-- pgsql\bin\libiconv-2.dll
 
 
 
