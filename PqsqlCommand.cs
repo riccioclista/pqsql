@@ -497,13 +497,6 @@ namespace Pqsql
 #endif
 
 			string[] statements;
-
-#if false
-			// always set SingleRow mode for now,
-			// will be turned off for FETCH statements in PqsqlDataReader.Execute()
-			behavior |= CommandBehavior.SingleRow;
-#endif
-
 			switch(CommandType)
 			{
 				case CommandType.Text:

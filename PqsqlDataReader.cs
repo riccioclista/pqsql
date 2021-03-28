@@ -117,6 +117,8 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o;";
 		readonly int mMaxStmt;
 		readonly string[] mStatements;
 
+		bool mIsInSingleRowMode;
+
 #if CODECONTRACTS
 		[ContractInvariantMethod]
 		private void ClassInvariant()
@@ -163,7 +165,6 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o;";
 #endif
 
 			mPGConn = mConn.PGConnection;
-
 			mBehaviour = behavior;
 
 			mMaxStmt = 0;
@@ -2088,6 +2089,12 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o;";
 
 					if ((mBehaviour & CommandBehavior.SchemaOnly) > 0)
 					{
+						// cancel any further results
+						if (mIsInSingleRowMode)
+						{
+							mCmd.Cancel();
+						}
+
 						// we keep mRowInfo here since CommandBehavior.SchemaOnly is on
 						Reset();
 					}
@@ -2265,12 +2272,6 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o;";
 			string stmt = mStatements[mStmtNum]; // current statement
 			CommandBehavior behave = mBehaviour; // result fetching behaviour
 
-			// libpq does not want PQsetSingleRowMode with cursors, just turn it off
-			if (stmt.StartsWith("fetch ", StringComparison.OrdinalIgnoreCase))
-			{
-				behave &= ~CommandBehavior.SingleRow;
-			}
-
 			// convert query string to utf8
 			byte[] utf8query = PqsqlUTF8Statement.CreateUTF8Statement(stmt);
 
@@ -2298,11 +2299,12 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o;";
 				}
 			}
 
-			// only set single row mode for non-FETCH statements
-			if ((behave & CommandBehavior.SingleRow) > 0)
+			// libpq does not want PQsetSingleRowMode with cursors, don't enable it for fetch statements
+			if (!stmt.StartsWith("fetch ", StringComparison.OrdinalIgnoreCase))
 			{
 				if (PqsqlWrapper.PQsetSingleRowMode(mPGConn) == 0)
 					return false;
+				mIsInSingleRowMode = true;
 			}
 
 			return true;
