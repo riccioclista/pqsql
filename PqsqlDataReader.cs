@@ -2090,10 +2090,10 @@ WHERE NOT ca.attisdropped AND ca.attnum > 0 AND ca.attrelid=:o;";
 					if ((mBehaviour & CommandBehavior.SchemaOnly) > 0)
 					{
 						// cancel any further results
-						if (mIsInSingleRowMode)
-						{
-							mCmd.Cancel();
-						}
+						// if (mIsInSingleRowMode)
+						// {
+						// 	mCmd.Cancel();
+						// }
 
 						// we keep mRowInfo here since CommandBehavior.SchemaOnly is on
 						Reset();
