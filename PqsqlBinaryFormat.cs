@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace Pqsql
@@ -12,6 +13,18 @@ namespace Pqsql
 		internal static unsafe class PqsqlBinaryFormat
 		{
 			#region timestamp and interval constants
+
+			private const int PostgresEpochDate = 946684800;
+			private const int PostgresMega = 1000000;
+			private const long UsecsPerHour = 3600000000;
+			private const long UsecsPerMinute = 60000000;
+			private const long UsecsPerSecond = 1000000;
+			private const long EpochTicks = 621355968000000000;
+			private const int DateTimeMinJulian = 0;
+			private const int DateEndJulian = 2147483494; // date2j(JULIAN_MAXYEAR, 1, 1)
+			private const int PostgresEpochJDate = 2451545; // date2j(2000, 1, 1)
+			private const int MinValidDate = DateTimeMinJulian - PostgresEpochJDate;
+			private const int MaxValidDate = DateEndJulian - PostgresEpochJDate;
 
 			// unix timestamp 0 in ticks: DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc).Ticks;
 			private const long UnixEpochTicks = 621355968000000000;
@@ -64,6 +77,40 @@ namespace Pqsql
 				default:
 					return UnixEpochTicks + sec * TimeSpan.TicksPerSecond + usec * UsecFactor;
 				}
+			}
+
+			public static DateTime GetDateTimeFromJDate(int jDate)
+			{
+				// convert julian date to YMD
+				int year, month, day;
+				if (jDate == int.MinValue || jDate == int.MaxValue)
+				{
+					year = month = day = jDate;
+				}
+				else if (jDate >= MinValidDate && jDate < MaxValidDate)
+				{
+					int julian, quad, extra, y;
+					julian = jDate + PostgresEpochJDate;
+					julian += 32044;
+					quad = julian / 146097;
+					extra = (julian - quad * 146097) * 4 + 3;
+					julian += 60 + quad * 3 + extra / 146097;
+					quad = julian / 1461;
+					julian -= quad * 1461;
+					y = julian * 4 / 1461;
+					julian = ((y != 0) ? ((julian + 305) % 365) : ((julian + 306) % 366)) + 123;
+					y += quad * 4;
+					year = y - 4800;
+					quad = julian * 2141 / 65536;
+					day = julian - 7834 * quad / 256;
+					month = (quad + 10) % MonthsPerYear + 1;
+				}
+				else
+				{
+					year = month = day = 0;
+				}
+
+				return new DateTime(year, month, day);
 			}
 
 			public static DateTime GetDateTimeFromDate(int year, int month, int day)
@@ -140,7 +187,19 @@ namespace Pqsql
 				//  int32           day;               /* days, after time for alignment */
 				//  int32           month;             /* months and years, after time for alignment */
 				//} Interval;
-				TimeSpan ts = new TimeSpan(offset * UsecFactor + day * TimeSpan.TicksPerDay);
+				var ticks = 0L;
+				try
+				{
+					ticks = checked(offset * UsecFactor + day * TimeSpan.TicksPerDay);
+				}
+				catch (OverflowException)
+				{
+					throw new ArgumentOutOfRangeException($"The postgres interval {{time={offset}; day={day}; " +
+														  $"month={month};}} is outside the data range of type " +
+														   "System.TimeSpan.");
+				}
+
+				TimeSpan ts = new TimeSpan(ticks);
 
 				if (month != 0)
 				{
@@ -149,6 +208,24 @@ namespace Pqsql
 				}
 
 				return ts;
+			}
+
+			public static DateTime GetDateTimeFromTimestamp(long timestamp)
+			{
+				// decode 64bit timestamp into sec and usec part
+				long ticks;
+				if (timestamp == long.MinValue || timestamp == long.MaxValue)
+				{
+					ticks = timestamp;
+				}
+				else
+				{
+					var sec = PostgresEpochDate + timestamp / PostgresMega;
+					var usec = (int) (timestamp % PostgresMega);
+					ticks = UnixEpochTicks + sec * TimeSpan.TicksPerSecond + usec * UsecFactor;
+				}
+
+				return new DateTime(ticks);
 			}
 
 			public static long GetTicksFromTime(int hour, int min, int sec, int fsec)
@@ -188,6 +265,42 @@ namespace Pqsql
 				fsec = (int)(ts.Ticks - (hour * TimeSpan.TicksPerHour) - (min * TimeSpan.TicksPerMinute) - (sec * TimeSpan.TicksPerSecond));
 				fsec = fsec / UsecFactor;
 				tz = (int) TimeZoneInfo.Local.BaseUtcOffset.TotalSeconds; // interpret ts as localtime
+			}
+
+			public static DateTime GetDateTimeFromTime(long time)
+			{
+				int hour, min, sec, fsec;
+				DecodeToUnixTime(time, out hour, out min, out sec, out fsec);
+
+				// note: set date component to unix epoch time for consistency with GetDateTimeOffsetFromTime()
+				var ticks = GetTicksFromTime(hour, min, sec, fsec) + EpochTicks;
+				return new DateTime(ticks);
+			}
+
+			public static DateTimeOffset GetDateTimeOffsetFromTime(long time, int timeZone)
+			{
+				int hour, min, sec, fsec;
+				DecodeToUnixTime(time, out hour, out min, out sec, out fsec);
+
+				// we set the date component to unix epoch time (1970/1/1), so that the tz offset doesn't likely result in
+				// an ArgumentOutOfRange exception, which can easily happen, if the date is the default 0001/1/1
+				var ticks = GetTicksFromTime(hour, min, sec, fsec) + EpochTicks;
+				return new DateTimeOffset(ticks, TimeSpan.FromSeconds(-timeZone));
+			}
+			
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			private static void DecodeToUnixTime(long t, out int hour, out int min, out int sec, out int fsec)
+			{
+				hour = (int) (t / UsecsPerHour);
+				t -= hour * UsecsPerHour;
+				
+				min = (int) (t / UsecsPerMinute);
+				t -= min * UsecsPerMinute;
+
+				sec = (int) (t / UsecsPerSecond);
+				t -= sec * UsecsPerSecond;
+
+				fsec = (int) t;
 			}
 
 			#endregion
@@ -478,6 +591,5 @@ namespace Pqsql
 
 			#endregion
 		}
-
 	}
 }

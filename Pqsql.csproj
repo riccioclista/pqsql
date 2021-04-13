@@ -29,7 +29,9 @@
     <Compile Include="PqsqlConnection.cs" />
     <Compile Include="PqsqlConnectionPool.cs" />
     <Compile Include="PqsqlConnectionStringBuilder.cs" />
+    <Compile Include="PqsqlCopyBase.cs" />
     <Compile Include="PqsqlCopyFrom.cs" />
+    <Compile Include="PqsqlCopyTo.cs" />
     <Compile Include="PqsqlDataAdapter.cs" />
     <Compile Include="PqsqlDataReader.cs" />
     <Compile Include="PqsqlDbType.cs" />
@@ -42,6 +44,7 @@
     <Compile Include="PqsqlTransaction.cs" />
     <Compile Include="PqsqlTypeRegistry.cs" />
     <Compile Include="PqsqlUTF8Statement.cs" />
+    <Compile Include="PqsqlUtils.cs" />
     <Compile Include="PqsqlWrapper.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

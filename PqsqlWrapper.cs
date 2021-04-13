@@ -870,7 +870,7 @@ namespace Pqsql
 			#region COPY TO STDOUT
 
 			[DllImport("libpq")]
-			public static extern int PQgetCopyData(IntPtr conn, IntPtr buffer, int async);
+			public static unsafe extern int PQgetCopyData(IntPtr conn, IntPtr buffer, int async);
 			// int PQgetCopyData(PGconn* conn, char** buffer, int async);
 
 			#endregion
