@@ -214,15 +214,19 @@ namespace Pqsql
 			{
 				// decode 64bit timestamp into sec and usec part
 				long ticks;
-				if (timestamp == long.MinValue || timestamp == long.MaxValue)
+				switch (timestamp)
 				{
-					ticks = timestamp;
-				}
-				else
-				{
-					var sec = PostgresEpochDate + timestamp / PostgresMega;
-					var usec = (int) (timestamp % PostgresMega);
-					ticks = UnixEpochTicks + sec * TimeSpan.TicksPerSecond + usec * UsecFactor;
+					case long.MinValue:
+						ticks = DateTime.MinValue.Ticks;
+						break;
+					case long.MaxValue:
+						ticks = DateTime.MaxValue.Ticks;
+						break;
+					default:
+						var sec = PostgresEpochDate + timestamp / PostgresMega;
+						var usec = (int) (timestamp % PostgresMega);
+						ticks = UnixEpochTicks + sec * TimeSpan.TicksPerSecond + usec * UsecFactor;
+						break;
 				}
 
 				return new DateTime(ticks);
