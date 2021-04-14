@@ -490,41 +490,25 @@ namespace PqsqlTests
 			res = copy.FetchRow();
 			Assert.IsTrue(res);
 
-			try
-			{
-				// a6 '-infinity'
-				copy.ReadTimestamp();
-				Assert.Fail();
-			}
-			catch (ArgumentOutOfRangeException) {}
+			// a6 '-infinity'
+			var a6 = copy.ReadTimestamp();
+			Assert.AreEqual(DateTime.MinValue, a6);
 
-			try
-			{
-				// b6 '-infinity'
-				copy.ReadTimestamp();
-				Assert.Fail();
-			}
-			catch (ArgumentOutOfRangeException) {}
+			// b6 '-infinity'
+			var b6 = copy.ReadTimestamp();
+			Assert.AreEqual(DateTime.MinValue, b6);
 
 
 			res = copy.FetchRow();
 			Assert.IsTrue(res);
 
-			try
-			{
-				// a7 'infinity'
-				copy.ReadTimestamp();
-				Assert.Fail();
-			}
-			catch (ArgumentOutOfRangeException) {}
+			// a7 'infinity'
+			var a7 = copy.ReadTimestamp();
+			Assert.AreEqual(DateTime.MaxValue, a7);
 
-			try
-			{
-				// b7 'infinity'
-				copy.ReadTimestamp();
-				Assert.Fail();
-			}
-			catch (ArgumentOutOfRangeException) {}
+			// b7 'infinity'
+			var b7 = copy.ReadTimestamp();
+			Assert.AreEqual(DateTime.MaxValue, b7);
 
 			res = copy.FetchRow();
 			Assert.IsFalse(res);
