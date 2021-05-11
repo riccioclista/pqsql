@@ -34,6 +34,7 @@
 #include "pqparam_buffer.h"
 #include "pgadt/numeric.h"
 #include "pgadt/builtins.h"
+#include "pgadt/fmgrprotos.h"
 #include "pgadt/c.h"
 
 #define HAVE_INT64_TIMESTAMP

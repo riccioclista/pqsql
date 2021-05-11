@@ -19,7 +19,7 @@
  * Transactions on Mathematical Software, Vol. 24, No. 4, December 1998,
  * pages 359-367.
  *
- * Copyright (c) 1998-2016, PostgreSQL Global Development Group
+ * Copyright (c) 1998-2017, PostgreSQL Global Development Group
  *
  * IDENTIFICATION
  *	  src/backend/utils/adt/numeric.c
@@ -51,6 +51,7 @@
 #include "pgadt/c.h"
 #include "pgadt/fmgr.h"
 #include "pgadt/builtins.h"
+#include "pgadt/fmgrprotos.h"
 #include "pgadt/postgres.h"
 #include "pgadt/numeric.h"
 
@@ -497,9 +498,9 @@ float8_numeric(double val)
 #if 1
 			return 0;
 #else
-			ereport(ERROR,
-						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-						 errmsg("cannot convert infinity to numeric")));
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("cannot convert infinity to numeric")));
 #endif
 
 	snprintf(buf, sizeof(buf), "%.*g", DBL_DIG, val);
@@ -515,6 +516,7 @@ float8_numeric(double val)
 
 	PG_RETURN_NUMERIC(res);
 }
+
 
 Datum
 numeric_float8(Numeric num)
@@ -782,7 +784,6 @@ zero_var(NumericVar *var)
 	var->weight = 0;			/* by convention; doesn't really matter */
 	var->sign = NUMERIC_POS;	/* anything but NAN... */
 }
-
 
 
 /*
@@ -1313,7 +1314,7 @@ apply_typmod(NumericVar *var, int32 typmod)
  *
  * ----------------------------------------------------------------------
  */
- 
+
 /*
  * round_var
  *

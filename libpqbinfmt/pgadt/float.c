@@ -11,7 +11,7 @@
  * float.c
  *	  Functions for the built-in floating-point types.
  *
- * Portions Copyright (c) 1996-2016, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2017, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
@@ -37,6 +37,7 @@
 #include "pgadt/c.h"
 #include "pgadt/fmgr.h"
 #include "pgadt/builtins.h"
+#include "pgadt/fmgrprotos.h"
 #include "pgadt/postgres.h"
 
 #if defined(WIN32)
@@ -140,7 +141,6 @@ is_infinite(double val)
 	else
 		return -1;
 }
-
 
 
 /* ========== USER I/O ROUTINES ========== */
@@ -278,8 +278,8 @@ float8in_internal(char *num, char **endptr_p,
 				errnumber[endptr - num] = '\0';
 				ereport(ERROR,
 						(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
-				   errmsg("\"%s\" is out of range for type double precision",
-						  errnumber)));
+						 errmsg("\"%s\" is out of range for type double precision",
+								errnumber)));
 #endif
 			}
 		}
@@ -304,7 +304,7 @@ float8in_internal(char *num, char **endptr_p,
 		if (endptr != num && endptr[-1] == '\0')
 			endptr--;
 	}
-#endif   /* HAVE_BUGGY_SOLARIS_STRTOD */
+#endif							/* HAVE_BUGGY_SOLARIS_STRTOD */
 
 	/* skip trailing whitespace */
 	while (*endptr != '\0' && isspace((unsigned char) *endptr))

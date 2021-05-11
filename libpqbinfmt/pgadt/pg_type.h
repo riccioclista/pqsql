@@ -5,7 +5,7 @@
  *
  * XXX keep this in sync with src/include/catalog/pg_type.h
  *
- * Portions Copyright (c) 1996-2016, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2017, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * src/interfaces/ecpg/ecpglib/pg_type.h
@@ -58,4 +58,4 @@
 #define VARBITOID	  1562
 #define NUMERICOID		1700
 
-#endif   /* PG_TYPE_H */
+#endif							/* PG_TYPE_H */
