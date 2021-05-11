@@ -56,21 +56,23 @@ https://www.microsoft.com/en-us/download/details.aspx?id=53587
 The libpq DLLs depend on Visual C++ Redistributable Packages for Visual Studio 2013 from
 https://www.microsoft.com/en-us/download/details.aspx?id=40784
 
-libpqbinfmt is based on x64 libpq from PostgreSQL 9.6.17:
+libpqbinfmt is based on x64 libpq from PostgreSQL 10.16:
 http://www.postgresql.org/docs/current/static/libpq.html
 
-libpq DLLs can be retrieved from postgresql-9.6.17 by running the "setup dependencies" task
+libpq DLLs can be retrieved from postgresql-10.16 by running the "setup dependencies" task
 
-libpq 9.6.17 is linked with
-- OpenSSL 1.1.1d (libssl-1_1-x64.dll and libcrypto-1_1-x64.dll)
-- libintl 0.19.6.0 (libintl-8.dll)
+libpq 10.16 is linked with
+- OpenSSL 1.1.1k (libssl-1_1-x64.dll and libcrypto-1_1-x64.dll)
+- libintl 0.19.6 (libintl-8.dll)
+- libiconv 1.14 (libiconv-2.dll)
 
-postgresql 9.6.17 package contains the necessary DLLs
+postgresql 10.16 package contains the necessary DLLs
 for libpqbinfmt:
 - pgsql\bin\libpq.dll
 - pgsql\bin\libssl-1_1-x64.dll
 - pgsql\bin\libcrypto-1_1-x64.dll
 - pgsql\bin\libintl-8.dll
+- pgsql\bin\libiconv-2.dll
 
 
 

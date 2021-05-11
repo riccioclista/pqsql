@@ -51,7 +51,7 @@
             "args": [
                 "msbuild",
                 "-target:SetupDependencies",
-                "-property:PgsqlDownloadUrl=https://sbp.enterprisedb.com/getfile.jsp?fileid=12354",
+                "-property:PgsqlDownloadUrl=https://sbp.enterprisedb.com/getfile.jsp?fileid=1257609",
                 "-consoleloggerparameters:NoSummary",
                 "${workspaceFolder}/libpqbinfmt/libpqbinfmt.proj"
             ],
@@ -59,7 +59,7 @@
                 "args": [
                     "msbuild",
                     "-target:SetupDependencies",
-                    "-property:PgsqlDownloadUrl=https://sbp.enterprisedb.com/getfile.jsp?fileid=12464",
+                    "-property:PgsqlDownloadUrl=https://sbp.enterprisedb.com/getfile.jsp?fileid=1257615",
                     "-consoleloggerparameters:NoSummary",
                     "${workspaceFolder}/libpqbinfmt/libpqbinfmt.proj"
                 ]
