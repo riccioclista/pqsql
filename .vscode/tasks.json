@@ -32,6 +32,22 @@
             "problemMatcher": "$msCompile"
         },
         {
+            "label": "release build pqsql net461",
+            "command": "dotnet",
+            "type": "shell",
+            "args": [
+                "build",
+                "${workspaceFolder}/Pqsql.csproj",
+                "/property:GenerateFullPaths=true",
+                "/property:TargetFramework=net461",
+                "/consoleloggerparameters:NoSummary",
+                "-c",
+                "Release"
+            ],
+            "group": "build",
+            "problemMatcher": "$msCompile"
+        },
+        {
             "label": "build pqsql tests",
             "command": "dotnet",
             "type": "shell",
